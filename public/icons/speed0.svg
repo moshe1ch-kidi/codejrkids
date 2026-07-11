@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" fill="none">
+  <!-- Hollow Head -->
+  <circle cx="33" cy="15" r="5.5" stroke="#FFFFFF" stroke-width="4.5" fill="none" />
+  <!-- Body & Limbs -->
+  <path d="M33,21.5 C31.5,27 32.5,33 34,37.5" stroke="#FFFFFF" stroke-width="4.5" stroke-linecap="round" />
+  <!-- Arm left -->
+  <path d="M32.5,23 C28.5,25.5 25.5,28.5 23.5,32" stroke="#FFFFFF" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+  <!-- Arm right -->
+  <path d="M32.5,23 C36,25.5 39,29 42,32.5" stroke="#FFFFFF" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+  <!-- Leg left -->
+  <path d="M34,37 C31.5,42.5 28.5,47.5 25.5,52.5" stroke="#FFFFFF" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+  <!-- Leg right -->
+  <path d="M34,37 C36,42 38.5,47 41,52" stroke="#FFFFFF" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+</svg>

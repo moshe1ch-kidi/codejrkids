@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" fill="none">
+  <!-- Speed lines (horizontal lines forming a wedge shape on the left) -->
+  <path d="M12,21 L20,21" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" />
+  <path d="M8,26 L22,26" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" />
+  <path d="M5,31 L24,31" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" />
+  <path d="M7,36 L22,36" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" />
+  <path d="M10,41 L18,41" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" />
+
+  <!-- Hollow Head leaning forward -->
+  <circle cx="42" cy="15" r="5.5" stroke="#FFFFFF" stroke-width="4.5" fill="none" />
+  <!-- Body heavily leaning forward -->
+  <path d="M42,21.5 C37.5,25 34,30 33,35.5" stroke="#FFFFFF" stroke-width="4.5" stroke-linecap="round" />
+  <!-- Arm left (extended back) -->
+  <path d="M39,23 C33,25.5 28.5,24.5 24,23.5" stroke="#FFFFFF" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+  <!-- Arm right (pumping forward) -->
+  <path d="M41,23 C45,25.5 49.5,25 53,28.5" stroke="#FFFFFF" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+  <!-- Leg left (running bent back) -->
+  <path d="M33,35 C29.5,38.5 27.5,42 23.5,43.5" stroke="#FFFFFF" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+  <!-- Leg right (running forward stride) -->
+  <path d="M33,35 C36.5,39.5 41.5,43.5 46,47" stroke="#FFFFFF" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+</svg>

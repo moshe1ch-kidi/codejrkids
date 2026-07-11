@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" fill="none">
+  <!-- Motion Lines behind body -->
+  <path d="M12,26 L19,26" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" />
+  <path d="M9,33 L16,33" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" />
+
+  <!-- Hollow Head -->
+  <circle cx="36" cy="15" r="5.5" stroke="#FFFFFF" stroke-width="4.5" fill="none" />
+  <!-- Body leaning slightly forward -->
+  <path d="M36,21.5 C34.5,27 33.5,33 32.5,37" stroke="#FFFFFF" stroke-width="4.5" stroke-linecap="round" />
+  <!-- Arm left -->
+  <path d="M35,23 C30.5,25.5 27,28.5 24.5,32" stroke="#FFFFFF" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round" />
+  <!-- Arm right -->
+  <path d="M35,23 C38.5,26 42,29.5 45,33" stroke="#FFFFFF" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round" />
+  <!-- Leg left -->
+  <path d="M32.5,37 C30,42 27.5,47 25,52" stroke="#FFFFFF" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round" />
+  <!-- Leg right -->
+  <path d="M32.5,37 C34.5,42 37.5,47 40,52" stroke="#FFFFFF" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round" />
+</svg>
