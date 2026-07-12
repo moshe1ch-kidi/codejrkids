@@ -13,6 +13,7 @@ import { BackgroundGallery } from './components/BackgroundGallery';
 import { PaintEditor, Shape } from './components/PaintEditor';
 import { KidKeypad, KeypadMode } from './components/KidKeypad';
 import { TextEditorModal, FontSize } from './components/TextEditorModal';
+import { RecordModal } from './components/RecordModal';
 import { cn } from './lib/utils';
 import { BlockType, BlockInstance, Stack } from './blocks';
 import { DragState } from './dragState';
@@ -181,6 +182,8 @@ export default function App() {
   const [isGalleryOpen, setIsGalleryOpen] = useState(false);
   const [isTextModalOpen, setIsTextModalOpen] = useState(false);
   const [isPaintEditorOpen, setIsPaintEditorOpen] = useState(false);
+  const [isRecordModalOpen, setIsRecordModalOpen] = useState(false);
+  const [recordings, setRecordings] = useState<Record<number, string>>({});
   const [editingCharacterId, setEditingCharacterId] = useState<string | null>(null);
   
   // Custom Kid-Friendly Keypad State
@@ -316,7 +319,10 @@ export default function App() {
           id: `block-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
           type: dragState.blockType,
         };
-        if (['MOVE_RIGHT', 'MOVE_LEFT', 'MOVE_UP', 'MOVE_DOWN', 'TURN_RIGHT', 'TURN_LEFT', 'GROW', 'SHRINK'].includes(dragState.blockType)) {
+        
+        if (dragState.times !== undefined) {
+          newBlock.times = dragState.times;
+        } else if (['MOVE_RIGHT', 'MOVE_LEFT', 'MOVE_UP', 'MOVE_DOWN', 'TURN_RIGHT', 'TURN_LEFT', 'GROW', 'SHRINK'].includes(dragState.blockType)) {
           newBlock.times = 1;
         } else if (dragState.blockType === 'HOP') {
           newBlock.times = 2;
@@ -404,11 +410,12 @@ export default function App() {
     }
   }, [activeSceneId, scenes, activeCharacterId]);
 
-  const handlePaletteDragStart = (e: React.PointerEvent, type: BlockType) => {
+  const handlePaletteDragStart = (e: React.PointerEvent, type: BlockType, times?: number) => {
     setDragState({
       isDragging: true,
       source: 'PALETTE',
       blockType: type,
+      times: times,
       startX: e.clientX,
       startY: e.clientY,
       currentX: e.clientX,
@@ -709,6 +716,26 @@ export default function App() {
             osc.stop(ctx.currentTime + 0.15);
           } catch (err) {
             console.log('Audio error:', err);
+          }
+          break;
+        }
+        case 'PLAY_RECORDED': {
+          const recordingId = block.times !== undefined ? block.times : 1;
+          const url = recordings[recordingId];
+          if (url) {
+            try {
+              const audio = new Audio(url);
+              await new Promise<void>((resolve) => {
+                audio.onended = () => resolve();
+                audio.onerror = () => resolve();
+                audio.play().catch((err) => {
+                  console.log('Error playing recording:', err);
+                  resolve();
+                });
+              });
+            } catch (err) {
+              console.log('Audio error:', err);
+            }
           }
           break;
         }
@@ -1217,7 +1244,11 @@ export default function App() {
 
         {/* Bottom Half: Coding Area */}
         <div className="flex flex-col bg-[#FDF2E3] rounded-[40px] shadow-xl border-4 border-[#F9C17D] overflow-hidden flex-[0.9] min-h-0 relative">
-          <Palette onDragStart={handlePaletteDragStart} />
+          <Palette 
+            onDragStart={handlePaletteDragStart} 
+            onRecordClick={() => setIsRecordModalOpen(true)}
+            recordings={recordings}
+          />
           
           <div className="flex-1 p-4 flex flex-col gap-2 relative">
             <div className="flex justify-between items-center px-4 py-2 border-b border-[#F9C17D]/30 mb-2">
@@ -1322,6 +1353,16 @@ export default function App() {
         onSave={(newText, newColor, newSize) => {
           setScenes(prev => prev.map(s => s.id === activeSceneId ? { ...s, text: newText, textColor: newColor, textSize: newSize } : s));
           setIsTextModalOpen(false);
+        }}
+      />
+
+      <RecordModal
+        isOpen={isRecordModalOpen}
+        onClose={() => setIsRecordModalOpen(false)}
+        onSave={(audioUrl) => {
+          const nextId = Object.keys(recordings).length + 1;
+          setRecordings(prev => ({ ...prev, [nextId]: audioUrl }));
+          setIsRecordModalOpen(false);
         }}
       />
 
