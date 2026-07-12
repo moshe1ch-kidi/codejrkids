@@ -1021,9 +1021,9 @@ export default function App() {
           >
             <img src={getAssetUrl("/UI/go.svg")} alt="הפעל" className="w-[72px] h-[72px] object-contain" />
           </button>
-        </div>
-        
-        <div className="w-auto shrink-0 flex items-center justify-end gap-3">
+
+          <div className="w-px h-10 bg-gray-300 mx-2"></div>
+
           <button 
             onClick={handleSaveProject}
             className="w-[72px] h-[72px] flex items-center justify-center hover:scale-110 transition-transform"
@@ -1045,6 +1045,8 @@ export default function App() {
             />
           </label>
         </div>
+        
+        <div className="w-48 shrink-0"></div>
       </header>
 
       {/* Main Content */}
