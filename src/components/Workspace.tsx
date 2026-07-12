@@ -22,6 +22,7 @@ interface WorkspaceProps {
   ) => void;
   onDelete: (id: string) => void;
   onDragStart: (e: React.PointerEvent, stackId: string, blockId: string) => void;
+  onBlockClick?: (stackId: string, blockId: string) => void;
   workspaceRef: React.RefObject<HTMLDivElement>;
   characters?: Character[];
 }
@@ -33,7 +34,8 @@ export function Workspace({
   onTextChange, 
   onOpenKeypad,
   onDelete, 
-  onDragStart, 
+  onDragStart,
+  onBlockClick, 
   workspaceRef,
   characters
 }: WorkspaceProps) {
@@ -70,6 +72,7 @@ export function Workspace({
                   stackId={stack.id}
                   block={block}
                   onDragStart={onDragStart}
+                  onBlockClick={onBlockClick}
                   isActive={activeBlockId === block.id}
                   onTimesChange={onTimesChange}
                   onTextChange={onTextChange}

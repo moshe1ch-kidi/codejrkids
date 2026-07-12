@@ -94,11 +94,18 @@ export function VisualBlock({ type, isActive, onClick, className, times, text, i
       {/* Content Layer (Icon) */}
       <div className="relative z-10 flex items-center justify-center w-full h-full pr-1.5">
         {iconSrc ? (
-          <img
-            src={iconSrc}
-            alt={def.type}
-            className={cn("pointer-events-none select-none drop-shadow-sm shrink-0 max-w-none", iconSizeClass)}
-          />
+          <div className="relative">
+            <img
+              src={iconSrc}
+              alt={def.type}
+              className={cn("pointer-events-none select-none drop-shadow-sm shrink-0 max-w-none", iconSizeClass)}
+            />
+            {type === 'PLAY_RECORDED' && times !== undefined && (
+              <div className="absolute -top-1 -right-1 w-5 h-5 bg-[#2390b5] rounded-full border-2 border-white flex items-center justify-center text-white text-[10px] font-black font-mono shadow-sm">
+                {times}
+              </div>
+            )}
+          </div>
         ) : type === 'GOTO_PAGE' ? (
           <div className="relative w-12 h-9 bg-white border border-slate-300 rounded shadow-sm flex items-center justify-center overflow-visible">
             {/* Miniature content inside the page: Tik cat sprite! */}

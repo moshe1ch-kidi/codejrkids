@@ -6,7 +6,9 @@ import { cn } from '../lib/utils';
 import { getAssetUrl } from '../utils/assets';
 
 interface PaletteProps {
-  onDragStart: (e: React.PointerEvent, type: BlockType) => void;
+  onDragStart: (e: React.PointerEvent, type: BlockType, times?: number) => void;
+  onRecordClick?: () => void;
+  recordings?: Record<number, string>;
 }
 
 const BLOCK_HEBREW_NAMES: Record<BlockType, string> = {
@@ -59,7 +61,7 @@ const getBubbleStyle = (category: string) => {
   }
 };
 
-export function Palette({ onDragStart }: PaletteProps) {
+export function Palette({ onDragStart, onRecordClick, recordings = {} }: PaletteProps) {
   const [activeCategory, setActiveCategory] = useState<BlockCategory>('MOTION');
 
   const categories: { 
@@ -153,12 +155,44 @@ export function Palette({ onDragStart }: PaletteProps) {
         }}
       >
         {activeCategoryData?.blocks.map(type => {
-          const def = BLOCK_DEFS[type as BlockType];
+          if (type === 'PLAY_RECORDED') {
+            return (
+              <React.Fragment key="recordings-group">
+                <div
+                  onPointerDown={(e) => {
+                    e.stopPropagation();
+                    onRecordClick?.();
+                  }}
+                  className="cursor-pointer flex flex-col items-center justify-center relative shrink-0 group border-[3px] border-dashed border-[#4cc14d] rounded-2xl w-[90px] h-[64px] bg-[#e6f7ec]/50 active:scale-95 transition-transform select-none"
+                  title="הקלטה חדשה"
+                >
+                  <img src={getAssetUrl('/icons/Microphone.svg')} className="w-[44px] h-[44px] opacity-70" alt="Record" />
+                </div>
+                {Object.keys(recordings).map(idStr => {
+                  const id = parseInt(idStr);
+                  return (
+                    <div
+                      key={`recording-${id}`}
+                      onPointerDown={(e) => onDragStart(e, 'PLAY_RECORDED', id)}
+                      className="touch-none cursor-grab hover:scale-105 transition-transform flex flex-col items-center justify-center relative shrink-0 group"
+                      title={`${BLOCK_HEBREW_NAMES['PLAY_RECORDED']} ${id}`}
+                    >
+                      <VisualBlock 
+                        type="PLAY_RECORDED"
+                        times={id}
+                      />
+                    </div>
+                  );
+                })}
+              </React.Fragment>
+            );
+          }
+
           return (
             <div
               key={type}
               onPointerDown={(e) => onDragStart(e, type as BlockType)}
-              className="touch-none cursor-grab hover:scale-105 transition-transform animate-fade-in flex flex-col items-center justify-center relative shrink-0 group"
+              className="touch-none cursor-grab hover:scale-105 transition-transform flex flex-col items-center justify-center relative shrink-0 group"
               title={BLOCK_HEBREW_NAMES[type as BlockType] || type}
             >
               <VisualBlock 

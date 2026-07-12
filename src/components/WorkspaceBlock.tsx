@@ -14,6 +14,7 @@ interface WorkspaceBlockProps {
   stackId: string;
   block: BlockInstance;
   onDragStart: (e: React.PointerEvent, stackId: string, blockId: string) => void;
+  onBlockClick?: (stackId: string, blockId: string) => void;
   isActive: boolean;
   onTimesChange: (id: string, times: number) => void;
   onTextChange?: (id: string, text: string) => void;
@@ -42,7 +43,8 @@ const getDefaultValue = (type: BlockType): number => {
 export const WorkspaceBlock: React.FC<WorkspaceBlockProps> = ({ 
   stackId, 
   block, 
-  onDragStart, 
+  onDragStart,
+  onBlockClick, 
   isActive, 
   onTimesChange, 
   onTextChange,
@@ -114,6 +116,7 @@ export const WorkspaceBlock: React.FC<WorkspaceBlockProps> = ({
                       stackId={stackId} 
                       block={child} 
                       onDragStart={onDragStart}
+                      onBlockClick={onBlockClick}
                       isActive={isActive}
                       onTimesChange={onTimesChange}
                       onTextChange={onTextChange}
