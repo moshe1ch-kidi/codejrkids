@@ -1,7 +1,7 @@
  import React, { useState, useRef, useEffect } from 'react';
 import { 
   Play, Square, RotateCcw, Image as ImageIcon, 
-  Settings2, Plus, Flag, Trash2, Rocket, Brush, X, Grid, Pencil, Monitor
+  Settings2, Plus, Flag, Trash2, Rocket, Brush, X, Grid, Pencil, Monitor, Save, FolderOpen
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { Stage } from './components/Stage';
@@ -817,6 +817,52 @@ export default function App() {
     });
   };
 
+  const handleSaveProject = () => {
+    const projectData = {
+      format: "scratchjr-web",
+      version: 1,
+      scenes,
+      activeSceneId,
+      activeCharacterId
+    };
+    
+    const blob = new Blob([JSON.stringify(projectData)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "project.sjr";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleLoadProject = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const text = e.target?.result as string;
+        const projectData = JSON.parse(text);
+        
+        if (projectData.format === "scratchjr-web") {
+          setScenes(projectData.scenes || []);
+          setActiveSceneId(projectData.activeSceneId || 'scene-1');
+          setActiveCharacterId(projectData.activeCharacterId || 'char-1');
+        } else {
+          alert("פורמט קובץ לא נתמך. יש לבחור קובץ שנוצר באפליקציה זו.");
+        }
+      } catch (err) {
+        alert("שגיאה בטעינת הקובץ.");
+      }
+    };
+    reader.readAsText(file);
+    
+    event.target.value = '';
+  };
+
   const playScene = () => {
     resetStage();
     
@@ -977,7 +1023,28 @@ export default function App() {
           </button>
         </div>
         
-        <div className="w-48 shrink-0"></div>
+        <div className="w-auto shrink-0 flex items-center justify-end gap-3">
+          <button 
+            onClick={handleSaveProject}
+            className="w-[72px] h-[72px] flex items-center justify-center hover:scale-110 transition-transform"
+            title="שמור פרויקט"
+          >
+            <Save className="w-[60px] h-[60px] text-orange-400 stroke-[1.5]" />
+          </button>
+          
+          <label 
+            className="w-[72px] h-[72px] flex items-center justify-center hover:scale-110 transition-transform cursor-pointer"
+            title="טען פרויקט"
+          >
+            <FolderOpen className="w-[60px] h-[60px] text-green-500 stroke-[1.5]" />
+            <input 
+              type="file" 
+              accept=".sjr" 
+              onChange={handleLoadProject} 
+              className="hidden" 
+            />
+          </label>
+        </div>
       </header>
 
       {/* Main Content */}
