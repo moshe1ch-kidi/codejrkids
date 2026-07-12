@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { 
   Play, Square, RotateCcw, Image as ImageIcon, 
-  Settings2, Plus, Flag, Trash2, Rocket, Brush, X, Grid, Pencil
+  Settings2, Plus, Flag, Trash2, Rocket, Brush, X, Grid, Pencil, Monitor
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { Stage } from './components/Stage';
@@ -73,6 +73,7 @@ export default function App() {
     width: typeof window !== 'undefined' ? window.innerWidth : 1024, 
     height: typeof window !== 'undefined' ? window.innerHeight : 768 
   });
+  const [showMobileWarning, setShowMobileWarning] = useState(true);
 
   useEffect(() => {
     if (!isPresentationMode) return;
@@ -1346,6 +1347,25 @@ export default function App() {
           
           {/* Bottom Bar spacer to match top spacing */}
           <div className="h-6 shrink-0" />
+        </div>
+      )}
+
+      {/* Mobile Warning Overlay */}
+      {showMobileWarning && (
+        <div className="md:hidden fixed inset-0 bg-white/95 backdrop-blur-sm z-[99999] flex flex-col items-center justify-center p-6 text-center">
+          <div className="w-24 h-24 bg-amber-100 rounded-full flex items-center justify-center mb-6">
+            <Monitor className="w-12 h-12 text-amber-600" />
+          </div>
+          <h2 className="text-3xl font-black text-slate-800 mb-4">Desktop Recommended</h2>
+          <p className="text-xl text-slate-600 mb-8 max-w-sm">
+            This version is optimized for desktop computers and some tablets.
+          </p>
+          <button 
+            onClick={() => setShowMobileWarning(false)}
+            className="px-8 py-4 bg-indigo-500 text-white rounded-2xl font-bold text-xl hover:bg-indigo-600 transition-colors shadow-lg shadow-indigo-500/30 active:scale-95"
+          >
+            Continue anyway
+          </button>
         </div>
       )}
     </div>
