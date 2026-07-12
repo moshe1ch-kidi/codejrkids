@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+ import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Undo, Redo, Camera, Check, ArrowUpRight, 
@@ -385,6 +385,7 @@ export function PaintEditor({
   const [isCameraActive, setIsCameraActive] = useState(false);
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
   const [clickTargetCoords, setClickTargetCoords] = useState<Point | null>(null);
+  const [cameraShape, setCameraShape] = useState<'rect' | 'circle' | 'triangle' | 'star'>('rect');
 
   // Initialize Canvas vectors with image preloading
   useEffect(() => {
@@ -1081,6 +1082,42 @@ export function PaintEditor({
     if (offscreenCtx) {
       offscreenCtx.scale(-1, 1);
       offscreenCtx.drawImage(video, -320, 0, 320, 240);
+      
+      if (cameraShape !== 'rect') {
+        offscreenCtx.setTransform(1, 0, 0, 1, 0, 0);
+        offscreenCtx.globalCompositeOperation = 'destination-in';
+        offscreenCtx.beginPath();
+        if (cameraShape === 'circle') {
+          offscreenCtx.arc(160, 120, 120, 0, Math.PI * 2);
+        } else if (cameraShape === 'triangle') {
+          offscreenCtx.moveTo(160, 0);
+          offscreenCtx.lineTo(320, 240);
+          offscreenCtx.lineTo(0, 240);
+          offscreenCtx.closePath();
+        } else if (cameraShape === 'star') {
+          const cx = 160, cy = 120, spikes = 5, outerRadius = 120, innerRadius = 50;
+          let rot = Math.PI / 2 * 3;
+          let x = cx;
+          let y = cy;
+          let step = Math.PI / spikes;
+          offscreenCtx.moveTo(cx, cy - outerRadius);
+          for (let i = 0; i < spikes; i++) {
+            x = cx + Math.cos(rot) * outerRadius;
+            y = cy + Math.sin(rot) * outerRadius;
+            offscreenCtx.lineTo(x, y);
+            rot += step;
+
+            x = cx + Math.cos(rot) * innerRadius;
+            y = cy + Math.sin(rot) * innerRadius;
+            offscreenCtx.lineTo(x, y);
+            rot += step;
+          }
+          offscreenCtx.lineTo(cx, cy - outerRadius);
+          offscreenCtx.closePath();
+        }
+        offscreenCtx.fillStyle = 'black';
+        offscreenCtx.fill();
+      }
     }
     const photoUrl = offscreen.toDataURL('image/png');
 
@@ -1398,8 +1435,53 @@ export function PaintEditor({
               <div className="absolute inset-0 bg-slate-950/80 flex items-center justify-center p-4 z-50">
                 <div className="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl border-4 border-amber-400 flex flex-col items-center">
                   <h3 className="text-lg font-black text-slate-800 mb-4">חייך למצלמה! 📸</h3>
-                  <div className="w-64 h-48 bg-slate-100 rounded-2xl overflow-hidden border-2 border-slate-300 relative mb-4">
-                    <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover scale-x-[-1]" />
+                  <div className="w-64 h-48 bg-slate-100 rounded-2xl overflow-hidden border-2 border-slate-300 relative mb-4 flex items-center justify-center">
+                    <video 
+                      ref={videoRef} 
+                      autoPlay 
+                      playsInline 
+                      className="absolute w-full h-full object-cover scale-x-[-1] transition-all duration-300" 
+                      style={{ 
+                        clipPath: cameraShape === 'circle' ? 'circle(50% at 50% 50%)' :
+                                  cameraShape === 'triangle' ? 'polygon(50% 0%, 100% 100%, 0% 100%)' :
+                                  cameraShape === 'star' ? 'polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%)' :
+                                  'none'
+                      }}
+                    />
+                  </div>
+                  <div className="flex gap-2 mb-4">
+                    <button 
+                      onClick={() => setCameraShape('rect')}
+                      className={`p-2 rounded-xl transition-all ${cameraShape === 'rect' ? 'bg-amber-100 border-2 border-amber-400' : 'bg-slate-50 border-2 border-transparent'}`}
+                      title="מלבן"
+                    >
+                      <div className="w-6 h-6 border-2 border-slate-600 rounded-sm"></div>
+                    </button>
+                    <button 
+                      onClick={() => setCameraShape('circle')}
+                      className={`p-2 rounded-xl transition-all ${cameraShape === 'circle' ? 'bg-amber-100 border-2 border-amber-400' : 'bg-slate-50 border-2 border-transparent'}`}
+                      title="עיגול"
+                    >
+                      <div className="w-6 h-6 border-2 border-slate-600 rounded-full"></div>
+                    </button>
+                    <button 
+                      onClick={() => setCameraShape('triangle')}
+                      className={`p-2 rounded-xl transition-all ${cameraShape === 'triangle' ? 'bg-amber-100 border-2 border-amber-400' : 'bg-slate-50 border-2 border-transparent'}`}
+                      title="משולש"
+                    >
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-slate-600">
+                        <path d="M12 2l10 20H2z" />
+                      </svg>
+                    </button>
+                    <button 
+                      onClick={() => setCameraShape('star')}
+                      className={`p-2 rounded-xl transition-all ${cameraShape === 'star' ? 'bg-amber-100 border-2 border-amber-400' : 'bg-slate-50 border-2 border-transparent'}`}
+                      title="כוכב"
+                    >
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-slate-600">
+                        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                      </svg>
+                    </button>
                   </div>
                   <div className="flex gap-3 w-full">
                     <button
