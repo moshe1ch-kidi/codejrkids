@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+ import React, { useState, useRef, useEffect } from 'react';
 import { 
   Play, Square, RotateCcw, Image as ImageIcon, 
   Settings2, Plus, Flag, Trash2, Rocket, Brush, X, Grid, Pencil, Monitor
@@ -307,6 +307,9 @@ export default function App() {
       const workspaceRect = workspaceRef.current?.getBoundingClientRect();
 
       let finalBlocks: BlockInstance[] = [];
+      const wasClick = dragState.source === 'WORKSPACE' && 
+                       Math.abs(e.clientX - dragState.startX) < 5 && 
+                       Math.abs(e.clientY - dragState.startY) < 5;
 
       if (dragState.source === 'PALETTE' && dragState.blockType) {
         const newBlock: BlockInstance = {
@@ -334,6 +337,17 @@ export default function App() {
         finalBlocks = [newBlock];
       } else if (dragState.source === 'WORKSPACE' && dragState.blocks) {
         finalBlocks = dragState.blocks;
+      }
+
+      if (wasClick && dragState.originalStacks) {
+        setStacks(dragState.originalStacks);
+        const originalStack = dragState.originalStacks.find(s => s.id === dragState.stackId);
+        if (originalStack && activeCharacterId) {
+          runTracked(originalStack.blocks, activeCharacterId);
+        }
+        setDragState(null);
+        snapTargetRef.current = null;
+        return;
       }
 
       if (finalBlocks.length > 0) {
@@ -424,7 +438,8 @@ export default function App() {
           currentX: e.clientX,
           currentY: e.clientY,
           offsetX: e.clientX - rect.left,
-          offsetY: e.clientY - rect.top
+          offsetY: e.clientY - rect.top,
+          originalStacks: prev
         });
       }, 0);
       
