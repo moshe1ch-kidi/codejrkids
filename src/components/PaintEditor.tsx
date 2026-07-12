@@ -3,8 +3,9 @@ import { motion, AnimatePresence } from 'motion/react';
 import { 
   Undo, Redo, Camera, Check, ArrowUpRight, 
   RotateCw, Copy, Scissors, PaintBucket,
-  Brush, Circle, Square, Triangle
+  Brush, Circle, Square, Triangle, Shapes
 } from 'lucide-react';
+import { SHAPE_ROWS } from '../lib/shapes';
 
 export interface Point {
   x: number;
@@ -13,13 +14,16 @@ export interface Point {
 
 export interface Shape {
   id: string;
-  type: 'brush' | 'circle' | 'rect' | 'triangle' | 'image';
+  type: 'brush' | 'circle' | 'rect' | 'triangle' | 'image' | 'custom';
   color: string;
   width: number;
   points: Point[];
   fillColor?: string;
   imgUrl?: string;
+  pathData?: string;
 }
+
+type ToolType = 'brush' | 'circle' | 'rect' | 'triangle' | 'select' | 'rotate' | 'stamp' | 'scissors' | 'camera' | 'fill' | 'custom';
 
 export interface PaintEditorProps {
   isOpen: boolean;
@@ -44,7 +48,6 @@ const PALETTE_COLORS_ROW2 = [
   '#FFE0B2', '#FFAB91', '#B0BEC5', '#212121'
 ];
 
-type ToolType = 'brush' | 'circle' | 'rect' | 'triangle' | 'select' | 'rotate' | 'stamp' | 'scissors' | 'camera' | 'fill';
 
 // Geometry Helpers
 function isPointInPolygon(pt: Point, poly: Point[]): boolean {
@@ -357,6 +360,8 @@ export function PaintEditor({
 }: PaintEditorProps) {
   const [characterName, setCharacterName] = useState('דמות');
   const [activeTool, setActiveTool] = useState<ToolType>('brush');
+  const [activeCustomShapeData, setActiveCustomShapeData] = useState<string>('');
+  const [isShapesPopoverOpen, setIsShapesPopoverOpen] = useState(false);
   const [selectedColor, setSelectedColor] = useState('#000000');
   const [brushWidth, setBrushWidth] = useState(8);
   
@@ -544,7 +549,7 @@ export function PaintEditor({
         }
       }
 
-      if (shape.type === 'circle' && shape.points.length >= 4) {
+      if ((shape.type === 'circle' || shape.type === 'custom') && shape.points.length >= 4) {
         const cx = (shape.points[1].x + shape.points[3].x) / 2;
         const cy = (shape.points[0].y + shape.points[2].y) / 2;
         const rx = Math.abs(shape.points[1].x - shape.points[3].x) / 2;
@@ -648,6 +653,28 @@ export function PaintEditor({
             ctx.fill();
           }
           ctx.stroke();
+        }
+      } else if (shape.type === 'custom' && shape.pathData) {
+        if (shape.points.length >= 4) {
+          const cx = (shape.points[1].x + shape.points[3].x) / 2;
+          const cy = (shape.points[0].y + shape.points[2].y) / 2;
+          const rx = Math.abs(shape.points[1].x - shape.points[3].x) / 2;
+          const ry = Math.abs(shape.points[2].y - shape.points[0].y) / 2;
+          
+          ctx.save();
+          ctx.translate(cx, cy);
+          ctx.scale((rx * 2) / 100, (ry * 2) / 100);
+          ctx.translate(-50, -50);
+          
+          const path2d = new Path2D(shape.pathData);
+          if (shape.fillColor && shape.fillColor !== 'transparent') {
+            ctx.fillStyle = shape.fillColor;
+            ctx.fill(path2d);
+          }
+          // Reset scale for stroke so it doesn't get distorted
+          ctx.lineWidth = shape.width / Math.max((rx * 2) / 100, (ry * 2) / 100);
+          ctx.stroke(path2d);
+          ctx.restore();
         }
       } else if (shape.type === 'image') {
         if (shape.points.length >= 4) {
@@ -898,6 +925,21 @@ export function PaintEditor({
         ],
         fillColor: 'transparent'
       };
+    } else if (activeTool === 'custom') {
+      newShape = {
+        id: newId,
+        type: 'custom',
+        pathData: activeCustomShapeData,
+        color: selectedColor,
+        width: brushWidth,
+        points: [
+          { ...currentPoint },
+          { ...currentPoint },
+          { ...currentPoint },
+          { ...currentPoint }
+        ],
+        fillColor: 'transparent'
+      };
     }
 
     if (newShape) {
@@ -952,7 +994,7 @@ export function PaintEditor({
           }
 
           const updatedPoints = [...shape.points];
-          if (shape.type === 'circle') {
+          if (shape.type === 'circle' || shape.type === 'custom') {
             const cx = (updatedPoints[1].x + updatedPoints[3].x) / 2;
             const cy = (updatedPoints[0].y + updatedPoints[2].y) / 2;
             if (selectedPointIndex === 0 || selectedPointIndex === 2) {
@@ -1019,7 +1061,7 @@ export function PaintEditor({
         };
       }
 
-      if (shape.type === 'circle') {
+      if (shape.type === 'circle' || shape.type === 'custom') {
         const rx = Math.abs(x - x0);
         const ry = Math.abs(y - y0);
         return {
@@ -1376,6 +1418,52 @@ export function PaintEditor({
               >
                 <PaintBucket className="w-6 h-6 stroke-[2.5]" />
               </button>
+
+              <div className="relative">
+                <button
+                  onClick={() => setIsShapesPopoverOpen(!isShapesPopoverOpen)}
+                  className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all bg-white border-b-4 border-slate-300 shadow-sm active:translate-y-[2px] active:border-b-2 ${
+                    activeTool === 'custom' || isShapesPopoverOpen ? '!bg-indigo-500 text-white border-indigo-700 scale-105' : 'hover:bg-slate-50 text-slate-700'
+                  }`}
+                  title="צורות מיוחדות"
+                >
+                  <Shapes className="w-6 h-6 stroke-[2.5]" />
+                </button>
+
+                <AnimatePresence>
+                  {isShapesPopoverOpen && (
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.9, x: -20 }}
+                      animate={{ opacity: 1, scale: 1, x: 0 }}
+                      exit={{ opacity: 0, scale: 0.9, x: -20 }}
+                      className="absolute left-full top-1/2 -translate-y-1/2 ml-4 bg-white rounded-3xl shadow-2xl border-2 border-slate-200 p-4 w-max max-w-[80vw] overflow-x-auto z-50 flex flex-col gap-3"
+                    >
+                      {SHAPE_ROWS.map((row, rowIdx) => (
+                        <div key={rowIdx} className="flex gap-2 justify-center">
+                          {row.map(shape => (
+                            <button
+                              key={shape.id}
+                              onClick={() => {
+                                setActiveTool('custom');
+                                setActiveCustomShapeData(shape.path);
+                                setIsShapesPopoverOpen(false);
+                              }}
+                              className={`w-10 h-10 rounded-xl flex items-center justify-center hover:bg-indigo-50 transition-colors border-2 ${
+                                activeTool === 'custom' && activeCustomShapeData === shape.path ? 'border-indigo-400 bg-indigo-50' : 'border-transparent'
+                              }`}
+                              title={shape.name}
+                            >
+                              <svg viewBox="0 0 100 100" className="w-6 h-6 text-slate-700 fill-current">
+                                <path d={shape.path} />
+                              </svg>
+                            </button>
+                          ))}
+                        </div>
+                      ))}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
             </div>
           </div>
 
