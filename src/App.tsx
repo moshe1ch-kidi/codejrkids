@@ -1,4 +1,4 @@
- import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { 
   Play, Square, RotateCcw, Image as ImageIcon, 
   Settings2, Plus, Flag, Trash2, Rocket, Brush, X, Grid, Pencil, Monitor, Save, FolderOpen
@@ -662,7 +662,7 @@ export default function App() {
           break;
         }
         case 'GO_HOME':
-          setSpriteStateForChar(charId, prev => ({ ...prev, x: 11, y: 8, rotation: 0 }));
+          setSpriteStateForChar(charId, prev => ({ ...prev, x: prev.homeX !== undefined ? prev.homeX : 11, y: prev.homeY !== undefined ? prev.homeY : 8, rotation: 0 }));
           break;
         case 'SAY': {
           const text = block.text || 'שלום!';
@@ -938,11 +938,10 @@ export default function App() {
         const hX = current.homeX !== undefined ? current.homeX : (current.x !== undefined ? current.x : 11);
         const hY = current.homeY !== undefined ? current.homeY : (current.y !== undefined ? current.y : 8);
         next[key] = {
-          ...INITIAL_SPRITE_STATE,
+          ...current,
           x: hX,
           y: hY,
-          homeX: hX,
-          homeY: hY
+          sayText: ''
         };
       });
       return next;
