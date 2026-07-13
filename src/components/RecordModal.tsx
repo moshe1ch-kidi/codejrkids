@@ -59,7 +59,7 @@ export function RecordModal({ isOpen, onClose, onSave }: RecordModalProps) {
       setAudioUrl(null);
     } catch (err) {
       console.error('Error accessing microphone:', err);
-      alert('לא ניתן לגשת למיקרופון.');
+      alert('Cannot access microphone.');
     }
   };
 
@@ -114,7 +114,6 @@ export function RecordModal({ isOpen, onClose, onSave }: RecordModalProps) {
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.95 }}
         className="relative bg-[#f4efe6] w-full max-w-[400px] rounded-[16px] shadow-2xl flex flex-col overflow-hidden border border-[#5b87bd]"
-        dir="rtl"
       >
         {/* Header */}
         <div className="h-16 bg-[#5b87bd] px-4 flex justify-between items-center text-white">
@@ -127,7 +126,7 @@ export function RecordModal({ isOpen, onClose, onSave }: RecordModalProps) {
                 className="flex items-center gap-2 bg-red-500/30 px-3 py-1 rounded-full border border-red-400"
               >
                 <div className="w-2 h-2 bg-red-500 rounded-full" />
-                <span className="text-[14px] font-bold">הקלטה...</span>
+                <span className="text-[14px] font-bold">Recording...</span>
               </motion.div>
             )}
           </div>
@@ -166,7 +165,7 @@ export function RecordModal({ isOpen, onClose, onSave }: RecordModalProps) {
             onClick={startRecording}
             disabled={isRecording}
             className={`w-[60px] h-[60px] rounded-full border-2 border-gray-300 bg-white flex items-center justify-center hover:scale-105 transition-transform disabled:opacity-50`}
-            title="הקלט"
+            title="Record"
           >
             <div className={`w-6 h-6 bg-[#be1e2d] rounded-full ${isRecording ? 'animate-pulse' : ''}`} />
           </button>
@@ -175,7 +174,7 @@ export function RecordModal({ isOpen, onClose, onSave }: RecordModalProps) {
             onClick={stopAction}
             disabled={!isRecording && !isPlaying}
             className={`w-[60px] h-[60px] rounded-xl border-2 border-gray-300 bg-white flex items-center justify-center hover:scale-105 transition-transform disabled:opacity-30`}
-            title="עצור"
+            title="Stop"
           >
             <div className="w-6 h-6 bg-gray-600 rounded-sm" />
           </button>
@@ -184,7 +183,7 @@ export function RecordModal({ isOpen, onClose, onSave }: RecordModalProps) {
             onClick={playRecording}
             disabled={!audioUrl || isRecording || isPlaying}
             className="w-[60px] h-[60px] rounded-xl border-2 border-gray-300 bg-white flex items-center justify-center hover:scale-105 transition-transform disabled:opacity-30"
-            title="נגן"
+            title="Play"
           >
             <div className="w-0 h-0 border-y-[12px] border-y-transparent border-l-[20px] border-l-gray-600 mr-[-4px]" />
           </button>

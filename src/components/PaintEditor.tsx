@@ -358,7 +358,7 @@ export function PaintEditor({
   initialShapes, 
   initialSpriteUrl 
 }: PaintEditorProps) {
-  const [characterName, setCharacterName] = useState('דמות');
+  const [characterName, setCharacterName] = useState('Character');
   const [activeTool, setActiveTool] = useState<ToolType>('brush');
   const [activeCustomShapeData, setActiveCustomShapeData] = useState<string>('');
   const [isShapesPopoverOpen, setIsShapesPopoverOpen] = useState(false);
@@ -395,7 +395,7 @@ export function PaintEditor({
   // Initialize Canvas vectors with image preloading
   useEffect(() => {
     if (isOpen) {
-      setCharacterName(initialName || 'דמות');
+      setCharacterName(initialName || 'Character');
       setActiveTool('brush');
       setSelectedColor('#000000');
       setBrushWidth(8);
@@ -1100,7 +1100,7 @@ export function PaintEditor({
         videoRef.current.srcObject = stream;
       }
     } catch (err) {
-      alert("לא ניתן לגשת למצלמה.");
+      alert("Could not access camera.");
       setIsCameraActive(false);
     }
   };
@@ -1199,7 +1199,7 @@ export function PaintEditor({
     
     // Restore visual handles
     renderAllShapes(ctx, canvas.width, canvas.height, true);
-    onSave(characterName || 'דמות', dataUrl, shapes);
+    onSave(characterName || 'Character', dataUrl, shapes);
   };
 
   if (!isOpen) return null;
@@ -1220,7 +1220,6 @@ export function PaintEditor({
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 15 }}
           className="relative bg-[#f1ede2] w-full max-w-5xl h-[94vh] sm:h-[88vh] rounded-[36px] shadow-2xl flex flex-col overflow-hidden border-[6px] border-[#d7cfbc] z-10 select-none"
-          dir="rtl"
         >
           {/* Top Bar */}
           <div className="h-16 px-6 flex justify-between items-center shrink-0 border-b-2 border-[#e5dfd3] relative z-20">
@@ -1229,7 +1228,7 @@ export function PaintEditor({
                 onClick={handleUndo}
                 disabled={historyIndex <= 0}
                 className="w-12 h-12 rounded-full bg-[#78b7e7] hover:bg-[#61a7e2] disabled:bg-[#b0cde4] text-white flex items-center justify-center shadow-md active:scale-95 transition-all border-2 border-white"
-                title="ביטול"
+                title="Undo"
               >
                 <Undo className="w-5 h-5 stroke-[3]" />
               </button>
@@ -1237,7 +1236,7 @@ export function PaintEditor({
                 onClick={handleRedo}
                 disabled={historyIndex >= history.length - 1}
                 className="w-12 h-12 rounded-full bg-[#78b7e7] hover:bg-[#61a7e2] disabled:bg-[#b0cde4] text-white flex items-center justify-center shadow-md active:scale-95 transition-all border-2 border-white"
-                title="שחזור"
+                title="Redo"
               >
                 <Redo className="w-5 h-5 stroke-[3]" />
               </button>
@@ -1249,14 +1248,14 @@ export function PaintEditor({
                 value={characterName}
                 onChange={(e) => setCharacterName(e.target.value)}
                 className="bg-transparent font-black text-[#5C6BC0] text-lg text-center outline-none w-full"
-                placeholder="שם דמות"
+                placeholder="Character Name"
               />
             </div>
 
             <button
               onClick={handleSave}
               className="w-12 h-12 rounded-full bg-[#78b7e7] hover:bg-[#61a7e2] text-white flex items-center justify-center shadow-md active:scale-95 transition-all border-2 border-white"
-              title="שמירה"
+              title="Save"
             >
               <Check className="w-6 h-6 stroke-[3.5]" />
             </button>
@@ -1273,7 +1272,7 @@ export function PaintEditor({
                   className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all ${
                     activeTool === 'brush' ? 'bg-amber-100 scale-105 border-2 border-amber-400' : 'hover:bg-slate-200/50'
                   }`}
-                  title="ציור חופשי"
+                  title="Brush"
                 >
                   <Brush className="w-7 h-7 text-slate-700 stroke-[2.5]" />
                 </button>
@@ -1283,7 +1282,7 @@ export function PaintEditor({
                   className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all ${
                     activeTool === 'circle' ? 'bg-amber-100 scale-105 border-2 border-amber-400' : 'hover:bg-slate-200/50'
                   }`}
-                  title="עיגול"
+                  title="Circle"
                 >
                   <Circle className="w-7 h-7 text-slate-700 stroke-[2.5]" />
                 </button>
@@ -1293,7 +1292,7 @@ export function PaintEditor({
                   className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all ${
                     activeTool === 'rect' ? 'bg-amber-100 scale-105 border-2 border-amber-400' : 'hover:bg-slate-200/50'
                   }`}
-                  title="מלבן"
+                  title="Rectangle"
                 >
                   <Square className="w-7 h-7 text-slate-700 stroke-[2.5]" />
                 </button>
@@ -1303,7 +1302,7 @@ export function PaintEditor({
                   className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all ${
                     activeTool === 'triangle' ? 'bg-amber-100 scale-105 border-2 border-amber-400' : 'hover:bg-slate-200/50'
                   }`}
-                  title="משולש"
+                  title="Triangle"
                 >
                   <Triangle className="w-7 h-7 text-slate-700 stroke-[2.5]" />
                 </button>
@@ -1361,7 +1360,7 @@ export function PaintEditor({
                 className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all bg-white border-b-4 border-slate-300 shadow-sm active:translate-y-[2px] active:border-b-2 ${
                   activeTool === 'select' ? '!bg-[#D84315] text-white border-[#9E2A2B] scale-105' : 'hover:bg-slate-50 text-slate-700'
                 }`}
-                title="בחירה והזזה"
+                title="Select & Move"
               >
                 <ArrowUpRight className="w-6 h-6 stroke-[3] -rotate-45" />
               </button>
@@ -1371,7 +1370,7 @@ export function PaintEditor({
                 className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all bg-white border-b-4 border-slate-300 shadow-sm active:translate-y-[2px] active:border-b-2 ${
                   activeTool === 'rotate' ? '!bg-[#D84315] text-white border-[#9E2A2B] scale-105' : 'hover:bg-slate-50 text-slate-700'
                 }`}
-                title="סיבוב"
+                title="Rotate"
               >
                 <RotateCw className="w-6 h-6 stroke-[2.5]" />
               </button>
@@ -1381,7 +1380,7 @@ export function PaintEditor({
                 className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all bg-white border-b-4 border-slate-300 shadow-sm active:translate-y-[2px] active:border-b-2 ${
                   activeTool === 'stamp' ? '!bg-[#D84315] text-white border-[#9E2A2B] scale-105' : 'hover:bg-slate-50 text-slate-700'
                 }`}
-                title="חותמת שכפול"
+                title="Stamp / Duplicate"
               >
                 <Copy className="w-6 h-6 stroke-[2.5]" />
               </button>
@@ -1391,7 +1390,7 @@ export function PaintEditor({
                 className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all bg-white border-b-4 border-slate-300 shadow-sm active:translate-y-[2px] active:border-b-2 ${
                   activeTool === 'scissors' ? '!bg-[#D84315] text-white border-[#9E2A2B] scale-105' : 'hover:bg-slate-50 text-slate-700'
                 }`}
-                title="מחיקה וגזירה"
+                title="Delete / Cut"
               >
                 <Scissors className="w-6 h-6 stroke-[2.5]" />
               </button>
@@ -1404,7 +1403,7 @@ export function PaintEditor({
                 className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all bg-white border-b-4 border-slate-300 shadow-sm active:translate-y-[2px] active:border-b-2 ${
                   activeTool === 'camera' ? '!bg-[#D84315] text-white border-[#9E2A2B] scale-105' : 'hover:bg-slate-50 text-slate-700'
                 }`}
-                title="מצלמה"
+                title="Camera"
               >
                 <Camera className="w-6 h-6 stroke-[2.5]" />
               </button>
@@ -1414,7 +1413,7 @@ export function PaintEditor({
                 className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all bg-white border-b-4 border-slate-300 shadow-sm active:translate-y-[2px] active:border-b-2 ${
                   activeTool === 'fill' ? '!bg-[#D84315] text-white border-[#9E2A2B] scale-105' : 'hover:bg-slate-50 text-slate-700'
                 }`}
-                title="דלי צבע"
+                title="Paint Bucket"
               >
                 <PaintBucket className="w-6 h-6 stroke-[2.5]" />
               </button>
@@ -1425,7 +1424,7 @@ export function PaintEditor({
                   className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all bg-white border-b-4 border-slate-300 shadow-sm active:translate-y-[2px] active:border-b-2 ${
                     activeTool === 'custom' || isShapesPopoverOpen ? '!bg-indigo-500 text-white border-indigo-700 scale-105' : 'hover:bg-slate-50 text-slate-700'
                   }`}
-                  title="צורות מיוחדות"
+                  title="Special Shapes"
                 >
                   <Shapes className="w-6 h-6 stroke-[2.5]" />
                 </button>
@@ -1522,7 +1521,7 @@ export function PaintEditor({
             {isCameraActive && (
               <div className="absolute inset-0 bg-slate-950/80 flex items-center justify-center p-4 z-50">
                 <div className="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl border-4 border-amber-400 flex flex-col items-center">
-                  <h3 className="text-lg font-black text-slate-800 mb-4">חייך למצלמה! 📸</h3>
+                  <h3 className="text-lg font-black text-slate-800 mb-4">Smile for the camera! 📸</h3>
                   <div className="w-64 h-48 bg-slate-100 rounded-2xl overflow-hidden border-2 border-slate-300 relative mb-4 flex items-center justify-center">
                     <video 
                       ref={videoRef} 
@@ -1541,21 +1540,21 @@ export function PaintEditor({
                     <button 
                       onClick={() => setCameraShape('rect')}
                       className={`p-2 rounded-xl transition-all ${cameraShape === 'rect' ? 'bg-amber-100 border-2 border-amber-400' : 'bg-slate-50 border-2 border-transparent'}`}
-                      title="מלבן"
+                      title="Rectangle"
                     >
                       <div className="w-6 h-6 border-2 border-slate-600 rounded-sm"></div>
                     </button>
                     <button 
                       onClick={() => setCameraShape('circle')}
                       className={`p-2 rounded-xl transition-all ${cameraShape === 'circle' ? 'bg-amber-100 border-2 border-amber-400' : 'bg-slate-50 border-2 border-transparent'}`}
-                      title="עיגול"
+                      title="Circle"
                     >
                       <div className="w-6 h-6 border-2 border-slate-600 rounded-full"></div>
                     </button>
                     <button 
                       onClick={() => setCameraShape('triangle')}
                       className={`p-2 rounded-xl transition-all ${cameraShape === 'triangle' ? 'bg-amber-100 border-2 border-amber-400' : 'bg-slate-50 border-2 border-transparent'}`}
-                      title="משולש"
+                      title="Triangle"
                     >
                       <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-slate-600">
                         <path d="M12 2l10 20H2z" />
@@ -1564,7 +1563,7 @@ export function PaintEditor({
                     <button 
                       onClick={() => setCameraShape('star')}
                       className={`p-2 rounded-xl transition-all ${cameraShape === 'star' ? 'bg-amber-100 border-2 border-amber-400' : 'bg-slate-50 border-2 border-transparent'}`}
-                      title="כוכב"
+                      title="Star"
                     >
                       <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-slate-600">
                         <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
@@ -1576,13 +1575,13 @@ export function PaintEditor({
                       onClick={capturePhoto}
                       className="flex-1 py-3 bg-[#7CB342] text-white font-extrabold rounded-2xl shadow-md hover:bg-[#689F38] active:scale-95 transition-all border-b-4 border-[#558B2F]"
                     >
-                      צלם תמונה
+                      Capture Photo
                     </button>
                     <button
                       onClick={stopCameraStream}
                       className="flex-1 py-3 bg-red-500 text-white font-extrabold rounded-2xl shadow-md hover:bg-red-600 active:scale-95 transition-all border-b-4 border-red-700"
                     >
-                      ביטול
+                      Cancel
                     </button>
                   </div>
                 </div>

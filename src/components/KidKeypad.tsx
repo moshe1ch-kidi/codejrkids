@@ -18,12 +18,12 @@ interface KidKeypadProps {
 }
 
 const PRESET_PHRASES = [
-  'שלום!',
-  'בוקר טוב!',
-  'איזה כיף!',
-  'יש!',
-  'להתראות!',
-  'קדימה!'
+  'Hello!',
+  'Good morning!',
+  'How fun!',
+  'Yes!',
+  'Goodbye!',
+  'Go!'
 ];
 
 export function KidKeypad({ isOpen, mode, initialValue, anchorRect, onClose, onConfirm, characters, activeCharacterId }: KidKeypadProps) {
@@ -112,7 +112,7 @@ export function KidKeypad({ isOpen, mode, initialValue, anchorRect, onClose, onC
         onConfirm(String(parsed));
       }
     } else {
-      onConfirm(value || (mode === 'speed' ? '2' : 'שלום!'));
+      onConfirm(value || (mode === 'speed' ? '2' : 'Hello!'));
     }
     onClose();
   };
@@ -131,7 +131,7 @@ export function KidKeypad({ isOpen, mode, initialValue, anchorRect, onClose, onC
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-50 pointer-events-none" dir="rtl">
+      <div className="fixed inset-0 z-50 pointer-events-none">
         {/* Transparent Backdrop that handles click dismiss */}
         <div 
           onClick={onClose}
@@ -224,7 +224,7 @@ export function KidKeypad({ isOpen, mode, initialValue, anchorRect, onClose, onC
                       <Rocket className="w-6 h-6" />
                     </div>
                     <div className="text-[10px] font-black text-slate-700 truncate w-full">
-                      כל דמות
+                      All characters
                     </div>
                   </motion.button>
 
@@ -263,12 +263,12 @@ export function KidKeypad({ isOpen, mode, initialValue, anchorRect, onClose, onC
               <div className="flex flex-col gap-1 w-full min-w-[200px]">
                 <div className="flex flex-wrap gap-2.5 p-1 max-w-[280px] justify-center">
                   {[
-                    { val: 'orange', label: 'כתום', bg: 'bg-[#ff9900]/10 hover:bg-[#ff9900]/20 border-orange-200' },
-                    { val: 'red', label: 'אדום', bg: 'bg-red-50 hover:bg-red-100 border-red-200' },
-                    { val: 'yellow', label: 'צהוב', bg: 'bg-yellow-50 hover:bg-yellow-100 border-yellow-200' },
-                    { val: 'green', label: 'ירוק', bg: 'bg-green-50 hover:bg-green-100 border-green-200' },
-                    { val: 'blue', label: 'כחול', bg: 'bg-blue-50 hover:bg-blue-100 border-blue-200' },
-                    { val: 'purple', label: 'סגול', bg: 'bg-purple-50 hover:bg-purple-100 border-purple-200' },
+                    { val: 'orange', label: 'Orange', bg: 'bg-[#ff9900]/10 hover:bg-[#ff9900]/20 border-orange-200' },
+                    { val: 'red', label: 'Red', bg: 'bg-red-50 hover:bg-red-100 border-red-200' },
+                    { val: 'yellow', label: 'Yellow', bg: 'bg-yellow-50 hover:bg-yellow-100 border-yellow-200' },
+                    { val: 'green', label: 'Green', bg: 'bg-green-50 hover:bg-green-100 border-green-200' },
+                    { val: 'blue', label: 'Blue', bg: 'bg-blue-50 hover:bg-blue-100 border-blue-200' },
+                    { val: 'purple', label: 'Purple', bg: 'bg-purple-50 hover:bg-purple-100 border-purple-200' },
                   ].map((item) => {
                     const isSelected = value === item.val;
                     const cap = item.val.charAt(0).toUpperCase() + item.val.slice(1);
@@ -306,9 +306,9 @@ export function KidKeypad({ isOpen, mode, initialValue, anchorRect, onClose, onC
             ) : mode === 'speed' ? (
               <div className="flex gap-1.5 w-full justify-between items-center">
                 {[
-                  { val: '1', icon: getAssetUrl('/icons/speed0.svg'), label: 'איטי' },
-                  { val: '2', icon: getAssetUrl('/icons/speed1.svg'), label: 'רגיל' },
-                  { val: '3', icon: getAssetUrl('/icons/speed2.svg'), label: 'מהיר' }
+                  { val: '1', icon: getAssetUrl('/icons/speed0.svg'), label: 'Slow' },
+                  { val: '2', icon: getAssetUrl('/icons/speed1.svg'), label: 'Normal' },
+                  { val: '3', icon: getAssetUrl('/icons/speed2.svg'), label: 'Fast' }
                 ].map((speed) => {
                   const isSelected = value === speed.val;
                   return (
@@ -348,7 +348,7 @@ export function KidKeypad({ isOpen, mode, initialValue, anchorRect, onClose, onC
                       value={value}
                       onChange={(e) => setValue(e.target.value)}
                       className="w-full text-center bg-white border border-slate-200 rounded-lg px-2 py-1 text-sm font-bold text-slate-700 focus:outline-none focus:border-orange-400 transition-colors"
-                      placeholder="הקלד הודעה..."
+                      placeholder="Type message..."
                       autoFocus
                       onKeyDown={(e) => {
                         if (e.key === 'Enter') handleConfirm();
@@ -428,14 +428,14 @@ export function KidKeypad({ isOpen, mode, initialValue, anchorRect, onClose, onC
                         className="flex-1 py-2 bg-gradient-to-r from-orange-400 to-amber-400 text-white font-extrabold text-xs rounded-lg flex items-center justify-center gap-1 shadow-sm"
                       >
                         <Check className="w-4 h-4 stroke-[3]" />
-                        אישור
+                        OK
                       </motion.button>
                       <motion.button
                         whileTap={{ scale: 0.97 }}
                         onClick={onClose}
                         className="py-2 px-3 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold text-xs rounded-lg flex items-center justify-center"
                       >
-                        ביטול
+                        Cancel
                       </motion.button>
                     </div>
                   </div>

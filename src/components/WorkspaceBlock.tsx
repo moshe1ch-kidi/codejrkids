@@ -93,11 +93,11 @@ export const WorkspaceBlock: React.FC<WorkspaceBlockProps> = ({
                  const currentVal = block.times || 4;
                  const rect = e.currentTarget.getBoundingClientRect();
                  if (onOpenKeypad) {
-                   onOpenKeypad('number', 'בחר מספר חזרות', String(currentVal), (val) => {
+                   onOpenKeypad('number', 'Select Repeats', String(currentVal), (val) => {
                      onTimesChange(block.id, parseInt(val) || 4);
                    }, rect);
                  } else {
-                   const t = prompt("חזרות:", String(currentVal)); 
+                   const t = prompt("Repeats:", String(currentVal)); 
                    if (t !== null) {
                      const val = parseInt(t) || 4;
                      onTimesChange(block.id, val); 
@@ -193,11 +193,11 @@ export const WorkspaceBlock: React.FC<WorkspaceBlockProps> = ({
                   const currentVal = block.times !== undefined ? block.times : getDefaultValue(block.type);
                   const rect = e.currentTarget.getBoundingClientRect();
                   if (onOpenKeypad) {
-                    onOpenKeypad('number', 'בחר ערך', String(currentVal), (val) => {
+                    onOpenKeypad('number', 'Select Value', String(currentVal), (val) => {
                       onTimesChange(block.id, parseInt(val) || 1);
                     }, rect);
                   } else {
-                    const input = prompt("הכנס מספר צעדים / ערך:", String(currentVal));
+                    const input = prompt("Enter number of steps / value:", String(currentVal));
                     if (input !== null) {
                       const val = parseInt(input);
                       if (!isNaN(val) && val >= 1) {
@@ -216,23 +216,23 @@ export const WorkspaceBlock: React.FC<WorkspaceBlockProps> = ({
               <div 
                 onClick={(e) => {
                   e.stopPropagation();
-                  const currentText = block.text || "שלום!";
+                  const currentText = block.text || "Hello!";
                   const rect = e.currentTarget.getBoundingClientRect();
                   if (onOpenKeypad) {
-                    onOpenKeypad('text', 'רשום הודעה', currentText, (val) => {
+                    onOpenKeypad('text', 'Write Message', currentText, (val) => {
                       onTextChange?.(block.id, val);
                     }, rect);
                   } else {
-                    const input = prompt("הכנס טקסט עבור הבועה:", currentText);
+                    const input = prompt("Enter text for the bubble:", currentText);
                     if (input !== null && input.trim() !== "") {
                       onTextChange?.(block.id, input.trim());
                     }
                   }
                 }}
                 className="px-2 py-0.5 max-w-[70px] text-center bg-white text-slate-800 font-bold text-[10px] rounded-full shadow-md border-2 border-slate-300 hover:border-orange-400 hover:scale-105 active:scale-95 transition-all cursor-pointer pointer-events-auto select-none truncate"
-                title={block.text || "שלום!"}
+                title={block.text || "Hello!"}
               >
-                {block.text || "שלום!"}
+                {block.text || "Hello!"}
               </div>
             )}
 
@@ -243,11 +243,11 @@ export const WorkspaceBlock: React.FC<WorkspaceBlockProps> = ({
                   const currentSpeed = block.times !== undefined ? block.times : 2;
                   const rect = e.currentTarget.getBoundingClientRect();
                   if (onOpenKeypad) {
-                    onOpenKeypad('speed', 'בחר מהירות', String(currentSpeed), (val) => {
+                    onOpenKeypad('speed', 'Select Speed', String(currentSpeed), (val) => {
                       onTimesChange(block.id, parseInt(val) || 2);
                     }, rect);
                   } else {
-                    const input = prompt("בחר מהירות: 1 (איטי), 2 (בינוני), 3 (מהיר)", String(currentSpeed));
+                    const input = prompt("Select Speed: 1 (Slow), 2 (Medium), 3 (Fast)", String(currentSpeed));
                     if (input !== null) {
                       const val = parseInt(input);
                       if ([1, 2, 3].includes(val)) {
@@ -271,11 +271,11 @@ export const WorkspaceBlock: React.FC<WorkspaceBlockProps> = ({
                   const currentVal = block.text || 'any';
                   const rect = e.currentTarget.getBoundingClientRect();
                   if (onOpenKeypad) {
-                    onOpenKeypad('character', 'בחר דמות למגע', currentVal, (val) => {
+                    onOpenKeypad('character', 'Select Character to Touch', currentVal, (val) => {
                       onTextChange?.(block.id, val);
                     }, rect);
                   } else {
-                    const input = prompt("בחר מזהה דמות (או any עבור כל דמות):", currentVal);
+                    const input = prompt("Select Character ID (or any for all):", currentVal);
                     if (input !== null) {
                       onTextChange?.(block.id, input.trim() || 'any');
                     }
@@ -296,7 +296,7 @@ export const WorkspaceBlock: React.FC<WorkspaceBlockProps> = ({
                       <img src={char.spriteUrl} alt="" className="w-3.5 h-3.5 object-contain shrink-0 rounded-full" />
                     );
                   }
-                  return <span className="text-[8px] font-black">כל</span>;
+                  return <span className="text-[8px] font-black">ALL</span>;
                 })()}
                 <svg className="w-2 h-2 text-slate-500 fill-current shrink-0" viewBox="0 0 10 6">
                   <path d="M0,0 L10,0 L5,6 Z" />
@@ -311,11 +311,11 @@ export const WorkspaceBlock: React.FC<WorkspaceBlockProps> = ({
                   const currentColor = block.text || 'orange';
                   const rect = e.currentTarget.getBoundingClientRect();
                   if (onOpenKeypad) {
-                    onOpenKeypad('message_color', 'בחר צבע מעטפה', currentColor, (val) => {
+                    onOpenKeypad('message_color', 'Select Envelope Color', currentColor, (val) => {
                       onTextChange?.(block.id, val);
                     }, rect);
                   } else {
-                    const input = prompt("בחר צבע (orange, red, yellow, green, blue, purple):", currentColor);
+                    const input = prompt("Select color (orange, red, yellow, green, blue, purple):", currentColor);
                     if (input !== null) {
                       onTextChange?.(block.id, input.trim().toLowerCase());
                     }
