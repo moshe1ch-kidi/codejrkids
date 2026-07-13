@@ -260,18 +260,17 @@ export function KidKeypad({ isOpen, mode, initialValue, anchorRect, onClose, onC
                 </div>
               </div>
             ) : mode === 'message_color' ? (
-              <div className="flex flex-col gap-1 w-full min-w-[200px]">
-                <div className="flex flex-wrap gap-2.5 p-1 max-w-[280px] justify-center">
+              <div className="bg-[#ffcc00] p-3 rounded-[32px] shadow-inner border-2 border-[#e6b800]">
+                <div className="grid grid-cols-3 gap-2">
                   {[
-                    { val: 'orange', label: 'Orange', bg: 'bg-[#ff9900]/10 hover:bg-[#ff9900]/20 border-orange-200' },
-                    { val: 'red', label: 'Red', bg: 'bg-red-50 hover:bg-red-100 border-red-200' },
-                    { val: 'yellow', label: 'Yellow', bg: 'bg-yellow-50 hover:bg-yellow-100 border-yellow-200' },
-                    { val: 'green', label: 'Green', bg: 'bg-green-50 hover:bg-green-100 border-green-200' },
-                    { val: 'blue', label: 'Blue', bg: 'bg-blue-50 hover:bg-blue-100 border-blue-200' },
-                    { val: 'purple', label: 'Purple', bg: 'bg-purple-50 hover:bg-purple-100 border-purple-200' },
+                    { val: 'orange', cap: 'Orange' },
+                    { val: 'red', cap: 'Red' },
+                    { val: 'yellow', cap: 'Yellow' },
+                    { val: 'green', cap: 'Green' },
+                    { val: 'blue', cap: 'Blue' },
+                    { val: 'purple', cap: 'Purple' },
                   ].map((item) => {
                     const isSelected = value === item.val;
-                    const cap = item.val.charAt(0).toUpperCase() + item.val.slice(1);
                     return (
                       <motion.button
                         key={item.val}
@@ -282,21 +281,18 @@ export function KidKeypad({ isOpen, mode, initialValue, anchorRect, onClose, onC
                           onConfirm(item.val);
                           onClose();
                         }}
-                        className={`flex flex-col items-center justify-center p-2 rounded-[16px] border-2 transition-all text-center w-20 h-20 shrink-0 ${
+                        className={`flex items-center justify-center p-1 rounded-[18px] transition-all w-[76px] h-[76px] shrink-0 ${
                           isSelected
-                            ? 'bg-white border-[#ffc600] shadow-md ring-2 ring-[#ffc600]/20 scale-105'
-                            : `bg-white ${item.bg} shadow-sm`
+                            ? 'bg-[#ffe066] border-2 border-white shadow-md scale-105'
+                            : 'bg-[#ffdb4d] border-2 border-[#e6b800] hover:bg-[#ffe066]'
                         }`}
                       >
-                        <div className="w-10 h-10 p-0.5 flex items-center justify-center mb-1 overflow-hidden shrink-0">
+                        <div className="w-14 h-14 flex items-center justify-center overflow-hidden shrink-0">
                           <img 
-                            src={getAssetUrl(`/icons/LetterGet_${cap}.svg`)} 
-                            alt={item.label} 
-                            className="max-w-full max-h-full object-contain pointer-events-none select-none" 
+                            src={getAssetUrl(`/icons/LetterGet_${item.cap}.svg`)} 
+                            alt={item.val} 
+                            className="max-w-full max-h-full object-contain pointer-events-none select-none drop-shadow-sm" 
                           />
-                        </div>
-                        <div className="text-[10px] font-black text-slate-700 truncate w-full">
-                          {item.label}
                         </div>
                       </motion.button>
                     );
