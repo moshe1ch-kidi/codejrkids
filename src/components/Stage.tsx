@@ -246,6 +246,36 @@ export function Stage({
         <div className="absolute top-4 left-6 w-40 h-8 bg-white/20 rounded-full blur-md -rotate-6" />
         <div className="absolute bottom-4 right-6 w-20 h-20 bg-white/10 rounded-full blur-xl" />
 
+        {/* Grid numbers on the purple frame */}
+        {showGrid && (
+          <div className="absolute inset-0 pointer-events-none z-30 select-none">
+            {/* X Labels (1 to 20) on bottom frame */}
+            <div className="absolute bottom-0 left-4 right-4 h-4 flex items-center">
+              {Array.from({ length: 20 }).map((_, i) => (
+                <div 
+                  key={`frame-x-${i}`}
+                  className="absolute text-[9px] font-black text-white drop-shadow-sm"
+                  style={{ left: `${(i + 0.5) * (480 / 20)}px`, transform: 'translateX(-50%)' }}
+                >
+                  {i + 1}
+                </div>
+              ))}
+            </div>
+            {/* Y Labels (1 to 15) on left frame */}
+            <div className="absolute left-0 top-4 bottom-4 w-4 flex flex-col items-center">
+              {Array.from({ length: 15 }).map((_, i) => (
+                <div 
+                  key={`frame-y-${i}`}
+                  className="absolute text-[9px] font-black text-white drop-shadow-sm"
+                  style={{ top: `${(14 - i + 0.5) * (360 / 15)}px`, transform: 'translateY(-50%)', left: '4px' }}
+                >
+                  {i + 1}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* 480x360 Scratch Stage Viewport */}
         <div 
           id="scratch-stage"
@@ -357,68 +387,50 @@ export function Stage({
         {/* Grid and labels overlay */}
         {showGrid && (
           <svg className="absolute inset-0 w-full h-full pointer-events-none z-10" viewBox="0 0 640 480">
-            {/* Horizontal Grid Lines (14 lines dividing 15 cells) */}
+            {/* Horizontal Grid Lines */}
             {Array.from({ length: 14 }).map((_, i) => {
               const y = (i + 1) * 32;
               return (
-                <line 
-                  key={`h-${i}`} 
-                  x1={0} y1={y} x2={640} y2={y} 
-                  stroke="#3c78b5" 
-                  strokeWidth="0.75" 
-                  strokeOpacity="0.18" 
-                />
+                <g key={`h-group-${i}`}>
+                  {/* Subtle white "glow" line */}
+                  <line 
+                    x1={0} y1={y} x2={640} y2={y} 
+                    stroke="white" 
+                    strokeWidth="1.5" 
+                    strokeOpacity="0.4" 
+                  />
+                  {/* Primary blue line */}
+                  <line 
+                    x1={0} y1={y} x2={640} y2={y} 
+                    stroke="#1e3a8a" 
+                    strokeWidth="0.8" 
+                    strokeOpacity="0.3" 
+                  />
+                </g>
               );
             })}
             
-            {/* Vertical Grid Lines (19 lines dividing 20 cells) */}
+            {/* Vertical Grid Lines */}
             {Array.from({ length: 19 }).map((_, i) => {
               const x = (i + 1) * 32;
               return (
-                <line 
-                  key={`v-${i}`} 
-                  x1={x} y1={0} x2={x} y2={480} 
-                  stroke="#3c78b5" 
-                  strokeWidth="0.75" 
-                  strokeOpacity="0.18" 
-                />
+                <g key={`v-group-${i}`}>
+                  <line 
+                    x1={x} y1={0} x2={x} y2={480} 
+                    stroke="white" 
+                    strokeWidth="1.5" 
+                    strokeOpacity="0.4" 
+                  />
+                  <line 
+                    x1={x} y1={0} x2={x} y2={480} 
+                    stroke="#1e3a8a" 
+                    strokeWidth="0.8" 
+                    strokeOpacity="0.3" 
+                  />
+                </g>
               );
             })}
-
-            {/* Static labels 1 to 20 on X axis (at bottom) */}
-            {Array.from({ length: 20 }).map((_, i) => {
-              const colNum = i + 1;
-              const cx = (colNum - 0.5) * 32;
-              return (
-                <text
-                  key={`lbl-x-${colNum}`}
-                  x={cx}
-                  y={472}
-                  textAnchor="middle"
-                  className="font-sans text-[11px] font-black fill-slate-500/55 select-none"
-                >
-                  {colNum}
-                </text>
-              );
-            })}
-
-            {/* Static labels 1 to 15 on Y axis (on left) */}
-            {Array.from({ length: 15 }).map((_, i) => {
-              const rowNum = i + 1;
-              const cy = 480 - (rowNum - 0.5) * 32;
-              return (
-                <text
-                  key={`lbl-y-${rowNum}`}
-                  x={16}
-                  y={cy + 4}
-                  textAnchor="middle"
-                  className="font-sans text-[11px] font-black fill-slate-500/55 select-none"
-                >
-                  {rowNum}
-                </text>
-              );
-            })}
-
+            
             {/* Highlight Active Character's Column (X Axis) */}
             {activeX >= 1 && activeX <= 20 && (
               <g key="badge-x">
