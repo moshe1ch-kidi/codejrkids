@@ -11,35 +11,35 @@ interface PaletteProps {
   recordings?: Record<number, string>;
 }
 
-const BLOCK_HEBREW_NAMES: Record<BlockType, string> = {
-  START_FLAG: 'התחל בדגל',
-  START_TOUCH: 'התחל בלחיצה',
-  START_BUMP: 'התחל במגע',
-  START_GET_MESSAGE: 'קבל מסר',
-  SEND_MESSAGE: 'שלח מסר',
-  MOVE_RIGHT: 'זוז ימינה',
-  MOVE_LEFT: 'זוז שמאלה',
-  MOVE_UP: 'זוז למעלה',
-  MOVE_DOWN: 'זוז למטה',
-  TURN_RIGHT: 'הסתובב ימינה',
-  TURN_LEFT: 'הסתובב שמאלה',
-  HOP: 'קפוץ',
-  GO_HOME: 'חזרה להתחלה',
-  SAY: 'אמור שלום',
-  GROW: 'גדל',
-  SHRINK: 'קטן',
-  RESET_SIZE: 'גודל רגיל',
-  HIDE: 'העלם',
-  SHOW: 'הראה',
-  POP: 'צליל פופ',
-  PLAY_RECORDED: 'השמע הקלטה',
-  WAIT: 'המתן',
-  STOP: 'עצור',
-  SET_SPEED: 'קבע מהירות',
-  REPEAT: 'לולאה',
-  REPEAT_FOREVER: 'חזור לנצח',
-  END: 'סיום',
-  GOTO_PAGE: 'עבור לעמוד'
+const BLOCK_ENGLISH_NAMES: Record<BlockType, string> = {
+  START_FLAG: 'Start on Flag',
+  START_TOUCH: 'Start on Tap',
+  START_BUMP: 'Start on Bump',
+  START_GET_MESSAGE: 'Receive Message',
+  SEND_MESSAGE: 'Send Message',
+  MOVE_RIGHT: 'Move Right',
+  MOVE_LEFT: 'Move Left',
+  MOVE_UP: 'Move Up',
+  MOVE_DOWN: 'Move Down',
+  TURN_RIGHT: 'Turn Right',
+  TURN_LEFT: 'Turn Left',
+  HOP: 'Hop',
+  GO_HOME: 'Go Home',
+  SAY: 'Say Hello',
+  GROW: 'Grow',
+  SHRINK: 'Shrink',
+  RESET_SIZE: 'Reset Size',
+  HIDE: 'Hide',
+  SHOW: 'Show',
+  POP: 'Pop Sound',
+  PLAY_RECORDED: 'Play Recording',
+  WAIT: 'Wait',
+  STOP: 'Stop',
+  SET_SPEED: 'Set Speed',
+  REPEAT: 'Repeat',
+  REPEAT_FOREVER: 'Repeat Forever',
+  END: 'End',
+  GOTO_PAGE: 'Go to Page'
 };
 
 const getBubbleStyle = (category: string) => {
@@ -164,7 +164,7 @@ export function Palette({ onDragStart, onRecordClick, recordings = {} }: Palette
                     onRecordClick?.();
                   }}
                   className="cursor-pointer flex flex-col items-center justify-center relative shrink-0 group border-[3px] border-dashed border-[#4cc14d] rounded-2xl w-[90px] h-[64px] bg-[#e6f7ec]/50 active:scale-95 transition-transform select-none"
-                  title="הקלטה חדשה"
+                  title="New Recording"
                 >
                   <img src={getAssetUrl('/icons/Microphone.svg')} className="w-[44px] h-[44px] opacity-70" alt="Record" />
                 </div>
@@ -175,7 +175,7 @@ export function Palette({ onDragStart, onRecordClick, recordings = {} }: Palette
                       key={`recording-${id}`}
                       onPointerDown={(e) => onDragStart(e, 'PLAY_RECORDED', id)}
                       className="touch-none cursor-grab hover:scale-105 transition-transform flex flex-col items-center justify-center relative shrink-0 group"
-                      title={`${BLOCK_HEBREW_NAMES['PLAY_RECORDED']} ${id}`}
+                      title={`${BLOCK_ENGLISH_NAMES['PLAY_RECORDED']} ${id}`}
                     >
                       <VisualBlock 
                         type="PLAY_RECORDED"
@@ -193,7 +193,7 @@ export function Palette({ onDragStart, onRecordClick, recordings = {} }: Palette
               key={type}
               onPointerDown={(e) => onDragStart(e, type as BlockType)}
               className="touch-none cursor-grab hover:scale-105 transition-transform flex flex-col items-center justify-center relative shrink-0 group"
-              title={BLOCK_HEBREW_NAMES[type as BlockType] || type}
+              title={BLOCK_ENGLISH_NAMES[type as BlockType] || type}
             >
               <VisualBlock 
                 type={type as BlockType} 
