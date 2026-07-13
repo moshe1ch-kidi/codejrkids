@@ -49,7 +49,7 @@ export default function App() {
     { 
       id: 'scene-1', 
       characters: [
-        { id: 'char-1', name: 'טיק', spriteUrl: getAssetUrl('/sprites/cat1.svg') }
+        { id: 'char-1', name: 'Tick', spriteUrl: getAssetUrl('/sprites/cat1.svg') }
       ],
       spriteStates: {
         'char-1': INITIAL_SPRITE_STATE
@@ -331,7 +331,7 @@ export default function App() {
         } else if (dragState.blockType === 'SET_SPEED') {
           newBlock.times = 2;
         } else if (dragState.blockType === 'SAY') {
-          newBlock.text = 'שלום!';
+          newBlock.text = 'Hello!';
         } else if (dragState.blockType === 'REPEAT') {
           newBlock.times = 4;
           newBlock.children = [];
@@ -490,7 +490,7 @@ export default function App() {
   const handleAddScene = () => {
     const newSceneId = `scene-${Date.now()}`;
     const defaultCharId = `char-${Date.now()}`;
-    const defaultChar = { id: defaultCharId, name: 'טיק', spriteUrl: getAssetUrl('/sprites/cat1.svg') };
+    const defaultChar = { id: defaultCharId, name: 'Tick', spriteUrl: getAssetUrl('/sprites/cat1.svg') };
     
     setScenes([...scenes, { 
       id: newSceneId, 
@@ -672,7 +672,7 @@ export default function App() {
           setSpriteStateForChar(charId, prev => ({ ...prev, x: prev.homeX !== undefined ? prev.homeX : 11, y: prev.homeY !== undefined ? prev.homeY : 8, rotation: 0 }));
           break;
         case 'SAY': {
-          const text = block.text || 'שלום!';
+          const text = block.text || 'Hello!';
           setSpriteStateForChar(charId, prev => ({ ...prev, sayText: text }));
           await new Promise(r => setTimeout(r, 2000));
           setSpriteStateForChar(charId, prev => ({ ...prev, sayText: '' }));
@@ -879,10 +879,10 @@ export default function App() {
           setActiveSceneId(projectData.activeSceneId || 'scene-1');
           setActiveCharacterId(projectData.activeCharacterId || 'char-1');
         } else {
-          alert("פורמט קובץ לא נתמך. יש לבחור קובץ שנוצר באפליקציה זו.");
+          alert("Unsupported file format. Please choose a file created with this application.");
         }
       } catch (err) {
-        alert("שגיאה בטעינת הקובץ.");
+        alert("Error loading the file.");
       }
     };
     reader.readAsText(file);
@@ -990,9 +990,9 @@ export default function App() {
           <button 
             onClick={() => setIsBackgroundGalleryOpen(true)}
             className="hover:scale-110 transition-transform"
-            title="בחר רקע"
+            title="Choose Background"
           >
-            <img src={getAssetUrl("/UI/scene1.svg")} alt="רקע" className="w-[72px] h-[72px] object-contain" />
+            <img src={getAssetUrl("/UI/scene1.svg")} alt="Background" className="w-[72px] h-[72px] object-contain" />
           </button>
           
           <button 
@@ -1001,25 +1001,25 @@ export default function App() {
               "transition-transform hover:scale-110",
               showGrid ? "scale-110 drop-shadow-[0_0_8px_rgba(249,115,22,0.6)]" : ""
             )}
-            title="הצג/הסתר רשת"
+            title="Show/Hide Grid"
           >
-            <img src={getAssetUrl("/UI/gridOn.svg")} alt="רשת" className="w-[72px] h-[72px] object-contain" />
+            <img src={getAssetUrl("/UI/gridOn.svg")} alt="Grid" className="w-[72px] h-[72px] object-contain" />
           </button>
 
           <button 
             onClick={() => setIsTextModalOpen(true)}
             className="hover:scale-110 transition-transform"
-            title="הוסף טקסט"
+            title="Add Text"
           >
-            <img src={getAssetUrl("/UI/addText.svg")} alt="טקסט" className="w-[72px] h-[72px] object-contain" />
+            <img src={getAssetUrl("/UI/addText.svg")} alt="Text" className="w-[72px] h-[72px] object-contain" />
           </button>
 
           <button 
             onClick={() => setIsPresentationMode(true)}
             className="hover:scale-110 transition-transform"
-            title="מסך מלא"
+            title="Full Screen"
           >
-            <img src={getAssetUrl("/UI/fullOff2.svg")} alt="מסך מלא" className="w-[72px] h-[72px] object-contain" />
+            <img src={getAssetUrl("/UI/fullOff2.svg")} alt="Full Screen" className="w-[72px] h-[72px] object-contain" />
           </button>
 
           <div className="w-px h-10 bg-gray-300 mx-2"></div>
@@ -1027,25 +1027,25 @@ export default function App() {
           <button 
             onClick={resetStage}
             className="hover:scale-110 transition-transform"
-            title="איפוס הבמה"
+            title="Reset Stage"
           >
-            <img src={getAssetUrl("/UI/resetAll.svg")} alt="איפוס" className="w-[72px] h-[72px] object-contain" />
+            <img src={getAssetUrl("/UI/resetAll.svg")} alt="Reset" className="w-[72px] h-[72px] object-contain" />
           </button>
           <button 
             onClick={stopScene}
             disabled={!isRunning}
             className="hover:scale-110 transition-transform disabled:opacity-50 disabled:cursor-not-allowed"
-            title="עצור"
+            title="Stop"
           >
-            <img src={getAssetUrl("/UI/stop1.svg")} alt="עצור" className="w-[72px] h-[72px] object-contain" />
+            <img src={getAssetUrl("/UI/stop1.svg")} alt="Stop" className="w-[72px] h-[72px] object-contain" />
           </button>
           <button 
             onClick={playScene}
             disabled={isRunning || stacks.length === 0}
             className="hover:scale-110 transition-transform disabled:opacity-50 disabled:cursor-not-allowed"
-            title="הפעל"
+            title="Go"
           >
-            <img src={getAssetUrl("/UI/go.svg")} alt="הפעל" className="w-[72px] h-[72px] object-contain" />
+            <img src={getAssetUrl("/UI/go.svg")} alt="Go" className="w-[72px] h-[72px] object-contain" />
           </button>
 
           <div className="w-px h-10 bg-gray-300 mx-2"></div>
@@ -1053,14 +1053,14 @@ export default function App() {
           <button 
             onClick={handleSaveProject}
             className="w-[72px] h-[72px] flex items-center justify-center hover:scale-110 transition-transform"
-            title="שמור פרויקט"
+            title="Save Project"
           >
             <Save className="w-[60px] h-[60px] text-orange-400 stroke-[1.5]" />
           </button>
           
           <label 
             className="w-[72px] h-[72px] flex items-center justify-center hover:scale-110 transition-transform cursor-pointer"
-            title="טען פרויקט"
+            title="Load Project"
           >
             <FolderOpen className="w-[60px] h-[60px] text-green-500 stroke-[1.5]" />
             <input 
@@ -1117,7 +1117,7 @@ export default function App() {
                               setIsPaintEditorOpen(true);
                             }}
                             className="absolute top-1 right-1 w-6 h-6 bg-white/20 hover:bg-white/40 rounded-full flex items-center justify-center z-20"
-                            title="ערוך דמות"
+                            title="Edit Character"
                           >
                             <Pencil className="w-3 h-3 text-white" />
                           </button>
@@ -1125,7 +1125,7 @@ export default function App() {
                             <button 
                               onClick={(e) => handleDeleteCharacter(char.id, e)}
                               className="absolute top-1 left-1 w-6 h-6 bg-red-500/80 hover:bg-red-500 rounded-full flex items-center justify-center transition-colors shadow-sm z-20"
-                              title="מחק דמות"
+                              title="Delete Character"
                             >
                               <Trash2 className="w-3 h-3 text-white" />
                             </button>
@@ -1217,7 +1217,7 @@ export default function App() {
                                 handleDeleteScene(scene.id);
                               }}
                               className="absolute top-1 left-1 w-6 h-6 bg-red-500/80 hover:bg-red-500 rounded-full flex items-center justify-center transition-colors shadow-sm z-20"
-                              title="מחק סצנה"
+                              title="Delete Scene"
                             >
                               <Trash2 className="w-3 h-3 text-white" />
                             </button>
@@ -1236,6 +1236,7 @@ export default function App() {
               whileTap={{ scale: 0.9 }}
               onClick={handleAddScene}
               className="w-16 h-16 bg-[#7CB342] border-4 border-[#558B2F] rounded-2xl flex items-center justify-center shadow-lg text-white mb-2 shrink-0"
+              title="Add Scene"
             >
               <Plus className="w-10 h-10 stroke-[3]" />
             </motion.button>
@@ -1376,26 +1377,26 @@ export default function App() {
                 onClick={playScene}
                 disabled={isRunning || stacks.length === 0}
                 className="hover:scale-110 transition-transform disabled:opacity-50 disabled:cursor-not-allowed"
-                title="הפעל"
+                title="Go"
               >
-                <img src={getAssetUrl("/UI/go.svg")} alt="הפעל" className="w-[60px] h-[60px] object-contain" />
+                <img src={getAssetUrl("/UI/go.svg")} alt="Go" className="w-[60px] h-[60px] object-contain" />
               </button>
               
               <button 
                 onClick={stopScene}
                 disabled={!isRunning}
                 className="hover:scale-110 transition-transform disabled:opacity-50 disabled:cursor-not-allowed"
-                title="עצור"
+                title="Stop"
               >
-                <img src={getAssetUrl("/UI/stop1.svg")} alt="עצור" className="w-[60px] h-[60px] object-contain" />
+                <img src={getAssetUrl("/UI/stop1.svg")} alt="Stop" className="w-[60px] h-[60px] object-contain" />
               </button>
 
               <button 
                 onClick={resetStage}
                 className="hover:scale-110 transition-transform"
-                title="איפוס"
+                title="Reset"
               >
-                <img src={getAssetUrl("/UI/resetAll.svg")} alt="איפוס" className="w-[60px] h-[60px] object-contain" />
+                <img src={getAssetUrl("/UI/resetAll.svg")} alt="Reset" className="w-[60px] h-[60px] object-contain" />
               </button>
             </div>
 
@@ -1404,7 +1405,7 @@ export default function App() {
               <div className="w-8 h-8 bg-orange-400 rounded-lg flex items-center justify-center">
                 <Rocket className="w-5 h-5 text-white" />
               </div>
-              <h2 className="text-lg font-black text-gray-800 tracking-tight">מסך הצגה</h2>
+              <h2 className="text-lg font-black text-gray-800 tracking-tight">Presentation</h2>
             </div>
 
             {/* Close / Minimize Mode */}
@@ -1415,7 +1416,7 @@ export default function App() {
                   setIsPresentationMode(false);
                 }}
                 className="hover:scale-110 transition-transform"
-                title="צא ממסך מלא"
+                title="Exit Full Screen"
               >
                 <svg width="60" height="60" viewBox="0 0 72 72" fill="none" xmlns="http://www.w3.org/2000/svg">
                   <ellipse cx="36" cy="62" rx="26" ry="6" fill="#333333" fillOpacity="0.2"/>
