@@ -957,18 +957,22 @@ export default function App() {
   };
 
   const resetStage = () => {
+    shouldStopRef.current = true;
+    setIsRunning(false);
+    setActiveBlockId(null);
     delayMsRef.current = DELAY_MS;
     setSpriteStates(prev => {
       const next = { ...prev };
       Object.keys(next).forEach(key => {
         const current = next[key] || INITIAL_SPRITE_STATE;
-        const hX = current.homeX !== undefined ? current.homeX : (current.x !== undefined ? current.x : 11);
-        const hY = current.homeY !== undefined ? current.homeY : (current.y !== undefined ? current.y : 8);
+        const hX = current.homeX !== undefined ? current.homeX : INITIAL_SPRITE_STATE.x;
+        const hY = current.homeY !== undefined ? current.homeY : INITIAL_SPRITE_STATE.y;
         next[key] = {
-          ...current,
+          ...INITIAL_SPRITE_STATE,
           x: hX,
           y: hY,
-          sayText: ''
+          homeX: hX,
+          homeY: hY,
         };
       });
       return next;
