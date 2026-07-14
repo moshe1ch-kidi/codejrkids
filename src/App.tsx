@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+ import React, { useState, useRef, useEffect } from 'react';
 import { 
   Play, Square, RotateCcw, Image as ImageIcon, 
   Settings2, Plus, Flag, Trash2, Rocket, Brush, X, Grid, Pencil, Monitor, Save, FolderOpen
@@ -1126,18 +1126,18 @@ export default function App() {
                               setEditingCharacterId(char.id);
                               setIsPaintEditorOpen(true);
                             }}
-                            className="absolute top-1 right-1 w-5 h-5 bg-white/20 hover:bg-white/40 rounded-full flex items-center justify-center z-20"
+                            className="absolute top-1 right-1 w-8 h-8 bg-white/20 hover:bg-white/40 rounded-full flex items-center justify-center z-20"
                             title="Edit Character"
                           >
-                            <Pencil className="w-2.5 h-2.5 text-white" />
+                            <Pencil className="w-4 h-4 text-white" />
                           </button>
                           {characters.length > 1 && (
                             <button 
                               onClick={(e) => handleDeleteCharacter(char.id, e)}
-                              className="absolute top-1 left-1 w-5 h-5 bg-red-500/80 hover:bg-red-500 rounded-full flex items-center justify-center transition-colors shadow-sm z-20"
+                              className="absolute top-1 left-1 w-8 h-8 bg-red-500/80 hover:bg-red-500 rounded-full flex items-center justify-center transition-colors shadow-sm z-20"
                               title="Delete Character"
                             >
-                              <Trash2 className="w-2.5 h-2.5 text-white" />
+                              <Trash2 className="w-4 h-4 text-white" />
                             </button>
                           )}
                         </>
