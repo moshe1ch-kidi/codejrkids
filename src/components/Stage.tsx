@@ -233,15 +233,78 @@ export function Stage({
   const activeX = Math.round(activeState.x);
   const activeY = Math.round(activeState.y);
 
-  // Force exactly 480x360 like Scratch Jr.
-  const dimensions = { width: 480, height: 360 };
+  // Force exactly 960x720 (double the 480x360 Scratch stage size)
+  const dimensions = { width: 960, height: 720 };
+  const baseWidth = dimensions.width + 52; // 52px accounts for padding & borders
+  const baseHeight = dimensions.height + 52;
+
+  const containerRef = React.useRef<HTMLDivElement>(null);
+  const [scale, setScale] = React.useState(1);
+
+  React.useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const updateScale = () => {
+      const rect = container.getBoundingClientRect();
+      const padding = 16; // Use smaller padding to maximize available space
+      const availableWidth = Math.max(100, rect.width - padding);
+      const availableHeight = Math.max(100, rect.height - padding);
+
+      const scaleX = availableWidth / baseWidth;
+      const scaleY = availableHeight / baseHeight;
+
+      let newScale = Math.min(scaleX, scaleY);
+      
+      // Limit upscale to 2.2x, downscale as needed
+      if (newScale > 2.2) newScale = 2.2;
+      if (newScale < 0.15) newScale = 0.15;
+
+      setScale(newScale);
+    };
+
+    const observer = new ResizeObserver(() => {
+      updateScale();
+    });
+    observer.observe(container);
+    updateScale();
+
+    window.addEventListener('resize', updateScale);
+
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('resize', updateScale);
+    };
+  }, [baseWidth, baseHeight]);
 
   return (
     <div 
-      className="flex-1 flex flex-col items-center justify-center p-4 sm:p-6 min-h-0 w-full overflow-hidden"
+      ref={containerRef}
+      className="flex-1 flex flex-col items-center justify-center p-2 sm:p-4 min-h-0 w-full overflow-hidden"
     >
-      {/* Scratch-style Rounded Purple Frame */}
-      <div className="p-4 bg-[#9575CD] rounded-[40px] border-[6px] border-[#7E57C2] shadow-[0_20px_60px_rgba(0,0,0,0.15),inset_0_-10px_20px_rgba(0,0,0,0.1)] relative">
+      {/* Wrapper to reserve exact scaled layout space */}
+      <div 
+        style={{ 
+          width: baseWidth * scale, 
+          height: baseHeight * scale,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          position: 'relative'
+        }}
+        className="shrink-0 transition-all duration-75"
+      >
+        {/* Scratch-style Rounded Purple Frame */}
+        <div 
+          style={{ 
+            transform: `scale(${scale})`, 
+            transformOrigin: 'center center',
+            width: baseWidth,
+            height: baseHeight,
+            position: 'absolute'
+          }}
+          className="p-4 bg-[#9575CD] rounded-[40px] border-[6px] border-[#7E57C2] shadow-[0_20px_60px_rgba(0,0,0,0.15),inset_0_-10px_20px_rgba(0,0,0,0.1)] shrink-0 transition-transform duration-75"
+        >
         {/* Decorative Glossy Highlights */}
         <div className="absolute top-4 left-6 w-40 h-8 bg-white/20 rounded-full blur-md -rotate-6" />
         <div className="absolute bottom-4 right-6 w-20 h-20 bg-white/10 rounded-full blur-xl" />
@@ -254,8 +317,8 @@ export function Stage({
               {Array.from({ length: 20 }).map((_, i) => (
                 <div 
                   key={`frame-x-${i}`}
-                  className="absolute text-[9px] font-black text-white drop-shadow-sm"
-                  style={{ left: `${(i + 0.5) * (480 / 20)}px`, transform: 'translateX(-50%)' }}
+                  className="absolute text-[15px] font-black text-white drop-shadow-sm"
+                  style={{ left: `${(i + 0.5) * (dimensions.width / 20)}px`, transform: 'translateX(-50%)' }}
                 >
                   {i + 1}
                 </div>
@@ -266,8 +329,8 @@ export function Stage({
               {Array.from({ length: 15 }).map((_, i) => (
                 <div 
                   key={`frame-y-${i}`}
-                  className="absolute text-[9px] font-black text-white drop-shadow-sm"
-                  style={{ top: `${(14 - i + 0.5) * (360 / 15)}px`, transform: 'translateY(-50%)', left: '4px' }}
+                  className="absolute text-[15px] font-black text-white drop-shadow-sm"
+                  style={{ top: `${(14 - i + 0.5) * (dimensions.height / 15)}px`, transform: 'translateY(-50%)', left: '4px' }}
                 >
                   {i + 1}
                 </div>
@@ -276,10 +339,10 @@ export function Stage({
           </div>
         )}
 
-        {/* 480x360 Scratch Stage Viewport */}
+        {/* Scratch Stage Viewport */}
         <div 
           id="scratch-stage"
-          style={{ width: `480px`, height: `360px` }}
+          style={{ width: `${dimensions.width}px`, height: `${dimensions.height}px` }}
           className="bg-white relative overflow-hidden rounded-[32px] border-4 border-[#7E57C2] shadow-inner shrink-0 select-none"
         >
           {/* Background image if set, else show default sky/clouds */}
@@ -446,14 +509,14 @@ export function Stage({
                 <circle 
                   cx={(activeX - 0.5) * 32} 
                   cy={468} 
-                  r={12} 
+                  r={16} 
                   fill="#3c78b5" 
                 />
                 <text
                   x={(activeX - 0.5) * 32}
-                  y={471.5}
+                  y={472.5}
                   textAnchor="middle"
-                  className="font-sans text-[10px] font-black fill-white select-none"
+                  className="font-sans text-[13px] font-black fill-white select-none"
                 >
                   {activeX}
                 </text>
@@ -473,16 +536,16 @@ export function Stage({
                   strokeOpacity="0.3" 
                 />
                 <circle 
-                  cx={16} 
+                  cx={18} 
                   cy={480 - (activeY - 0.5) * 32} 
-                  r={12} 
+                  r={16} 
                   fill="#3c78b5" 
                 />
                 <text
-                  x={16}
-                  y={480 - (activeY - 0.5) * 32 + 3.5}
+                  x={18}
+                  y={480 - (activeY - 0.5) * 32 + 4.5}
                   textAnchor="middle"
-                  className="font-sans text-[10px] font-black fill-white select-none"
+                  className="font-sans text-[13px] font-black fill-white select-none"
                 >
                   {activeY}
                 </text>
@@ -528,5 +591,6 @@ export function Stage({
       </div>
     </div>
   </div>
+</div>
 );
 }

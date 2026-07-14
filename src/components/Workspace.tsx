@@ -44,9 +44,6 @@ export function Workspace({
        ref={workspaceRef}
        className="relative w-full h-full min-h-0 overflow-auto kid-scrollbar bg-white rounded-2xl shadow-inner border border-gray-200"
     >
-      {/* Scroll canvas area spacer to ensure vertical scrolling is active right from the start */}
-      <div className="absolute top-0 left-0 w-1 h-[2000px] pointer-events-none opacity-0" />
-
       {stacks.length === 0 && (
         <div className="absolute inset-0 flex items-center justify-center text-gray-400 italic font-medium pointer-events-none">
           Drag blocks here or click them from the palette to start coding!
