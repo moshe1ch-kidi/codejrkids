@@ -31,7 +31,7 @@ const INITIAL_SPRITE_STATE = {
   sayText: ''
 };
 
-const DELAY_MS = 200; // Time between blocks
+const DELAY_MS = 300; // Time between blocks
 
 export default function App() {
   const [scenes, setScenes] = useState<{ 
@@ -89,6 +89,31 @@ export default function App() {
   const characters = activeScene?.characters || [];
   const spriteStates = activeScene?.spriteStates || {};
   const spriteState = spriteStates[activeCharacterId] || INITIAL_SPRITE_STATE;
+
+  const resetStage = () => {
+    console.log('Resetting stage...');
+    shouldStopRef.current = true;
+    setIsRunning(false);
+    setActiveBlockId(null);
+    delayMsRef.current = DELAY_MS;
+    setSpriteStates(prev => {
+      const next = { ...prev };
+      Object.keys(next).forEach(key => {
+        const current = next[key] || INITIAL_SPRITE_STATE;
+        const hX = current.homeX !== undefined ? current.homeX : INITIAL_SPRITE_STATE.x;
+        const hY = current.homeY !== undefined ? current.homeY : INITIAL_SPRITE_STATE.y;
+        next[key] = {
+          ...INITIAL_SPRITE_STATE,
+          x: hX,
+          y: hY,
+          homeX: hX,
+          homeY: hY,
+          sayText: ''
+        };
+      });
+      return next;
+    });
+  };
 
   const setCharacters = (updater: React.SetStateAction<{ id: string; name: string; spriteUrl: string; shapes?: Shape[] }[]>) => {
     setScenes(prev => prev.map(s => {
@@ -594,7 +619,7 @@ export default function App() {
         
         // Highlight the REPEAT_FOREVER block to show loop-back feedback
         setActiveBlockId(foreverBlock.id);
-        await new Promise(r => setTimeout(r, 30));
+        await new Promise(r => setTimeout(r, 50));
         setActiveBlockId(null);
       }
       return;
@@ -611,7 +636,7 @@ export default function App() {
           for (let i = 0; i < steps; i++) {
             if (shouldStopRef.current) break;
             setSpriteStateForChar(charId, prev => ({ ...prev, x: prev.x + 1 }));
-            await new Promise(r => setTimeout(r, isForever ? 30 : delayMsRef.current));
+            await new Promise(r => setTimeout(r, delayMsRef.current));
           }
           break;
         }
@@ -620,7 +645,7 @@ export default function App() {
           for (let i = 0; i < steps; i++) {
             if (shouldStopRef.current) break;
             setSpriteStateForChar(charId, prev => ({ ...prev, x: prev.x - 1 }));
-            await new Promise(r => setTimeout(r, isForever ? 30 : delayMsRef.current));
+            await new Promise(r => setTimeout(r, delayMsRef.current));
           }
           break;
         }
@@ -629,7 +654,7 @@ export default function App() {
           for (let i = 0; i < steps; i++) {
             if (shouldStopRef.current) break;
             setSpriteStateForChar(charId, prev => ({ ...prev, y: prev.y + 1 }));
-            await new Promise(r => setTimeout(r, isForever ? 30 : delayMsRef.current));
+            await new Promise(r => setTimeout(r, delayMsRef.current));
           }
           break;
         }
@@ -638,7 +663,7 @@ export default function App() {
           for (let i = 0; i < steps; i++) {
             if (shouldStopRef.current) break;
             setSpriteStateForChar(charId, prev => ({ ...prev, y: prev.y - 1 }));
-            await new Promise(r => setTimeout(r, isForever ? 30 : delayMsRef.current));
+            await new Promise(r => setTimeout(r, delayMsRef.current));
           }
           break;
         }
@@ -647,7 +672,7 @@ export default function App() {
           for (let i = 0; i < steps; i++) {
             if (shouldStopRef.current) break;
             setSpriteStateForChar(charId, prev => ({ ...prev, rotation: prev.rotation + 30 }));
-            await new Promise(r => setTimeout(r, isForever ? 30 : delayMsRef.current));
+            await new Promise(r => setTimeout(r, delayMsRef.current));
           }
           break;
         }
@@ -656,16 +681,16 @@ export default function App() {
           for (let i = 0; i < steps; i++) {
             if (shouldStopRef.current) break;
             setSpriteStateForChar(charId, prev => ({ ...prev, rotation: prev.rotation - 30 }));
-            await new Promise(r => setTimeout(r, isForever ? 30 : delayMsRef.current));
+            await new Promise(r => setTimeout(r, delayMsRef.current));
           }
           break;
         }
         case 'HOP': {
           const height = block.times !== undefined ? block.times : 2;
           setSpriteStateForChar(charId, prev => ({ ...prev, y: prev.y + height }));
-          await new Promise(r => setTimeout(r, isForever ? 30 : delayMsRef.current));
+          await new Promise(r => setTimeout(r, delayMsRef.current));
           setSpriteStateForChar(charId, prev => ({ ...prev, y: prev.y - height }));
-          await new Promise(r => setTimeout(r, isForever ? 30 : delayMsRef.current));
+          await new Promise(r => setTimeout(r, delayMsRef.current));
           break;
         }
         case 'GO_HOME':
@@ -747,11 +772,11 @@ export default function App() {
         case 'SET_SPEED': {
           const speed = block.times !== undefined ? block.times : 2;
           if (speed === 1) {
-            delayMsRef.current = 500; // Slow
+            delayMsRef.current = 600; // Very Slow
           } else if (speed === 3) {
-            delayMsRef.current = 80; // Fast
+            delayMsRef.current = 100; // Fast
           } else {
-            delayMsRef.current = 200; // Medium (default)
+            delayMsRef.current = 300; // Medium (default)
           }
           break;
         }
@@ -769,7 +794,7 @@ export default function App() {
               if (block.children.length > 0) {
                 await runBlocks(block.children, charId, true);
               } else {
-                await new Promise(r => setTimeout(r, 30));
+                await new Promise(r => setTimeout(r, 50));
               }
             }
           }
@@ -802,7 +827,7 @@ export default function App() {
           block.type !== 'MOVE_UP' && block.type !== 'MOVE_DOWN' &&
           block.type !== 'TURN_RIGHT' && block.type !== 'TURN_LEFT' &&
           block.type !== 'GOTO_PAGE') {
-        await new Promise(r => setTimeout(r, isForever ? 30 : delayMsRef.current));
+        await new Promise(r => setTimeout(r, delayMsRef.current));
       }
       setActiveBlockId(null);
     }
@@ -956,28 +981,6 @@ export default function App() {
     });
   };
 
-  const resetStage = () => {
-    shouldStopRef.current = true;
-    setIsRunning(false);
-    setActiveBlockId(null);
-    delayMsRef.current = DELAY_MS;
-    setSpriteStates(prev => {
-      const next = { ...prev };
-      Object.keys(next).forEach(key => {
-        const current = next[key] || INITIAL_SPRITE_STATE;
-        const hX = current.homeX !== undefined ? current.homeX : INITIAL_SPRITE_STATE.x;
-        const hY = current.homeY !== undefined ? current.homeY : INITIAL_SPRITE_STATE.y;
-        next[key] = {
-          ...INITIAL_SPRITE_STATE,
-          x: hX,
-          y: hY,
-          homeX: hX,
-          homeY: hY,
-        };
-      });
-      return next;
-    });
-  };
 
   return (
     <div className="h-screen max-h-screen bg-[#F4EFE6] flex flex-col font-sans select-none overflow-hidden">
