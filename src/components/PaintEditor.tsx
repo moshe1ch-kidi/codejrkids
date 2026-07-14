@@ -1,9 +1,9 @@
-import React, { useState, useRef, useEffect } from 'react';
+ import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Undo, Redo, Camera, Check, ArrowUpRight, 
   RotateCw, Copy, Scissors, PaintBucket,
-  Brush, Circle, Square, Triangle, Shapes
+  Brush, Circle, Square, Triangle, Shapes, X
 } from 'lucide-react';
 import { SHAPE_ROWS } from '../lib/shapes';
 
@@ -15,12 +15,13 @@ export interface Point {
 export interface Shape {
   id: string;
   type: 'brush' | 'circle' | 'rect' | 'triangle' | 'image' | 'custom';
-  color: string;
+  color: string; // Used for stroke
   width: number;
   points: Point[];
   fillColor?: string;
   imgUrl?: string;
   pathData?: string;
+  noStroke?: boolean;
 }
 
 type ToolType = 'brush' | 'circle' | 'rect' | 'triangle' | 'select' | 'rotate' | 'stamp' | 'scissors' | 'camera' | 'fill' | 'custom';
@@ -91,6 +92,68 @@ function rotatePoint(p: Point, center: Point, angle: number): Point {
     y: px * s + py * c + center.y
   };
 }
+
+const hexToRgb = (hex: string) => {
+  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  return result ? {
+    r: parseInt(result[1], 16),
+    g: parseInt(result[2], 16),
+    b: parseInt(result[3], 16)
+  } : { r: 0, g: 0, b: 0 };
+};
+
+const floodFill = (imgData: ImageData, x: number, y: number, fillColor: { r: number, g: number, b: number }) => {
+  const data = imgData.data;
+  const width = imgData.width;
+  const height = imgData.height;
+  const stack = [[x, y]];
+  const targetIdx = (y * width + x) * 4;
+  const targetColor = {
+    r: data[targetIdx],
+    g: data[targetIdx + 1],
+    b: data[targetIdx + 2],
+    a: data[targetIdx + 3]
+  };
+
+  if (targetColor.r === fillColor.r && targetColor.g === fillColor.g && targetColor.b === fillColor.b && targetColor.a === 255) {
+    return;
+  }
+
+  const colorMatch = (idx: number) => {
+    // Basic color tolerance
+    return Math.abs(data[idx] - targetColor.r) < 15 &&
+           Math.abs(data[idx + 1] - targetColor.g) < 15 &&
+           Math.abs(data[idx + 2] - targetColor.b) < 15 &&
+           Math.abs(data[idx + 3] - targetColor.a) < 15;
+  };
+
+  while (stack.length > 0) {
+    const [currX, currY] = stack.pop()!;
+    let left = currX;
+    while (left > 0 && colorMatch((currY * width + (left - 1)) * 4)) {
+      left--;
+    }
+    let right = currX;
+    while (right < width - 1 && colorMatch((currY * width + (right + 1)) * 4)) {
+      right++;
+    }
+
+    for (let i = left; i <= right; i++) {
+      const idx = (currY * width + i) * 4;
+      data[idx] = fillColor.r;
+      data[idx + 1] = fillColor.g;
+      data[idx + 2] = fillColor.b;
+      data[idx + 3] = 255;
+
+      if (currY > 0 && colorMatch(((currY - 1) * width + i) * 4)) {
+        stack.push([i, currY - 1]);
+      }
+      if (currY < height - 1 && colorMatch(((currY + 1) * width + i) * 4)) {
+        stack.push([i, currY + 1]);
+      }
+    }
+  }
+};
 
 function getBrushBoundingBox(points: Point[]) {
   if (points.length === 0) return { minX: 0, maxX: 0, minY: 0, maxY: 0 };
@@ -239,106 +302,88 @@ async function parseSvgTextToShapes(svgText: string): Promise<Shape[]> {
         return { x: px, y: py };
       };
 
-      let points: Point[] = [];
-
       if (tagName === 'path') {
         const pathEl = el as SVGPathElement;
-        const totalLength = pathEl.getTotalLength();
-        if (totalLength > 0) {
-          const step = Math.max(2, Math.min(10, totalLength / 40));
-          for (let d = 0; d <= totalLength; d += step) {
-            const pt = pathEl.getPointAtLength(d);
-            const transformed = transformPoint(pt.x, pt.y);
-            points.push({
-              x: transformed.x * scale + offsetX,
-              y: transformed.y * scale + offsetY
+        const d = pathEl.getAttribute('d') || '';
+        // Split complex paths with multiple "M" commands to avoid distortion
+        const subPaths = d.split(/(?=M)/i).filter(p => p.trim().length > 0);
+        
+        subPaths.forEach((subD, subIndex) => {
+          const subPathEl = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+          subPathEl.setAttribute('d', subD);
+          svgEl.appendChild(subPathEl);
+          
+          const totalLength = subPathEl.getTotalLength();
+          const points: Point[] = [];
+          if (totalLength > 0) {
+            const step = Math.max(1, Math.min(5, totalLength / 50));
+            for (let dist = 0; dist <= totalLength; dist += step) {
+              const pt = subPathEl.getPointAtLength(dist);
+              const transformed = transformPoint(pt.x, pt.y);
+              points.push({
+                x: transformed.x * scale + offsetX,
+                y: transformed.y * scale + offsetY
+              });
+            }
+          }
+          
+          if (points.length > 0) {
+            parsedShapes.push({
+              id: `svg-shape-${index}-${subIndex}-${Date.now()}`,
+              type: 'brush',
+              color: strokeColor === 'transparent' ? '#000000' : strokeColor,
+              width: strokeWidth,
+              points,
+              fillColor: fillColor,
+              noStroke: strokeColor === 'transparent'
             });
           }
-          const pt = pathEl.getPointAtLength(totalLength);
-          const transformed = transformPoint(pt.x, pt.y);
-          if (points.length === 0 || Math.hypot(points[points.length - 1].x - (transformed.x * scale + offsetX), points[points.length - 1].y - (transformed.y * scale + offsetY)) > 1) {
-            points.push({
-              x: transformed.x * scale + offsetX,
-              y: transformed.y * scale + offsetY
-            });
-          }
-        }
-      } else if (tagName === 'rect') {
-        const rx = parseFloat(el.getAttribute('x') || '0');
-        const ry = parseFloat(el.getAttribute('y') || '0');
-        const rw = parseFloat(el.getAttribute('width') || '0');
-        const rh = parseFloat(el.getAttribute('height') || '0');
-        const pts = [
-          { x: rx, y: ry },
-          { x: rx + rw, y: ry },
-          { x: rx + rw, y: ry + rh },
-          { x: rx, y: ry + rh },
-          { x: rx, y: ry }
-        ];
-        points = pts.map(p => {
-          const transformed = transformPoint(p.x, p.y);
-          return {
-            x: transformed.x * scale + offsetX,
-            y: transformed.y * scale + offsetY
-          };
+          svgEl.removeChild(subPathEl);
         });
-      } else if (tagName === 'circle') {
-        const cx = parseFloat(el.getAttribute('cx') || '0');
-        const cy = parseFloat(el.getAttribute('cy') || '0');
-        const r = parseFloat(el.getAttribute('r') || '0');
-        const steps = 32;
-        for (let i = 0; i <= steps; i++) {
-          const angle = (i / steps) * Math.PI * 2;
-          const transformed = transformPoint(cx + r * Math.cos(angle), cy + r * Math.sin(angle));
-          points.push({
-            x: transformed.x * scale + offsetX,
-            y: transformed.y * scale + offsetY
+      } else {
+        let points: Point[] = [];
+        if (tagName === 'rect') {
+          const rx = parseFloat(el.getAttribute('x') || '0');
+          const ry = parseFloat(el.getAttribute('y') || '0');
+          const rw = parseFloat(el.getAttribute('width') || '0');
+          const rh = parseFloat(el.getAttribute('height') || '0');
+          const pts = [{ x: rx, y: ry }, { x: rx + rw, y: ry }, { x: rx + rw, y: ry + rh }, { x: rx, y: ry + rh }, { x: rx, y: ry }];
+          points = pts.map(p => {
+            const t = transformPoint(p.x, p.y);
+            return { x: t.x * scale + offsetX, y: t.y * scale + offsetY };
           });
-        }
-      } else if (tagName === 'ellipse') {
-        const cx = parseFloat(el.getAttribute('cx') || '0');
-        const cy = parseFloat(el.getAttribute('cy') || '0');
-        const rx = parseFloat(el.getAttribute('rx') || '0');
-        const ry = parseFloat(el.getAttribute('ry') || '0');
-        const steps = 32;
-        for (let i = 0; i <= steps; i++) {
-          const angle = (i / steps) * Math.PI * 2;
-          const transformed = transformPoint(cx + rx * Math.cos(angle), cy + ry * Math.sin(angle));
-          points.push({
-            x: transformed.x * scale + offsetX,
-            y: transformed.y * scale + offsetY
-          });
-        }
-      } else if (tagName === 'polygon' || tagName === 'polyline') {
-        const pointsAttr = el.getAttribute('points') || '';
-        const coords = pointsAttr.trim().split(/[\s,]+/).map(parseFloat).filter(v => !isNaN(v));
-        const pts: Point[] = [];
-        for (let i = 0; i < coords.length; i += 2) {
-          if (coords[i] !== undefined && coords[i+1] !== undefined) {
-            pts.push({ x: coords[i], y: coords[i+1] });
+        } else if (tagName === 'circle' || tagName === 'ellipse') {
+          const cx = parseFloat(el.getAttribute('cx') || '0');
+          const cy = parseFloat(el.getAttribute('cy') || '0');
+          const rx = parseFloat(el.getAttribute('r') || el.getAttribute('rx') || '0');
+          const ry = parseFloat(el.getAttribute('r') || el.getAttribute('ry') || '0');
+          const steps = 32;
+          for (let i = 0; i <= steps; i++) {
+            const angle = (i / steps) * Math.PI * 2;
+            const t = transformPoint(cx + rx * Math.cos(angle), cy + ry * Math.sin(angle));
+            points.push({ x: t.x * scale + offsetX, y: t.y * scale + offsetY });
           }
+        } else if (tagName === 'polygon' || tagName === 'polyline') {
+          const pointsAttr = el.getAttribute('points') || '';
+          const coords = pointsAttr.trim().split(/[\s,]+/).map(parseFloat).filter(v => !isNaN(v));
+          for (let i = 0; i < coords.length; i += 2) {
+            const t = transformPoint(coords[i], coords[i+1]);
+            points.push({ x: t.x * scale + offsetX, y: t.y * scale + offsetY });
+          }
+          if (tagName === 'polygon' && points.length > 0) points.push({ ...points[0] });
         }
-        if (tagName === 'polygon' && pts.length > 0) {
-          pts.push({ ...pts[0] });
-        }
-        points = pts.map(p => {
-          const transformed = transformPoint(p.x, p.y);
-          return {
-            x: transformed.x * scale + offsetX,
-            y: transformed.y * scale + offsetY
-          };
-        });
-      }
 
-      if (points.length > 0) {
-        parsedShapes.push({
-          id: `svg-shape-${index}-${Date.now()}`,
-          type: 'brush',
-          color: strokeColor === 'transparent' ? (fillColor !== 'transparent' ? fillColor : '#000000') : strokeColor,
-          width: strokeWidth,
-          points,
-          fillColor: fillColor
-        });
+        if (points.length > 0) {
+          parsedShapes.push({
+            id: `svg-shape-${index}-${Date.now()}`,
+            type: tagName === 'rect' ? 'rect' : tagName === 'circle' || tagName === 'ellipse' ? 'circle' : 'brush',
+            color: strokeColor === 'transparent' ? '#000000' : strokeColor,
+            width: strokeWidth,
+            points,
+            fillColor: fillColor,
+            noStroke: strokeColor === 'transparent'
+          });
+        }
       }
     });
 
@@ -429,48 +474,46 @@ export function PaintEditor({
           setHistory([clonedShapes]);
           setHistoryIndex(0);
         } else if (initialSpriteUrl) {
-          if (initialSpriteUrl.toLowerCase().endsWith('.svg')) {
-            try {
-              const res = await fetch(initialSpriteUrl);
-              const text = await res.text();
-              const parsed = await parseSvgTextToShapes(text);
-              if (parsed && parsed.length > 0) {
-                setShapes(parsed);
-                setHistory([parsed]);
-                setHistoryIndex(0);
-                return;
-              }
-            } catch (err) {
-              console.error("Failed to parse SVG, falling back to raster load", err);
-            }
-          }
-
           const newId = `shape-init-${Date.now()}`;
+          let imgWidth = 350;
+          let imgHeight = 350;
+
+          const initImgShape: Shape = {
+            id: newId,
+            type: 'image',
+            color: 'transparent',
+            width: 0,
+            noStroke: true,
+            points: [],
+            imgUrl: initialSpriteUrl
+          };
+
           await new Promise<void>((resolve) => {
             const img = new Image();
             img.src = initialSpriteUrl;
             img.onload = () => {
               loadedImages.current[newId] = img;
+              imgWidth = img.width;
+              imgHeight = img.height;
+              
+              const maxDim = 350;
+              const ratio = Math.min(maxDim / imgWidth, maxDim / imgHeight);
+              const finalW = imgWidth * ratio;
+              const finalH = imgHeight * ratio;
+              const startX = (450 - finalW) / 2;
+              const startY = (450 - finalH) / 2;
+              
+              initImgShape.points = [
+                { x: startX, y: startY },
+                { x: startX + finalW, y: startY },
+                { x: startX + finalW, y: startY + finalH },
+                { x: startX, y: startY + finalH }
+              ];
               resolve();
             };
-            img.onerror = () => {
-              resolve();
-            };
+            img.onerror = () => resolve();
           });
 
-          const initImgShape: Shape = {
-            id: newId,
-            type: 'image',
-            color: '#000000',
-            width: 2,
-            points: [
-              { x: 50, y: 50 },
-              { x: 400, y: 50 },
-              { x: 400, y: 400 },
-              { x: 50, y: 400 }
-            ],
-            imgUrl: initialSpriteUrl
-          };
           setShapes([initImgShape]);
           setHistory([[initImgShape]]);
           setHistoryIndex(0);
@@ -611,7 +654,9 @@ export function PaintEditor({
             ctx.fillStyle = shape.fillColor;
             ctx.fill();
           }
-          ctx.stroke();
+          if (!shape.noStroke) {
+            ctx.stroke();
+          }
         }
       } else if (shape.type === 'rect') {
         if (shape.points.length >= 4) {
@@ -625,7 +670,9 @@ export function PaintEditor({
             ctx.fillStyle = shape.fillColor;
             ctx.fill();
           }
-          ctx.stroke();
+          if (!shape.noStroke) {
+            ctx.stroke();
+          }
         }
       } else if (shape.type === 'triangle') {
         if (shape.points.length >= 3) {
@@ -638,7 +685,9 @@ export function PaintEditor({
             ctx.fillStyle = shape.fillColor;
             ctx.fill();
           }
-          ctx.stroke();
+          if (!shape.noStroke) {
+            ctx.stroke();
+          }
         }
       } else if (shape.type === 'circle') {
         if (shape.points.length >= 4) {
@@ -652,7 +701,9 @@ export function PaintEditor({
             ctx.fillStyle = shape.fillColor;
             ctx.fill();
           }
-          ctx.stroke();
+          if (!shape.noStroke) {
+            ctx.stroke();
+          }
         }
       } else if (shape.type === 'custom' && shape.pathData) {
         if (shape.points.length >= 4) {
@@ -671,13 +722,16 @@ export function PaintEditor({
             ctx.fillStyle = shape.fillColor;
             ctx.fill(path2d);
           }
-          // Reset scale for stroke so it doesn't get distorted
-          ctx.lineWidth = shape.width / Math.max((rx * 2) / 100, (ry * 2) / 100);
-          ctx.stroke(path2d);
+          if (!shape.noStroke) {
+            // Reset scale for stroke so it doesn't get distorted
+            ctx.lineWidth = shape.width / Math.max((rx * 2) / 100, (ry * 2) / 100);
+            ctx.stroke(path2d);
+          }
           ctx.restore();
         }
       } else if (shape.type === 'image') {
         if (shape.points.length >= 4) {
+          ctx.beginPath(); // Clear any previous path
           const minX = Math.min(...shape.points.map(p => p.x));
           const maxX = Math.max(...shape.points.map(p => p.x));
           const minY = Math.min(...shape.points.map(p => p.y));
@@ -771,13 +825,54 @@ export function PaintEditor({
     if (activeTool === 'fill') {
       const clickedShape = findShapeAtPosition(x, y);
       if (clickedShape) {
-        const updated = shapes.map(s => {
-          if (s.id === clickedShape.id) {
-            return { ...s, fillColor: selectedColor };
+        if (clickedShape.type === 'image') {
+          const img = loadedImages.current[clickedShape.id];
+          if (img) {
+            const minX = Math.min(...clickedShape.points.map(p => p.x));
+            const minY = Math.min(...clickedShape.points.map(p => p.y));
+            const maxX = Math.max(...clickedShape.points.map(p => p.x));
+            const maxY = Math.max(...clickedShape.points.map(p => p.y));
+            const w = maxX - minX;
+            const h = maxY - minY;
+            
+            const tempCanvas = document.createElement('canvas');
+            tempCanvas.width = img.width;
+            tempCanvas.height = img.height;
+            const tempCtx = tempCanvas.getContext('2d');
+            if (tempCtx) {
+              tempCtx.drawImage(img, 0, 0);
+              const imgX = Math.floor(((x - minX) / w) * img.width);
+              const imgY = Math.floor(((y - minY) / h) * img.height);
+              
+              const imgData = tempCtx.getImageData(0, 0, img.width, img.height);
+              const fillColor = hexToRgb(selectedColor);
+              floodFill(imgData, imgX, imgY, fillColor);
+              tempCtx.putImageData(imgData, 0, 0);
+              
+              const newUrl = tempCanvas.toDataURL();
+              const newImg = new Image();
+              newImg.src = newUrl;
+              newImg.onload = () => {
+                loadedImages.current[clickedShape.id] = newImg;
+                const updated = shapes.map(s => {
+                  if (s.id === clickedShape.id) {
+                    return { ...s, imgUrl: newUrl };
+                  }
+                  return s;
+                });
+                saveStateToHistory(updated);
+              };
+            }
           }
-          return s;
-        });
-        saveStateToHistory(updated);
+        } else {
+          const updated = shapes.map(s => {
+            if (s.id === clickedShape.id) {
+              return { ...s, fillColor: selectedColor };
+            }
+            return s;
+          });
+          saveStateToHistory(updated);
+        }
       }
       return;
     }
@@ -1165,7 +1260,8 @@ export function PaintEditor({
 
     const cx = clickTargetCoords.x;
     const cy = clickTargetCoords.y;
-    const hw = 60, hh = 60;
+    const hw = 60;
+    const hh = 45; // Maintain 4:3 aspect ratio (320x240)
 
     const newId = `shape-${Date.now()}`;
     const newImgShape: Shape = {
@@ -1252,13 +1348,23 @@ export function PaintEditor({
               />
             </div>
 
-            <button
-              onClick={handleSave}
-              className="w-12 h-12 rounded-full bg-[#78b7e7] hover:bg-[#61a7e2] text-white flex items-center justify-center shadow-md active:scale-95 transition-all border-2 border-white"
-              title="Save"
-            >
-              <Check className="w-6 h-6 stroke-[3.5]" />
-            </button>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={onClose}
+                className="w-12 h-12 rounded-full bg-slate-400 hover:bg-slate-500 text-white flex items-center justify-center shadow-md active:scale-95 transition-all border-2 border-white"
+                title="Cancel / Close"
+              >
+                <X className="w-6 h-6 stroke-[3]" />
+              </button>
+
+              <button
+                onClick={handleSave}
+                className="w-12 h-12 rounded-full bg-[#78b7e7] hover:bg-[#61a7e2] text-white flex items-center justify-center shadow-md active:scale-95 transition-all border-2 border-white"
+                title="Save"
+              >
+                <Check className="w-6 h-6 stroke-[3.5]" />
+              </button>
+            </div>
           </div>
 
           {/* Central Workspace Panel */}
