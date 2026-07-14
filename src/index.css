@@ -7,6 +7,26 @@
 
 body {
   background-color: #FDF2E3;
+  scrollbar-width: thin;
+  scrollbar-color: #F9C17D #FDF2E3;
+}
+
+body::-webkit-scrollbar {
+  width: 12px;
+}
+
+body::-webkit-scrollbar-track {
+  background: #FDF2E3;
+}
+
+body::-webkit-scrollbar-thumb {
+  background: #F9C17D;
+  border-radius: 9999px;
+  border: 3px solid #FDF2E3;
+}
+
+body::-webkit-scrollbar-thumb:hover {
+  background: #e0963f;
 }
 
 @layer utilities {
@@ -20,7 +40,7 @@ body {
   
   .kid-scrollbar {
     scrollbar-width: thin;
-    scrollbar-color: #f5b05c rgba(251, 213, 165, 0.4);
+    scrollbar-color: #F9C17D #FBD5A5;
   }
 
   .kid-scrollbar::-webkit-scrollbar {
@@ -29,14 +49,14 @@ body {
   }
 
   .kid-scrollbar::-webkit-scrollbar-track {
-    background: rgba(251, 213, 165, 0.4);
+    background: #FBD5A5;
     border-radius: 9999px;
   }
 
   .kid-scrollbar::-webkit-scrollbar-thumb {
-    background: #f5b05c;
+    background: #F9C17D;
     border-radius: 9999px;
-    border: 1px solid rgba(251, 213, 165, 0.2);
+    border: 2px solid #FBD5A5;
   }
 
   .kid-scrollbar::-webkit-scrollbar-thumb:hover {

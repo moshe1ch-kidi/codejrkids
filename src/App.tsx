@@ -1076,18 +1076,21 @@ export default function App() {
       </header>
 
       {/* Main Content */}
-      <main className="flex-1 flex flex-col max-w-7xl mx-auto w-full p-4 gap-4 min-h-0 overflow-hidden">
+      <main className="flex-1 flex flex-col max-w-[1700px] mx-auto w-full p-4 gap-4 min-h-0 overflow-y-auto kid-scrollbar">
         
         {/* Top Half: Stage & Scenes */}
-        <div className="flex flex-[1.1] gap-6 min-h-0 overflow-hidden">
+        <div className="flex-1 flex gap-6 min-h-[460px] shrink-0 overflow-hidden">
           {/* Left Sidebar: Characters */}
-          <div className="w-52 bg-[#FBD5A5] rounded-[32px] flex flex-col items-center py-4 gap-3 border-4 border-[#F9C17D] shadow-inner shrink-0 animate-fade-in overflow-hidden h-full">
+          <div className="w-64 bg-[#FBD5A5] rounded-[32px] flex flex-col items-center py-4 gap-3 border-4 border-[#F9C17D] shadow-inner shrink-0 animate-fade-in overflow-hidden h-fit">
             {/* Scrollable list of characters */}
-            <div className="flex-1 w-full overflow-y-auto kid-scrollbar flex flex-col gap-3 px-1">
+            <div className={cn(
+              "w-full kid-scrollbar flex flex-col gap-2 px-1 min-h-0 shrink-0 items-center pb-2",
+              characters.length > 3 ? "overflow-y-auto h-[304px]" : "overflow-y-hidden h-fit"
+            )}>
               {characters.map((char) => {
                 const isActive = char.id === activeCharacterId;
                 return (
-                  <div key={char.id} className="w-full px-2">
+                  <div key={char.id} className="w-full px-3">
                     <motion.div
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
@@ -1099,12 +1102,12 @@ export default function App() {
                           : "bg-white/40 border-transparent hover:bg-white/60"
                       )}
                     >
-                      <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center mb-1 overflow-hidden border-2 border-white/20">
+                      <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center mb-1 overflow-hidden border-2 border-white/40 shadow-inner">
                         <img src={char.spriteUrl} alt={char.name} className="w-10 h-10 object-contain" />
                       </div>
                       <span className={cn(
-                        "text-[10px] font-bold px-2 py-0.5 rounded-full truncate max-w-[90%]",
-                        isActive ? "bg-white text-[#D81B60]" : "bg-white/80 text-gray-600"
+                        "text-[10px] font-extrabold px-2 py-0.5 rounded-full truncate max-w-[90%] shadow-sm",
+                        isActive ? "bg-white text-[#D81B60]" : "bg-white/80 text-gray-700"
                       )}>
                         {char.name}
                       </span>
@@ -1116,18 +1119,18 @@ export default function App() {
                               setEditingCharacterId(char.id);
                               setIsPaintEditorOpen(true);
                             }}
-                            className="absolute top-1 right-1 w-6 h-6 bg-white/20 hover:bg-white/40 rounded-full flex items-center justify-center z-20"
+                            className="absolute top-1 right-1 w-5 h-5 bg-white/20 hover:bg-white/40 rounded-full flex items-center justify-center z-20"
                             title="Edit Character"
                           >
-                            <Pencil className="w-3 h-3 text-white" />
+                            <Pencil className="w-2.5 h-2.5 text-white" />
                           </button>
                           {characters.length > 1 && (
                             <button 
                               onClick={(e) => handleDeleteCharacter(char.id, e)}
-                              className="absolute top-1 left-1 w-6 h-6 bg-red-500/80 hover:bg-red-500 rounded-full flex items-center justify-center transition-colors shadow-sm z-20"
+                              className="absolute top-1 left-1 w-5 h-5 bg-red-500/80 hover:bg-red-500 rounded-full flex items-center justify-center transition-colors shadow-sm z-20"
                               title="Delete Character"
                             >
-                              <Trash2 className="w-3 h-3 text-white" />
+                              <Trash2 className="w-2.5 h-2.5 text-white" />
                             </button>
                           )}
                         </>
@@ -1136,17 +1139,18 @@ export default function App() {
                   </div>
                 );
               })}
+              
+              {/* Add character button right after the last character */}
+              <motion.button
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.9 }}
+                onClick={() => setIsGalleryOpen(true)}
+                className="w-12 h-12 bg-[#7CB342] border-4 border-[#558B2F] rounded-2xl flex items-center justify-center shadow-lg text-white mt-1 shrink-0"
+                title="Add Character"
+              >
+                <Plus className="w-7 h-7 stroke-[3]" />
+              </motion.button>
             </div>
-            
-            {/* Fixed plus button at bottom */}
-            <motion.button
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.9 }}
-              onClick={() => setIsGalleryOpen(true)}
-              className="w-16 h-16 bg-[#7CB342] border-4 border-[#558B2F] rounded-2xl flex items-center justify-center shadow-lg text-white mb-2 shrink-0"
-            >
-              <Plus className="w-10 h-10 stroke-[3]" />
-            </motion.button>
           </div>
 
           <Stage 
@@ -1183,9 +1187,12 @@ export default function App() {
           />
 
           {/* Right Sidebar: Scenes */}
-          <div className="w-44 bg-[#FBD5A5] rounded-[32px] flex flex-col items-center py-4 gap-3 border-4 border-[#F9C17D] shadow-inner shrink-0 animate-fade-in overflow-hidden h-full">
+          <div className="w-44 bg-[#FBD5A5] rounded-[32px] flex flex-col items-center py-4 gap-3 border-4 border-[#F9C17D] shadow-inner shrink-0 animate-fade-in overflow-hidden h-fit">
             {/* Scrollable list of scenes */}
-            <div className="flex-1 w-full overflow-y-auto kid-scrollbar flex flex-col gap-3 px-1">
+            <div className={cn(
+              "w-full kid-scrollbar flex flex-col items-center gap-3 px-1 pb-4 min-h-0 shrink-0",
+              scenes.length > 3 ? "overflow-y-auto h-[320px]" : "overflow-y-hidden h-fit"
+            )}>
               {scenes.map((scene, index) => {
                 const isActive = scene.id === activeSceneId;
                 return (
@@ -1228,31 +1235,31 @@ export default function App() {
                   </div>
                 );
               })}
-            </div>
 
-            {/* Fixed plus button at bottom */}
-            <motion.button
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.9 }}
-              onClick={handleAddScene}
-              className="w-16 h-16 bg-[#7CB342] border-4 border-[#558B2F] rounded-2xl flex items-center justify-center shadow-lg text-white mb-2 shrink-0"
-              title="Add Scene"
-            >
-              <Plus className="w-10 h-10 stroke-[3]" />
-            </motion.button>
+              {/* Plus button right after the last scene */}
+              <motion.button
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.9 }}
+                onClick={handleAddScene}
+                className="w-14 h-14 bg-[#7CB342] border-4 border-[#558B2F] rounded-2xl flex items-center justify-center shadow-lg text-white shrink-0 mt-1 mb-2"
+                title="Add Scene"
+              >
+                <Plus className="w-8 h-8 stroke-[3]" />
+              </motion.button>
+            </div>
           </div>
         </div>
 
         {/* Bottom Half: Coding Area */}
-        <div className="flex flex-col bg-[#FDF2E3] rounded-[40px] shadow-xl border-4 border-[#F9C17D] overflow-hidden flex-[0.9] min-h-0 relative">
+        <div className="flex flex-col bg-[#FDF2E3] rounded-[40px] shadow-xl border-4 border-[#F9C17D] overflow-hidden h-[380px] sm:h-[410px] md:h-[440px] shrink-0 min-h-0 relative">
           <Palette 
             onDragStart={handlePaletteDragStart} 
             onRecordClick={() => setIsRecordModalOpen(true)}
             recordings={recordings}
           />
           
-          <div className="flex-1 p-4 flex flex-col gap-2 relative">
-            <div className="flex justify-between items-center px-4 py-2 border-b border-[#F9C17D]/30 mb-2">
+          <div className="flex-1 p-2 md:p-3 flex flex-col gap-1.5 min-h-0 relative">
+            <div className="flex justify-between items-center px-3 py-1 border-b border-[#F9C17D]/30 mb-1">
               <h2 className="text-[#8D6E63] font-black uppercase tracking-wider text-[12px]">YOUR CODE</h2>
               <button 
                 onClick={clearWorkspace}
@@ -1439,35 +1446,20 @@ export default function App() {
 
           {/* Scaled Stage Container */}
           <div className="flex-1 flex items-center justify-center w-full min-h-0 relative">
-            {(() => {
-              const scaleX = (windowSize.width - 40) / 540;
-              const scaleY = (windowSize.height - 180) / 420;
-              const scaleFactor = Math.max(0.4, Math.min(2.5, scaleX, scaleY));
-              return (
-                <div 
-                  style={{
-                    transform: `scale(${scaleFactor})`,
-                    transformOrigin: 'center center',
-                  }}
-                  className="transition-transform duration-200 flex items-center justify-center shrink-0"
-                >
-                  <Stage 
-                    characters={characters} 
-                    activeCharacterId={activeCharacterId} 
-                    spriteStates={spriteStates} 
-                    showGrid={showGrid}
-                    background={activeScene?.background}
-                    sceneTitle={activeScene?.text}
-                    sceneTitleColor={activeScene?.textColor}
-                    sceneTitleSize={activeScene?.textSize}
-                    sceneTitlePosition={activeScene?.textPosition}
-                    disableDragging={true}
-                    onSelectCharacter={(charId) => setActiveCharacterId(charId)}
-                    onCharacterClick={(charId) => handleCharacterClick(charId)}
-                  />
-                </div>
-              );
-            })()}
+            <Stage 
+              characters={characters} 
+              activeCharacterId={activeCharacterId} 
+              spriteStates={spriteStates} 
+              showGrid={showGrid}
+              background={activeScene?.background}
+              sceneTitle={activeScene?.text}
+              sceneTitleColor={activeScene?.textColor}
+              sceneTitleSize={activeScene?.textSize}
+              sceneTitlePosition={activeScene?.textPosition}
+              disableDragging={true}
+              onSelectCharacter={(charId) => setActiveCharacterId(charId)}
+              onCharacterClick={(charId) => handleCharacterClick(charId)}
+            />
           </div>
           
           {/* Bottom Bar spacer to match top spacing */}
