@@ -1094,6 +1094,16 @@ export default function App() {
               "w-full kid-scrollbar flex flex-col gap-2 px-1 min-h-0 shrink-0 items-center pb-2",
               characters.length > 3 ? "overflow-y-auto h-[304px]" : "overflow-y-hidden h-fit"
             )}>
+              <motion.button
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.9 }}
+                onClick={() => setIsGalleryOpen(true)}
+                className="w-12 h-12 bg-[#7CB342] border-4 border-[#558B2F] rounded-2xl flex items-center justify-center shadow-lg text-white mt-1 shrink-0 sticky top-1 z-30 mb-2"
+                title="Add Character"
+              >
+                <Plus className="w-7 h-7 stroke-[3]" />
+              </motion.button>
+
               {characters.map((char) => {
                 const isActive = char.id === activeCharacterId;
                 return (
@@ -1146,17 +1156,6 @@ export default function App() {
                   </div>
                 );
               })}
-              
-              {/* Add character button right after the last character */}
-              <motion.button
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.9 }}
-                onClick={() => setIsGalleryOpen(true)}
-                className="w-12 h-12 bg-[#7CB342] border-4 border-[#558B2F] rounded-2xl flex items-center justify-center shadow-lg text-white mt-1 shrink-0"
-                title="Add Character"
-              >
-                <Plus className="w-7 h-7 stroke-[3]" />
-              </motion.button>
             </div>
           </div>
 
@@ -1200,6 +1199,16 @@ export default function App() {
               "w-full kid-scrollbar flex flex-col items-center gap-3 px-1 pb-4 min-h-0 shrink-0",
               scenes.length > 3 ? "overflow-y-auto h-[320px]" : "overflow-y-hidden h-fit"
             )}>
+              <motion.button
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.9 }}
+                onClick={handleAddScene}
+                className="w-14 h-14 bg-[#7CB342] border-4 border-[#558B2F] rounded-2xl flex items-center justify-center shadow-lg text-white shrink-0 mt-1 mb-2 sticky top-1 z-30"
+                title="Add Scene"
+              >
+                <Plus className="w-8 h-8 stroke-[3]" />
+              </motion.button>
+
               {scenes.map((scene, index) => {
                 const isActive = scene.id === activeSceneId;
                 return (
@@ -1242,17 +1251,6 @@ export default function App() {
                   </div>
                 );
               })}
-
-              {/* Plus button right after the last scene */}
-              <motion.button
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.9 }}
-                onClick={handleAddScene}
-                className="w-14 h-14 bg-[#7CB342] border-4 border-[#558B2F] rounded-2xl flex items-center justify-center shadow-lg text-white shrink-0 mt-1 mb-2"
-                title="Add Scene"
-              >
-                <Plus className="w-8 h-8 stroke-[3]" />
-              </motion.button>
             </div>
           </div>
         </div>
