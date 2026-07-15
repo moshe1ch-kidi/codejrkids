@@ -256,11 +256,13 @@ export const WorkspaceBlock: React.FC<WorkspaceBlockProps> = ({
                     }
                   }
                 }}
-                className="w-7 h-5 bg-white rounded-md shadow-md border-2 border-slate-300 hover:border-orange-400 hover:scale-110 active:scale-95 transition-all cursor-pointer pointer-events-auto select-none flex items-center justify-center"
+                className="w-10 h-7 bg-white rounded-md shadow-md border-2 border-slate-300 hover:border-orange-400 hover:scale-110 active:scale-95 transition-all cursor-pointer pointer-events-auto select-none flex items-center justify-center p-1"
               >
-                <svg className="w-2.5 h-2.5 text-slate-500 fill-current" viewBox="0 0 10 6">
-                  <path d="M0,0 L10,0 L5,6 Z" />
-                </svg>
+                <img 
+                  src={getAssetUrl(`/icons/speed${Math.max(0, Math.min(2, (block.times || 2) - 1))}.svg`)} 
+                  className="w-full h-full object-contain pointer-events-none"
+                  alt="speed"
+                />
               </div>
             )}
 
