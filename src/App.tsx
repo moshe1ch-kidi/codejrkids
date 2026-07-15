@@ -1,4 +1,4 @@
- import React, { useState, useRef, useEffect } from 'react';
+ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { 
   Play, Square, RotateCcw, Image as ImageIcon, 
   Settings2, Plus, Flag, Trash2, Rocket, Brush, X, Grid, Pencil, Monitor, Save, FolderOpen
@@ -28,7 +28,9 @@ const INITIAL_SPRITE_STATE = {
   rotation: 0,
   scale: 1,
   visible: true,
-  sayText: ''
+  sayText: '',
+  speedDelay: 100, // Default Medium
+  lastAnimationDuration: 0.1
 };
 
 const DELAY_MS = 100; // Time between blocks (Medium)
@@ -65,6 +67,10 @@ export default function App() {
       textPosition: { x: 10, y: 13 } 
     }
   ]);
+  const scenesRef = useRef(scenes);
+  useEffect(() => {
+    scenesRef.current = scenes;
+  }, [scenes]);
   const [activeSceneId, setActiveSceneId] = useState('scene-1');
   const [isBackgroundGalleryOpen, setIsBackgroundGalleryOpen] = useState(false);
   const [activeCharacterId, setActiveCharacterId] = useState('char-1');
@@ -90,12 +96,30 @@ export default function App() {
   const spriteStates = activeScene?.spriteStates || {};
   const spriteState = spriteStates[activeCharacterId] || INITIAL_SPRITE_STATE;
 
+  const updateScenes = (updater: React.SetStateAction<{ 
+    id: string; 
+    characters?: { id: string; name: string; spriteUrl: string; shapes?: Shape[] }[];
+    spriteStates?: Record<string, typeof INITIAL_SPRITE_STATE>;
+    characterStacks?: Record<string, Stack[]>;
+    stacks: Stack[]; 
+    background?: string; 
+    text?: string; 
+    textColor?: string; 
+    textSize?: FontSize; 
+    textPosition?: { x: number, y: number } 
+  }[]>) => {
+    setScenes(prev => {
+      const next = typeof updater === 'function' ? (updater as any)(prev) : updater;
+      scenesRef.current = next;
+      return next;
+    });
+  };
+
   const resetStage = () => {
     console.log('Resetting stage...');
     shouldStopRef.current = true;
     setIsRunning(false);
     setActiveBlockId(null);
-    delayMsRef.current = DELAY_MS;
     setSpriteStates(prev => {
       const next = { ...prev };
       Object.keys(next).forEach(key => {
@@ -116,7 +140,7 @@ export default function App() {
   };
 
   const setCharacters = (updater: React.SetStateAction<{ id: string; name: string; spriteUrl: string; shapes?: Shape[] }[]>) => {
-    setScenes(prev => prev.map(s => {
+    updateScenes(prev => prev.map(s => {
       if (s.id === activeSceneId) {
         const currentChars = s.characters || [];
         const nextChars = typeof updater === 'function' ? (updater as any)(currentChars) : updater;
@@ -127,7 +151,7 @@ export default function App() {
   };
 
   const setSpriteStates = (updater: React.SetStateAction<Record<string, typeof INITIAL_SPRITE_STATE>>) => {
-    setScenes(prev => prev.map(s => {
+    updateScenes(prev => prev.map(s => {
       if (s.id === activeSceneId) {
         const currentStates = s.spriteStates || {};
         const nextStates = typeof updater === 'function' ? (updater as any)(currentStates) : updater;
@@ -619,7 +643,6 @@ export default function App() {
         
         // Highlight the REPEAT_FOREVER block to show loop-back feedback
         setActiveBlockId(foreverBlock.id);
-        await new Promise(r => setTimeout(r, 50));
         setActiveBlockId(null);
       }
       return;
@@ -630,67 +653,97 @@ export default function App() {
       
       setActiveBlockId(block.id);
       
+      // Get the character's specific speed
+      const charState = (scenesRef.current.find(s => s.id === activeSceneId)?.spriteStates?.[charId]) || INITIAL_SPRITE_STATE;
+      const charDelay = charState.speedDelay !== undefined ? charState.speedDelay : 100;
+      const GAP_COMPENSATION = 20; // ms
+
       switch (block.type) {
         case 'MOVE_RIGHT': {
           const steps = block.times !== undefined ? block.times : 1;
-          for (let i = 0; i < steps; i++) {
-            if (shouldStopRef.current) break;
-            setSpriteStateForChar(charId, prev => ({ ...prev, x: prev.x + 1 }));
-            await new Promise(r => setTimeout(r, delayMsRef.current));
-          }
+          const totalDuration = charDelay * steps;
+          setSpriteStateForChar(charId, prev => ({ 
+            ...prev, 
+            x: prev.x + steps,
+            lastAnimationDuration: (totalDuration + GAP_COMPENSATION) / 1000 
+          }));
+          await new Promise(r => setTimeout(r, Math.max(0, totalDuration - GAP_COMPENSATION)));
           break;
         }
         case 'MOVE_LEFT': {
           const steps = block.times !== undefined ? block.times : 1;
-          for (let i = 0; i < steps; i++) {
-            if (shouldStopRef.current) break;
-            setSpriteStateForChar(charId, prev => ({ ...prev, x: prev.x - 1 }));
-            await new Promise(r => setTimeout(r, delayMsRef.current));
-          }
+          const totalDuration = charDelay * steps;
+          setSpriteStateForChar(charId, prev => ({ 
+            ...prev, 
+            x: prev.x - steps,
+            lastAnimationDuration: (totalDuration + GAP_COMPENSATION) / 1000 
+          }));
+          await new Promise(r => setTimeout(r, Math.max(0, totalDuration - GAP_COMPENSATION)));
           break;
         }
         case 'MOVE_UP': {
           const steps = block.times !== undefined ? block.times : 1;
-          for (let i = 0; i < steps; i++) {
-            if (shouldStopRef.current) break;
-            setSpriteStateForChar(charId, prev => ({ ...prev, y: prev.y + 1 }));
-            await new Promise(r => setTimeout(r, delayMsRef.current));
-          }
+          const totalDuration = charDelay * steps;
+          setSpriteStateForChar(charId, prev => ({ 
+            ...prev, 
+            y: prev.y + steps,
+            lastAnimationDuration: (totalDuration + GAP_COMPENSATION) / 1000 
+          }));
+          await new Promise(r => setTimeout(r, Math.max(0, totalDuration - GAP_COMPENSATION)));
           break;
         }
         case 'MOVE_DOWN': {
           const steps = block.times !== undefined ? block.times : 1;
-          for (let i = 0; i < steps; i++) {
-            if (shouldStopRef.current) break;
-            setSpriteStateForChar(charId, prev => ({ ...prev, y: prev.y - 1 }));
-            await new Promise(r => setTimeout(r, delayMsRef.current));
-          }
+          const totalDuration = charDelay * steps;
+          setSpriteStateForChar(charId, prev => ({ 
+            ...prev, 
+            y: prev.y - steps,
+            lastAnimationDuration: (totalDuration + GAP_COMPENSATION) / 1000 
+          }));
+          await new Promise(r => setTimeout(r, Math.max(0, totalDuration - GAP_COMPENSATION)));
           break;
         }
         case 'TURN_RIGHT': {
           const steps = block.times !== undefined ? block.times : 1;
-          for (let i = 0; i < steps; i++) {
-            if (shouldStopRef.current) break;
-            setSpriteStateForChar(charId, prev => ({ ...prev, rotation: prev.rotation + 30 }));
-            await new Promise(r => setTimeout(r, delayMsRef.current));
-          }
+          const rotationAmount = steps * 30;
+          const totalDuration = charDelay * steps;
+          setSpriteStateForChar(charId, prev => ({ 
+            ...prev, 
+            rotation: prev.rotation + rotationAmount,
+            lastAnimationDuration: (totalDuration + GAP_COMPENSATION) / 1000 
+          }));
+          await new Promise(r => setTimeout(r, Math.max(0, totalDuration - GAP_COMPENSATION)));
           break;
         }
         case 'TURN_LEFT': {
           const steps = block.times !== undefined ? block.times : 1;
-          for (let i = 0; i < steps; i++) {
-            if (shouldStopRef.current) break;
-            setSpriteStateForChar(charId, prev => ({ ...prev, rotation: prev.rotation - 30 }));
-            await new Promise(r => setTimeout(r, delayMsRef.current));
-          }
+          const rotationAmount = steps * 30;
+          const totalDuration = charDelay * steps;
+          setSpriteStateForChar(charId, prev => ({ 
+            ...prev, 
+            rotation: prev.rotation - rotationAmount,
+            lastAnimationDuration: (totalDuration + GAP_COMPENSATION) / 1000 
+          }));
+          await new Promise(r => setTimeout(r, Math.max(0, totalDuration - GAP_COMPENSATION)));
           break;
         }
         case 'HOP': {
           const height = block.times !== undefined ? block.times : 2;
-          setSpriteStateForChar(charId, prev => ({ ...prev, y: prev.y + height }));
-          await new Promise(r => setTimeout(r, delayMsRef.current));
-          setSpriteStateForChar(charId, prev => ({ ...prev, y: prev.y - height }));
-          await new Promise(r => setTimeout(r, delayMsRef.current));
+          // Hop is two stages: Up then Down. 
+          // For HOP, we use a smaller compensation to avoid cutting off the peak too much.
+          const HOP_COMP = Math.min(10, GAP_COMPENSATION);
+          setSpriteStateForChar(charId, prev => ({ 
+            ...prev, 
+            y: prev.y + height, 
+            lastAnimationDuration: (charDelay + HOP_COMP) / 1000 
+          }));
+          await new Promise(r => setTimeout(r, Math.max(0, charDelay - HOP_COMP)));
+          setSpriteStateForChar(charId, prev => ({ 
+            ...prev, 
+            y: prev.y - height, 
+            lastAnimationDuration: (charDelay + HOP_COMP) / 1000 
+          }));
+          await new Promise(r => setTimeout(r, Math.max(0, charDelay - HOP_COMP)));
           break;
         }
         case 'GO_HOME':
@@ -771,13 +824,15 @@ export default function App() {
         }
         case 'SET_SPEED': {
           const speed = block.times !== undefined ? block.times : 2;
+          let newDelay = 100;
           if (speed === 1) {
-            delayMsRef.current = 300; // Slow
+            newDelay = 300; // Slow
           } else if (speed === 3) {
-            delayMsRef.current = 50; // Fast
+            newDelay = 50; // Fast
           } else {
-            delayMsRef.current = 100; // Medium (default, previously Fast)
+            newDelay = 100; // Medium
           }
+          setSpriteStateForChar(charId, prev => ({ ...prev, speedDelay: newDelay }));
           break;
         }
         case 'REPEAT':
