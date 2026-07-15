@@ -1,4 +1,4 @@
- import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { 
   Play, Square, RotateCcw, Image as ImageIcon, 
   Settings2, Plus, Flag, Trash2, Rocket, Brush, X, Grid, Pencil, Monitor, Save, FolderOpen
@@ -108,11 +108,12 @@ export default function App() {
     textSize?: FontSize; 
     textPosition?: { x: number, y: number } 
   }[]>) => {
-    setScenes(prev => {
-      const next = typeof updater === 'function' ? (updater as any)(prev) : updater;
-      scenesRef.current = next;
-      return next;
-    });
+    // Update ref immediately so async code (like runBlocks) sees the change
+    const next = typeof updater === 'function' ? (updater as any)(scenesRef.current) : updater;
+    scenesRef.current = next;
+    
+    // Then trigger React state update
+    setScenes(next);
   };
 
   const resetStage = () => {
