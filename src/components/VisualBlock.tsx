@@ -40,6 +40,12 @@ export function VisualBlock({ type, isActive, onClick, className, times, text, i
     const color = text || 'orange';
     const cap = color.charAt(0).toUpperCase() + color.slice(1);
     iconSrc = getAssetUrl(`/icons/LetterSend_${cap}.svg`);
+  } else if (type === 'SET_SPEED') {
+    // Mapping: 1 (Slow) -> speed0, 2 (Medium) -> speed1, 3 (Fast) -> speed2
+    // Force numeric value to be safe
+    const speedLevel = typeof times === 'number' ? times : (typeof times === 'string' ? parseInt(times) : 2);
+    const speedIconIndex = Math.max(0, Math.min(2, speedLevel - 1));
+    iconSrc = getAssetUrl(`/icons/speed${speedIconIndex}.svg`);
   }
 
   // Compute a beautiful single path for the puzzle piece background at exactly 90x64 dimensions
