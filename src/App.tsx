@@ -990,7 +990,7 @@ export default function App() {
           <div className="w-10 h-10 bg-orange-400 rounded-xl flex items-center justify-center shadow-sm">
              <Rocket className="w-6 h-6 text-white" />
           </div>
-          <h1 className="text-xl font-black text-gray-800 tracking-tight">CodeKids</h1>
+          <h1 className="text-xl font-black text-gray-800 tracking-tight">CODEJR</h1>
         </div>
         
         <div className="flex items-center justify-center gap-4 absolute left-1/2 -translate-x-1/2">
@@ -1062,14 +1062,14 @@ export default function App() {
             className="w-[72px] h-[72px] flex items-center justify-center hover:scale-110 transition-transform"
             title="Save Project"
           >
-            <Save className="w-[60px] h-[60px] text-orange-400 stroke-[1.5]" />
+            <Save className="w-12 h-12 text-orange-400 stroke-[2]" />
           </button>
           
           <label 
             className="w-[72px] h-[72px] flex items-center justify-center hover:scale-110 transition-transform cursor-pointer"
             title="Load Project"
           >
-            <FolderOpen className="w-[60px] h-[60px] text-green-500 stroke-[1.5]" />
+            <FolderOpen className="w-12 h-12 text-green-500 stroke-[2]" />
             <input 
               type="file" 
               accept=".sjr" 
