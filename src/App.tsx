@@ -31,7 +31,7 @@ const INITIAL_SPRITE_STATE = {
   sayText: ''
 };
 
-const DELAY_MS = 300; // Time between blocks
+const DELAY_MS = 100; // Time between blocks (Medium)
 
 export default function App() {
   const [scenes, setScenes] = useState<{ 
@@ -772,11 +772,11 @@ export default function App() {
         case 'SET_SPEED': {
           const speed = block.times !== undefined ? block.times : 2;
           if (speed === 1) {
-            delayMsRef.current = 600; // Very Slow
+            delayMsRef.current = 300; // Slow
           } else if (speed === 3) {
-            delayMsRef.current = 100; // Fast
+            delayMsRef.current = 50; // Fast
           } else {
-            delayMsRef.current = 300; // Medium (default)
+            delayMsRef.current = 100; // Medium (default, previously Fast)
           }
           break;
         }
@@ -1275,17 +1275,34 @@ export default function App() {
               </button>
             </div>
             
-            <Workspace 
-              workspaceRef={workspaceRef}
-              stacks={stacks} 
-              activeBlockId={activeBlockId}
-              onTimesChange={handleTimesChange}
-              onTextChange={handleTextChange}
-              onOpenKeypad={handleOpenKeypad}
-              onDelete={handleDeleteBlock}
-              onDragStart={handleWorkspaceDragStart}
-              characters={characters}
-            />
+            <div className="flex-1 relative min-h-0">
+              {/* Active Character Watermark/Preview */}
+              {(() => {
+                const activeChar = characters.find(c => c.id === activeCharacterId);
+                if (!activeChar) return null;
+                return (
+                  <div className="absolute top-4 left-4 w-28 h-28 pointer-events-none z-10 opacity-30">
+                    <img 
+                      src={activeChar.spriteUrl} 
+                      alt="" 
+                      className="w-full h-full object-contain"
+                    />
+                  </div>
+                );
+              })()}
+
+              <Workspace 
+                workspaceRef={workspaceRef}
+                stacks={stacks} 
+                activeBlockId={activeBlockId}
+                onTimesChange={handleTimesChange}
+                onTextChange={handleTextChange}
+                onOpenKeypad={handleOpenKeypad}
+                onDelete={handleDeleteBlock}
+                onDragStart={handleWorkspaceDragStart}
+                characters={characters}
+              />
+            </div>
           </div>
         </div>
       </main>
