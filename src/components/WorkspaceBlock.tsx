@@ -1,4 +1,4 @@
- import React from 'react';
+import React from 'react';
 import { BlockInstance, BlockType, BLOCK_DEFS } from '../blocks';
 import { VisualBlock } from './VisualBlock';
 import { cn } from '../lib/utils';
@@ -177,8 +177,15 @@ export const WorkspaceBlock: React.FC<WorkspaceBlockProps> = ({
         ></div>
       )}
       
-      <div className={cn("relative transition-all duration-150", isActive ? "drop-shadow-[0_0_12px_rgba(253,224,71,1)] scale-105 z-40" : "")}>
-        <VisualBlock type={block.type} times={block.times} text={block.text} isWorkspace className="drop-shadow-md cursor-grab active:cursor-grabbing animate-none" />
+        <div className={cn("relative transition-all duration-150", isActive ? "drop-shadow-[0_0_12px_rgba(253,224,71,1)] scale-105 z-40" : "")}>
+          <VisualBlock 
+            key={`${block.type}-${block.times || ''}-${block.text || ''}`}
+            type={block.type} 
+            times={block.times} 
+            text={block.text} 
+            isWorkspace 
+            className="drop-shadow-md cursor-grab active:cursor-grabbing animate-none" 
+          />
         
         {/* Parameter Bubble at the Bottom Center of the block */}
         {(hasNumericParam || hasTextParam || hasSpeedParam || hasCharacterParam || hasMessageParam) && (
