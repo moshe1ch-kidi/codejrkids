@@ -17,6 +17,7 @@ interface SpriteState {
   scale: number;
   visible: boolean;
   sayText: string;
+  speedDelay?: number;
 }
 
 interface StageProps {
@@ -44,18 +45,20 @@ interface StageCharacterProps {
   isActive: boolean;
   isDragging: boolean;
   disableDragging?: boolean;
+  animationDuration?: number;
   onDragStart: () => void;
   onDragMove: (x: number, y: number) => void;
   onDragEnd: (x: number, y: number) => void;
   onClick?: () => void;
 }
 
-function StageCharacter({ 
+const StageCharacter = React.memo(function StageCharacter({ 
   char, 
   state, 
   isActive, 
   isDragging, 
   disableDragging = false,
+  animationDuration = 0.1,
   onDragStart, 
   onDragMove, 
   onDragEnd,
@@ -67,8 +70,8 @@ function StageCharacter({
   const dx = Math.abs(state.x - prevPosRef.current.x);
   const dy = Math.abs(state.y - prevPosRef.current.y);
   
-  // If the character wraps around (change is larger than 5 grid steps), increment the key counter to force instant remount
-  if (dx > 5 || dy > 5) {
+  // If the character wraps around (change is larger than 18 grid steps), increment the key counter to force instant remount
+  if (dx > 18 || dy > 18) {
     wrapCounterRef.current += 1;
   }
   
@@ -168,8 +171,8 @@ function StageCharacter({
       }}
       transition={isDragging ? { duration: 0 } : {
         type: "tween",
-        ease: "easeOut",
-        duration: 0.18
+        ease: "linear",
+        duration: animationDuration
       }}
       onPointerDown={handlePointerDown}
       className={cn(
@@ -198,9 +201,9 @@ function StageCharacter({
       )}
     </motion.div>
   );
-}
+});
 
-export function Stage({ 
+export const Stage = React.memo(function Stage({ 
   characters, 
   activeCharacterId, 
   spriteStates, 
@@ -223,7 +226,8 @@ export function Stage({
     rotation: 0,
     scale: 1,
     visible: true,
-    sayText: ''
+    sayText: '',
+    speedDelay: 100
   };
 
   const [draggingCharId, setDraggingCharId] = React.useState<string | null>(null);
@@ -569,6 +573,7 @@ export function Stage({
                 isActive={isActive}
                 isDragging={isDragging}
                 disableDragging={disableDragging}
+                animationDuration={(state as any).lastAnimationDuration !== undefined ? (state as any).lastAnimationDuration : (state.speedDelay || 100) / 1000}
                 onDragStart={() => {
                   setDraggingCharId(char.id);
                   onSelectCharacter?.(char.id);
@@ -593,4 +598,4 @@ export function Stage({
   </div>
 </div>
 );
-}
+});
