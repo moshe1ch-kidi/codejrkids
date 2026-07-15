@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Search, Brush } from 'lucide-react';
+import { X, Search, Brush, Upload } from 'lucide-react';
 import { getAssetUrl } from '../utils/assets';
 
 interface SpriteGalleryProps {
@@ -80,7 +80,7 @@ export function SpriteGallery({ isOpen, onClose, onSelect, onPaintNew }: SpriteG
           <div className="p-6 bg-gradient-to-r from-orange-50 to-amber-50 border-b border-slate-100 flex justify-between items-center">
             <div>
               <h2 className="text-2xl font-extrabold text-slate-800">Choose a new character</h2>
-              <p className="text-slate-500 text-sm mt-1">Choose a character from the gallery to start programming it!</p>
+              <p className="text-slate-500 text-sm mt-1">Choose a character from the gallery, upload your own, or paint one!</p>
             </div>
             <button
               onClick={onClose}
@@ -107,6 +107,41 @@ export function SpriteGallery({ isOpen, onClose, onSelect, onPaintNew }: SpriteG
           {/* Sprites Grid */}
           <div className="flex-1 overflow-y-auto p-6 bg-slate-50/30">
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
+              {/* Upload character card */}
+              <label className="cursor-pointer">
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      const reader = new FileReader();
+                      reader.onload = (event) => {
+                        const url = event.target?.result as string;
+                        onSelect({ name: file.name.split('.')[0], url });
+                        onClose();
+                      };
+                      reader.readAsDataURL(file);
+                    }
+                  }}
+                />
+                <motion.div
+                  whileHover={{ scale: 1.05, y: -4 }}
+                  whileTap={{ scale: 0.98 }}
+                  className="bg-gradient-to-br from-indigo-50 to-blue-50 border-2 border-dashed border-indigo-300 hover:border-indigo-400 rounded-3xl p-4 flex flex-col items-center justify-center gap-3 shadow-sm hover:shadow-md transition-all h-36 relative group"
+                >
+                  <div className="w-20 h-20 flex items-center justify-center bg-white rounded-2xl group-hover:bg-indigo-100/40 transition-colors shadow-inner">
+                    <div className="w-12 h-12 bg-indigo-400 rounded-full flex items-center justify-center shadow-md">
+                      <Upload className="w-6 h-6 text-white stroke-[2.5]" />
+                    </div>
+                  </div>
+                  <span className="text-indigo-700 font-extrabold text-sm tracking-tight truncate max-w-full">
+                    Upload Character
+                  </span>
+                </motion.div>
+              </label>
+
               {/* Create new character card */}
               <motion.div
                 whileHover={{ scale: 1.05, y: -4 }}
