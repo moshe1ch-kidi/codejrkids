@@ -1,4 +1,4 @@
-import React from 'react';
+ import React from 'react';
 import { motion } from 'motion/react';
 import { Rocket } from 'lucide-react';
 import { cn } from '../lib/utils';
@@ -23,6 +23,7 @@ interface SpriteState {
 interface StageProps {
   characters: Character[];
   activeCharacterId: string;
+  activeSceneId?: string;
   spriteStates: Record<string, SpriteState>;
   showGrid?: boolean;
   background?: string;
@@ -44,6 +45,7 @@ interface StageCharacterProps {
   state: SpriteState;
   isActive: boolean;
   isDragging: boolean;
+  activeSceneId?: string;
   disableDragging?: boolean;
   animationDuration?: number;
   onDragStart: () => void;
@@ -57,6 +59,7 @@ const StageCharacter = React.memo(function StageCharacter({
   state, 
   isActive, 
   isDragging, 
+  activeSceneId,
   disableDragging = false,
   animationDuration = 0.1,
   onDragStart, 
@@ -77,7 +80,7 @@ const StageCharacter = React.memo(function StageCharacter({
   
   prevPosRef.current = { x: state.x, y: state.y };
   
-  const motionKey = `${char.id}-${wrapCounterRef.current}`;
+  const motionKey = `${char.id}-${activeSceneId || 'default'}-${wrapCounterRef.current}`;
 
   // Percentage positioning on the responsive 20x15 grid:
   // X is 1 to 20 columns. Center of column X is (X - 0.5) * (100% / 20) = (X - 0.5) * 5%
@@ -158,17 +161,19 @@ const StageCharacter = React.memo(function StageCharacter({
     window.addEventListener('pointerup', handlePointerUp);
   };
 
+  const currentStyles = {
+    left: `${leftPercent}%`,
+    top: `${topPercent}%`,
+    rotate: state.rotation,
+    scale: state.scale,
+    opacity: state.visible ? 1 : 0
+  };
+
   return (
     <motion.div
       key={motionKey}
       initial={false}
-      animate={{
-        left: `${leftPercent}%`,
-        top: `${topPercent}%`,
-        rotate: state.rotation,
-        scale: state.scale,
-        opacity: state.visible ? 1 : 0
-      }}
+      animate={currentStyles}
       transition={isDragging ? { duration: 0 } : {
         type: "tween",
         ease: "linear",
@@ -206,6 +211,7 @@ const StageCharacter = React.memo(function StageCharacter({
 export const Stage = React.memo(function Stage({ 
   characters, 
   activeCharacterId, 
+  activeSceneId,
   spriteStates, 
   showGrid = false,
   background,
@@ -367,6 +373,7 @@ export const Stage = React.memo(function Stage({
         {/* Scene Title */}
         {sceneTitle && (
           <motion.div 
+            key={`scene-title-${activeSceneId || 'default'}`}
             className={cn(
               "absolute z-40 text-center pointer-events-auto -translate-x-1/2 -translate-y-1/2 touch-none",
               disableDragging ? "cursor-pointer" : "cursor-grab active:cursor-grabbing"
@@ -567,11 +574,12 @@ export const Stage = React.memo(function Stage({
 
             return (
               <StageCharacter
-                key={char.id}
+                key={`${char.id}-${activeSceneId || 'default'}`}
                 char={char}
                 state={state}
                 isActive={isActive}
                 isDragging={isDragging}
+                activeSceneId={activeSceneId}
                 disableDragging={disableDragging}
                 animationDuration={(state as any).lastAnimationDuration !== undefined ? (state as any).lastAnimationDuration : (state.speedDelay || 100) / 1000}
                 onDragStart={() => {
