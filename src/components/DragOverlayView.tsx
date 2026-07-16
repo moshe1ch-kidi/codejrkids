@@ -1,4 +1,4 @@
-import React from 'react';
+ import React from 'react';
 import { DragState } from '../dragState';
 import { VisualBlock } from './VisualBlock';
 import { WorkspaceBlock } from './WorkspaceBlock';
@@ -6,9 +6,10 @@ import { WorkspaceBlock } from './WorkspaceBlock';
 interface DragOverlayViewProps {
   dragState: DragState | null;
   scenes?: any[];
+  characters?: any[];
 }
 
-export function DragOverlayView({ dragState, scenes = [] }: DragOverlayViewProps) {
+export function DragOverlayView({ dragState, scenes = [], characters = [] }: DragOverlayViewProps) {
   if (!dragState || !dragState.isDragging) return null;
 
   return (
@@ -18,6 +19,18 @@ export function DragOverlayView({ dragState, scenes = [] }: DragOverlayViewProps
     >
       {dragState.source === 'PALETTE' && dragState.blockType && (
         <VisualBlock type={dragState.blockType} />
+      )}
+      
+      {dragState.source === 'CHARACTER' && (
+        <div className="w-24 h-24 bg-white/80 rounded-3xl border-4 border-[#D81B60] flex items-center justify-center shadow-2xl p-2">
+          {characters.find(c => c.id === dragState.characterId) && (
+            <img 
+              src={characters.find(c => c.id === dragState.characterId).spriteUrl} 
+              alt="" 
+              className="w-16 h-16 object-contain" 
+            />
+          )}
+        </div>
       )}
       
       {dragState.source === 'WORKSPACE' && dragState.blocks && dragState.blocks.map((block, index) => (
