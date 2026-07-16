@@ -81,3 +81,11 @@ export function attachBlock(stacks: Stack[], targetContainerId: string, insertAf
     return stack;
   });
 }
+
+export function cloneBlocks(blocks: BlockInstance[]): BlockInstance[] {
+  return blocks.map(b => ({
+    ...b,
+    id: `block-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+    children: b.children ? cloneBlocks(b.children) : undefined
+  }));
+}
