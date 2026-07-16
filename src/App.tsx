@@ -313,12 +313,18 @@ export default function App() {
       // Find snap target
       document.querySelectorAll('.block-socket').forEach(el => el.classList.remove('bg-yellow-400', 'opacity-50'));
       document.querySelectorAll('.character-drop-target').forEach(el => el.classList.remove('ring-4', 'ring-[#AD1457]', 'scale-105'));
+      document.querySelectorAll('.scene-drop-target').forEach(el => el.classList.remove('ring-4', 'ring-[#AD1457]', 'scale-105'));
       snapTargetRef.current = null;
 
       const elementAtPoint = document.elementFromPoint(e.clientX, e.clientY);
       const characterElement = elementAtPoint?.closest('.character-drop-target');
-      if (characterElement && characterElement.getAttribute('data-character-id') !== activeCharacterId) {
+      if (characterElement && characterElement.getAttribute('data-character-id') !== activeCharacterId && dragState.source !== 'CHARACTER') {
         characterElement.classList.add('ring-4', 'ring-[#AD1457]', 'scale-105');
+      }
+
+      const sceneElement = elementAtPoint?.closest('.scene-drop-target');
+      if (sceneElement && sceneElement.getAttribute('data-scene-id') !== activeSceneId && dragState.source === 'CHARACTER') {
+        sceneElement.classList.add('ring-4', 'ring-[#AD1457]', 'scale-105');
       }
 
       const sockets = document.querySelectorAll('.block-socket');
@@ -367,6 +373,7 @@ export default function App() {
 
       document.querySelectorAll('.block-socket').forEach(el => el.classList.remove('bg-yellow-400', 'opacity-50'));
       document.querySelectorAll('.character-drop-target').forEach(el => el.classList.remove('ring-4', 'ring-[#AD1457]', 'scale-105'));
+      document.querySelectorAll('.scene-drop-target').forEach(el => el.classList.remove('ring-4', 'ring-[#AD1457]', 'scale-105'));
       
       const target = snapTargetRef.current;
       const workspaceRect = workspaceRef.current?.getBoundingClientRect();
@@ -375,6 +382,58 @@ export default function App() {
       const elementAtPoint = document.elementFromPoint(e.clientX, e.clientY);
       const characterElement = elementAtPoint?.closest('.character-drop-target');
       const targetCharId = characterElement?.getAttribute('data-character-id');
+
+      // Check if dropping over a scene in the right sidebar
+      const sceneElement = elementAtPoint?.closest('.scene-drop-target');
+      const targetSceneId = sceneElement?.getAttribute('data-scene-id');
+
+      if (dragState.source === 'CHARACTER') {
+        const wasCharClick = Math.abs(e.clientX - dragState.startX) < 5 && 
+                             Math.abs(e.clientY - dragState.startY) < 5;
+        
+        if (wasCharClick) {
+          setDragState(null);
+          return;
+        }
+
+        if (targetSceneId && targetSceneId !== activeSceneId) {
+          // SCRATCH JR STYLE COPY: Character with its code to another scene
+          const charToCopy = characters.find(c => c.id === dragState.characterId);
+          if (charToCopy) {
+            const newCharId = `char-${Date.now()}`;
+            const newChar = { ...charToCopy, id: newCharId };
+            
+            // Clone all stacks for this character from current scene
+            const characterStacks = activeScene?.characterStacks || {};
+            const charStacksToCopy = characterStacks[dragState.characterId!] || [];
+            
+            const clonedStacks = charStacksToCopy.map(s => ({
+              ...s,
+              id: `stack-${Date.now()}-${Math.random()}`,
+              blocks: cloneBlocks(s.blocks)
+            }));
+
+            updateScenes(prev => prev.map(s => {
+              if (s.id === targetSceneId) {
+                const updatedCharacters = [...(s.characters || []), newChar];
+                const updatedStacks = { 
+                  ...(s.characterStacks || {}),
+                  [newCharId]: clonedStacks
+                };
+                return {
+                  ...s,
+                  characters: updatedCharacters,
+                  characterStacks: updatedStacks
+                };
+              }
+              return s;
+            }));
+          }
+        }
+        
+        setDragState(null);
+        return;
+      }
 
       let finalBlocks: BlockInstance[] = [];
       const wasClick = dragState.source === 'WORKSPACE' && 
@@ -523,6 +582,21 @@ export default function App() {
       currentY: e.clientY,
       offsetX: 20, // rough offset
       offsetY: 20
+    });
+  };
+
+  const handleCharacterDragStart = (e: React.PointerEvent, characterId: string) => {
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    setDragState({
+      isDragging: true,
+      source: 'CHARACTER',
+      characterId,
+      startX: e.clientX,
+      startY: e.clientY,
+      currentX: e.clientX,
+      currentY: e.clientY,
+      offsetX: e.clientX - rect.left,
+      offsetY: e.clientY - rect.top
     });
   };
 
@@ -1267,6 +1341,7 @@ export default function App() {
                     <motion.div
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
+                      onPointerDown={(e) => handleCharacterDragStart(e, char.id)}
                       onClick={() => setActiveCharacterId(char.id)}
                       data-character-id={char.id}
                       className={cn(
@@ -1376,8 +1451,9 @@ export default function App() {
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
                       onClick={() => setActiveSceneId(scene.id)}
+                      data-scene-id={scene.id}
                       className={cn(
-                        "w-full h-24 rounded-3xl flex flex-col items-center justify-center relative transition-all duration-200 border-4 overflow-hidden cursor-pointer",
+                        "w-full h-24 rounded-3xl flex flex-col items-center justify-center relative transition-all duration-200 border-4 overflow-hidden cursor-pointer scene-drop-target",
                         isActive 
                           ? "bg-[#D81B60] border-[#AD1457] shadow-lg scale-105 z-10" 
                           : "bg-white/40 border-transparent hover:bg-white/60"
@@ -1467,7 +1543,7 @@ export default function App() {
         </div>
       </main>
 
-      <DragOverlayView dragState={dragState} scenes={scenes} />
+      <DragOverlayView dragState={dragState} scenes={scenes} characters={characters} />
       
       <SpriteGallery 
         isOpen={isGalleryOpen} 
