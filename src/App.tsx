@@ -14,6 +14,7 @@ import { PaintEditor, Shape } from './components/PaintEditor';
 import { KidKeypad, KeypadMode } from './components/KidKeypad';
 import { TextEditorModal, FontSize } from './components/TextEditorModal';
 import { RecordModal } from './components/RecordModal';
+import { SceneThumbnail } from './components/SceneThumbnail';
 import { cn } from './lib/utils';
 import { BlockType, BlockInstance, Stack } from './blocks';
 import { DragState } from './dragState';
@@ -1461,13 +1462,12 @@ export default function App() {
                     >
                       <div className="w-full h-full bg-white flex items-center justify-center p-1">
                         <div className="w-full h-full rounded-xl bg-sky-100 flex items-center justify-center relative overflow-hidden">
-                          {scene.background && <img src={scene.background} className="absolute inset-0 w-full h-full object-cover" />}
-                          <span className={cn(
-                            "absolute top-1 right-1 w-6 h-6 rounded-full flex items-center justify-center text-white text-[10px] font-bold z-10 border-2 border-white shadow-sm",
-                            isActive ? "bg-[#D81B60]" : "bg-gray-400"
-                          )}>
-                            {index + 1}
-                          </span>
+                          <SceneThumbnail 
+                            scene={scene} 
+                            sceneNumber={index + 1} 
+                            className="w-full h-full border-none shadow-none rounded-xl"
+                            size="large"
+                          />
                           {isActive && scenes.length > 1 && (
                             <button
                               onClick={(e) => {
