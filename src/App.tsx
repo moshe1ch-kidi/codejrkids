@@ -1,4 +1,4 @@
- import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { 
   Play, Square, RotateCcw, Image as ImageIcon, 
   Settings2, Plus, Flag, Trash2, Rocket, Brush, X, Grid, Pencil, Monitor, Save, FolderOpen
@@ -121,6 +121,8 @@ export default function App() {
     shouldStopRef.current = true;
     setIsRunning(false);
     setActiveBlockId(null);
+    activeRunsCountRef.current = 0;
+    runningStacksRef.current.clear();
     setSpriteStates(prev => {
       const next = { ...prev };
       Object.keys(next).forEach(key => {
@@ -272,7 +274,7 @@ export default function App() {
   const stacks = activeScene?.characterStacks?.[activeCharacterId] || activeScene?.stacks || [];
 
   const setStacks = (action: React.SetStateAction<Stack[]>) => {
-    setScenes(prev => prev.map(s => {
+    updateScenes(prev => prev.map(s => {
       if (s.id === activeSceneId) {
         const currentStacks = s.characterStacks?.[activeCharacterId] || s.stacks || [];
         const nextStacks = typeof action === 'function' ? (action as any)(currentStacks) : action;
@@ -295,6 +297,7 @@ export default function App() {
   const autoPlayNextSceneRef = useRef<string | null>(null);
   const workspaceRef = useRef<HTMLDivElement>(null);
   const activeRunsCountRef = useRef(0);
+  const runningStacksRef = useRef<Set<string>>(new Set());
 
   // --- Drag and Drop State ---
   const [dragState, setDragState] = useState<DragState | null>(null);
@@ -542,7 +545,7 @@ export default function App() {
     const defaultCharId = `char-${Date.now()}`;
     const defaultChar = { id: defaultCharId, name: 'Tick', spriteUrl: getAssetUrl('/sprites/cat1.svg') };
     
-    setScenes([...scenes, { 
+    updateScenes([...scenes, { 
       id: newSceneId, 
       characters: [defaultChar],
       spriteStates: {
@@ -560,7 +563,7 @@ export default function App() {
 
   const handleDeleteScene = (id: string) => {
     if (scenes.length <= 1) return;
-    setScenes(prev => prev.filter(s => s.id !== id));
+    updateScenes(prev => prev.filter(s => s.id !== id));
     if (activeSceneId === id) {
       const remaining = scenes.filter(s => s.id !== id);
       setActiveSceneId(remaining[0].id);
@@ -568,7 +571,7 @@ export default function App() {
   };
 
   const handleSelectBackground = (bg: { name: string; url: string }) => {
-    setScenes(prev => prev.map(s => {
+    updateScenes(prev => prev.map(s => {
       if (s.id === activeSceneId) {
         return { ...s, background: bg.url };
       }
@@ -584,7 +587,7 @@ export default function App() {
       ...prev,
       [newCharId]: INITIAL_SPRITE_STATE
     }));
-    setScenes(prev => prev.map(s => {
+    updateScenes(prev => prev.map(s => {
       if (s.id === activeSceneId) {
         return {
           ...s,
@@ -609,7 +612,7 @@ export default function App() {
       delete next[id];
       return next;
     });
-    setScenes(prev => prev.map(s => {
+    updateScenes(prev => prev.map(s => {
       if (s.id === activeSceneId && s.characterStacks) {
         const nextStacks = { ...s.characterStacks };
         delete nextStacks[id];
@@ -626,6 +629,49 @@ export default function App() {
   const handleUpdateCharacterName = (id: string, newName: string) => {
     setCharacters(prev => prev.map(c => c.id === id ? { ...c, name: newName } : c));
     setKeypadConfig(prev => ({ ...prev, isOpen: false }));
+  };
+
+  const triggerBumpEvents = (sourceId: string, targetId: string) => {
+    const activeScene = scenesRef.current.find(s => s.id === activeSceneId);
+    if (!activeScene) return;
+    
+    const characterStacks = activeScene.characterStacks || {};
+    const targetStacks = characterStacks[targetId] || [];
+    
+    targetStacks.forEach(s => {
+      const firstBlock = s.blocks[0];
+      if (firstBlock && firstBlock.type === 'START_BUMP') {
+        const triggerCharId = firstBlock.text || 'any';
+        if (triggerCharId === 'any' || triggerCharId === sourceId) {
+          runTracked(s.blocks, targetId);
+        }
+      }
+    });
+  };
+
+  const checkForCollisions = (movingCharId: string) => {
+    const activeScene = scenesRef.current.find(s => s.id === activeSceneId);
+    if (!activeScene || !activeScene.spriteStates) return;
+
+    const movingCharState = activeScene.spriteStates[movingCharId];
+    if (!movingCharState) return;
+
+    Object.entries(activeScene.spriteStates).forEach(([otherCharId, otherState]) => {
+      if (movingCharId === otherCharId) return;
+      
+      const other = otherState as typeof INITIAL_SPRITE_STATE;
+      
+      // Simple distance check in grid units
+      const dx = movingCharState.x - other.x;
+      const dy = movingCharState.y - other.y;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+      
+      // If distance is less than 1.2 grid units (considering character size)
+      if (distance < 1.2) {
+        triggerBumpEvents(movingCharId, otherCharId);
+        triggerBumpEvents(otherCharId, movingCharId);
+      }
+    });
   };
 
   const runBlocks = async (blockList: BlockInstance[], charId: string = activeCharacterId, isForever: boolean = false) => {
@@ -669,6 +715,7 @@ export default function App() {
             lastAnimationDuration: (totalDuration + GAP_COMPENSATION) / 1000 
           }));
           await new Promise(r => setTimeout(r, Math.max(0, totalDuration - GAP_COMPENSATION)));
+          checkForCollisions(charId);
           break;
         }
         case 'MOVE_LEFT': {
@@ -680,6 +727,7 @@ export default function App() {
             lastAnimationDuration: (totalDuration + GAP_COMPENSATION) / 1000 
           }));
           await new Promise(r => setTimeout(r, Math.max(0, totalDuration - GAP_COMPENSATION)));
+          checkForCollisions(charId);
           break;
         }
         case 'MOVE_UP': {
@@ -691,6 +739,7 @@ export default function App() {
             lastAnimationDuration: (totalDuration + GAP_COMPENSATION) / 1000 
           }));
           await new Promise(r => setTimeout(r, Math.max(0, totalDuration - GAP_COMPENSATION)));
+          checkForCollisions(charId);
           break;
         }
         case 'MOVE_DOWN': {
@@ -702,6 +751,7 @@ export default function App() {
             lastAnimationDuration: (totalDuration + GAP_COMPENSATION) / 1000 
           }));
           await new Promise(r => setTimeout(r, Math.max(0, totalDuration - GAP_COMPENSATION)));
+          checkForCollisions(charId);
           break;
         }
         case 'TURN_RIGHT': {
@@ -733,18 +783,24 @@ export default function App() {
           // Hop is two stages: Up then Down. 
           // For HOP, we use a smaller compensation to avoid cutting off the peak too much.
           const HOP_COMP = Math.min(10, GAP_COMPENSATION);
+          // Increase base delay for hop to make it more visible
+          const hopDuration = charDelay + 150; 
+          
           setSpriteStateForChar(charId, prev => ({ 
             ...prev, 
             y: prev.y + height, 
-            lastAnimationDuration: (charDelay + HOP_COMP) / 1000 
+            lastAnimationDuration: (hopDuration + HOP_COMP) / 1000 
           }));
-          await new Promise(r => setTimeout(r, Math.max(0, charDelay - HOP_COMP)));
+          await new Promise(r => setTimeout(r, Math.max(0, hopDuration - HOP_COMP)));
+          checkForCollisions(charId);
+          
           setSpriteStateForChar(charId, prev => ({ 
             ...prev, 
             y: prev.y - height, 
-            lastAnimationDuration: (charDelay + HOP_COMP) / 1000 
+            lastAnimationDuration: (hopDuration + HOP_COMP) / 1000 
           }));
-          await new Promise(r => setTimeout(r, Math.max(0, charDelay - HOP_COMP)));
+          await new Promise(r => setTimeout(r, Math.max(0, hopDuration - HOP_COMP)));
+          checkForCollisions(charId);
           break;
         }
         case 'GO_HOME':
@@ -890,15 +946,27 @@ export default function App() {
   };
 
   const runTracked = async (blocks: BlockInstance[], charId: string) => {
+    if (blocks.length === 0) return;
+    
+    // Create a unique key for this stack for this character
+    const stackId = `${charId}-${blocks[0].id}`;
+    
+    // If this specific stack is already running for this character, don't start it again
+    if (runningStacksRef.current.has(stackId)) {
+      return;
+    }
+
     if (activeRunsCountRef.current === 0) {
       shouldStopRef.current = false;
     }
     activeRunsCountRef.current++;
+    runningStacksRef.current.add(stackId);
     setIsRunning(true);
     try {
       await runBlocks(blocks, charId);
     } finally {
       activeRunsCountRef.current--;
+      runningStacksRef.current.delete(stackId);
       if (activeRunsCountRef.current <= 0) {
         activeRunsCountRef.current = 0;
         setIsRunning(false);
@@ -956,7 +1024,7 @@ export default function App() {
         const projectData = JSON.parse(text);
         
         if (projectData.format === "scratchjr-web") {
-          setScenes(projectData.scenes || []);
+          updateScenes(projectData.scenes || []);
           setActiveSceneId(projectData.activeSceneId || 'scene-1');
           setActiveCharacterId(projectData.activeCharacterId || 'char-1');
         } else {
@@ -1011,29 +1079,13 @@ export default function App() {
     const touchStacks = clickedCharStacks.filter(s => s.blocks[0]?.type === 'START_TOUCH');
     
     // 2. Also handle START_BUMP:
-    const bumpStacksToRun: { charId: string; blocks: BlockInstance[] }[] = [];
-    
-    // For every character, check if they have a START_BUMP block that triggers on `charId` (the one clicked)
     characters.forEach(c => {
-      if (c.id === charId) return; // Can't bump itself
-      const otherCharStacks = characterStacks[c.id] || [];
-      otherCharStacks.forEach(s => {
-        const firstBlock = s.blocks[0];
-        if (firstBlock && firstBlock.type === 'START_BUMP') {
-          const targetCharId = firstBlock.text || 'any';
-          if (targetCharId === 'any' || targetCharId === charId) {
-            bumpStacksToRun.push({ charId: c.id, blocks: s.blocks });
-          }
-        }
-      });
+      if (c.id === charId) return;
+      triggerBumpEvents(charId, c.id);
     });
 
     touchStacks.forEach(s => {
       runTracked(s.blocks, charId);
-    });
-    
-    bumpStacksToRun.forEach(item => {
-      runTracked(item.blocks, item.charId);
     });
   };
 
@@ -1227,7 +1279,7 @@ export default function App() {
             sceneTitlePosition={activeScene?.textPosition}
             onTextClick={() => setIsTextModalOpen(true)}
             onUpdateTextPosition={(x, y) => {
-              setScenes(prev => prev.map(s => s.id === activeSceneId ? { ...s, textPosition: { x, y } } : s));
+              updateScenes(prev => prev.map(s => s.id === activeSceneId ? { ...s, textPosition: { x, y } } : s));
             }}
             onSelectCharacter={(charId) => setActiveCharacterId(charId)}
             onCharacterClick={(charId) => handleCharacterClick(charId)}
@@ -1394,7 +1446,7 @@ export default function App() {
               ...prev,
               [newCharId]: INITIAL_SPRITE_STATE
             }));
-            setScenes(prev => prev.map(s => {
+            updateScenes(prev => prev.map(s => {
               if (s.id === activeSceneId) {
                 return {
                   ...s,
@@ -1437,7 +1489,7 @@ export default function App() {
         initialSize={activeScene?.textSize || 'medium'}
         onClose={() => setIsTextModalOpen(false)}
         onSave={(newText, newColor, newSize) => {
-          setScenes(prev => prev.map(s => s.id === activeSceneId ? { ...s, text: newText, textColor: newColor, textSize: newSize } : s));
+          updateScenes(prev => prev.map(s => s.id === activeSceneId ? { ...s, text: newText, textColor: newColor, textSize: newSize } : s));
           setIsTextModalOpen(false);
         }}
       />
