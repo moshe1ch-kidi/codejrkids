@@ -1,10 +1,11 @@
-import React from 'react';
+ import React from 'react';
 import { getAssetUrl } from '../utils/assets';
 
 interface Scene {
   id: string;
   background?: string;
   characters?: { id: string; name: string; spriteUrl: string; }[];
+  spriteStates?: Record<string, { x: number; y: number; scale: number; visible: boolean; }>;
 }
 
 interface SceneThumbnailProps {
@@ -18,7 +19,7 @@ export function SceneThumbnail({ scene, sceneNumber, className, size = 'small' }
   const isSmall = size === 'small';
   
   return (
-    <div className={`relative bg-white border border-slate-300 rounded shadow-sm overflow-hidden flex items-center justify-center ${isSmall ? 'w-12 h-9' : 'w-24 h-18'} ${className}`}>
+    <div className={`relative bg-white border border-slate-300 rounded shadow-sm overflow-hidden ${isSmall ? 'w-12 h-9' : 'w-24 h-18'} ${className}`}>
       {/* Background */}
       {scene?.background ? (
         <img 
@@ -30,16 +31,45 @@ export function SceneThumbnail({ scene, sceneNumber, className, size = 'small' }
         <div className="absolute inset-0 bg-sky-50" />
       )}
 
-      {/* Primary Character Preview */}
-      {scene?.characters && scene.characters.length > 0 && (
-        <div className="relative z-10 flex items-center justify-center">
-          <img 
-            src={scene.characters[0].spriteUrl} 
-            className={`${isSmall ? 'w-5 h-5' : 'w-10 h-10'} object-contain`} 
-            alt="" 
-          />
-        </div>
-      )}
+      {/* Content Overlay (Characters) */}
+      <div className="absolute inset-0 z-10 pointer-events-none overflow-hidden">
+        {scene?.characters?.map((char) => {
+          const state = scene.spriteStates?.[char.id];
+          if (state && state.visible === false) return null;
+
+          const x = state?.x ?? 10.5;
+          const y = state?.y ?? 8;
+          const scale = state?.scale ?? 1;
+
+          // Match Stage.tsx calculations exactly
+          const leftPercent = (x - 0.5) * 5;
+          const topPercent = 100 - (y - 0.5) * (100 / 15);
+          
+          // Use a larger relative size for small thumbnails to ensure visibility
+          const characterSizePercent = (isSmall ? 40 : 25) * scale;
+
+          return (
+            <div 
+              key={char.id}
+              className="absolute flex items-center justify-center"
+              style={{
+                left: `${leftPercent}%`,
+                top: `${topPercent}%`,
+                width: `${characterSizePercent}%`,
+                height: `${characterSizePercent}%`,
+                transform: 'translate(-50%, -50%)',
+                opacity: state?.visible !== false ? 1 : 0
+              }}
+            >
+              <img 
+                src={char.spriteUrl} 
+                className="w-full h-full object-contain drop-shadow-md block"
+                alt="" 
+              />
+            </div>
+          );
+        })}
+      </div>
 
       {/* Scene Number Badge */}
       {sceneNumber !== undefined && (
