@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { 
   Play, Square, RotateCcw, Image as ImageIcon, 
   Settings2, Plus, Flag, Trash2, Rocket, Brush, X, Grid, Pencil, Monitor, Save, FolderOpen
@@ -1412,13 +1412,14 @@ export default function App() {
                 onDelete={handleDeleteBlock}
                 onDragStart={handleWorkspaceDragStart}
                 characters={characters}
+                scenes={scenes}
               />
             </div>
           </div>
         </div>
       </main>
 
-      <DragOverlayView dragState={dragState} />
+      <DragOverlayView dragState={dragState} scenes={scenes} />
       
       <SpriteGallery 
         isOpen={isGalleryOpen} 
@@ -1483,6 +1484,7 @@ export default function App() {
         onConfirm={keypadConfig.onConfirm}
         characters={characters}
         activeCharacterId={activeCharacterId}
+        scenes={scenes}
       />
 
       <TextEditorModal
