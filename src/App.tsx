@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { 
   Play, Square, RotateCcw, Image as ImageIcon, 
   Settings2, Plus, Flag, Trash2, Rocket, Brush, X, Grid, Pencil, Monitor, Save, FolderOpen
@@ -51,7 +51,7 @@ export default function App() {
     { 
       id: 'scene-1', 
       characters: [
-        { id: 'char-1', name: 'Tick', spriteUrl: getAssetUrl('/sprites/cat1.svg') }
+        { id: 'char-1', name: 'Panda', spriteUrl: getAssetUrl('/sprites/pandamain.svg') }
       ],
       spriteStates: {
         'char-1': INITIAL_SPRITE_STATE
