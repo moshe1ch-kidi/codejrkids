@@ -1,4 +1,4 @@
- import React from 'react';
+import React from 'react';
 import { motion } from 'motion/react';
 import { Rocket } from 'lucide-react';
 import { cn } from '../lib/utils';

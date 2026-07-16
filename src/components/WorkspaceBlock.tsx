@@ -30,6 +30,7 @@ interface WorkspaceBlockProps {
   isFirst?: boolean;
   characters?: Character[];
   activeCharacterId?: string;
+  scenes?: any[];
 }
 
 const getDefaultValue = (type: BlockType): number => {
@@ -53,7 +54,8 @@ export const WorkspaceBlock: React.FC<WorkspaceBlockProps> = ({
   isDragging,
   isFirst = false,
   characters,
-  activeCharacterId
+  activeCharacterId,
+  scenes = []
 }) => {
   if (block.type === 'REPEAT') {
     return (
@@ -149,13 +151,14 @@ export const WorkspaceBlock: React.FC<WorkspaceBlockProps> = ({
   const hasNumericParam = [
     'MOVE_RIGHT', 'MOVE_LEFT', 'MOVE_UP', 'MOVE_DOWN',
     'TURN_RIGHT', 'TURN_LEFT',
-    'HOP', 'GROW', 'SHRINK', 'WAIT', 'GOTO_PAGE'
+    'HOP', 'GROW', 'SHRINK', 'WAIT'
   ].includes(block.type);
 
   const hasTextParam = block.type === 'SAY';
   const hasSpeedParam = block.type === 'SET_SPEED';
   const hasCharacterParam = block.type === 'START_BUMP' && (characters?.length || 0) > 1;
   const hasMessageParam = ['START_GET_MESSAGE', 'SEND_MESSAGE'].includes(block.type);
+  const hasSceneParam = block.type === 'GOTO_PAGE';
 
   return (
     <div 
@@ -184,11 +187,12 @@ export const WorkspaceBlock: React.FC<WorkspaceBlockProps> = ({
             times={block.times} 
             text={block.text} 
             isWorkspace 
+            scene={block.type === 'GOTO_PAGE' ? scenes[(block.times || 2) - 1] : undefined}
             className="drop-shadow-md cursor-grab active:cursor-grabbing animate-none" 
           />
         
         {/* Parameter Bubble at the Bottom Center of the block */}
-        {(hasNumericParam || hasTextParam || hasSpeedParam || hasCharacterParam || hasMessageParam) && (
+        {(hasNumericParam || hasTextParam || hasSpeedParam || hasCharacterParam || hasMessageParam || hasSceneParam) && (
           <div 
             className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 z-30 flex justify-center"
             onPointerDown={(e) => e.stopPropagation()}
@@ -344,6 +348,30 @@ export const WorkspaceBlock: React.FC<WorkspaceBlockProps> = ({
                 <svg className="w-1.5 h-1.5 text-slate-500 fill-current" viewBox="0 0 10 6">
                   <path d="M0,0 L10,0 L5,6 Z" />
                 </svg>
+              </div>
+            )}
+            {hasSceneParam && (
+              <div 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  const currentVal = block.times !== undefined ? block.times : 2;
+                  const rect = e.currentTarget.getBoundingClientRect();
+                  if (onOpenKeypad) {
+                    onOpenKeypad('scene', 'Select Scene', String(currentVal), (val) => {
+                      onTimesChange(block.id, parseInt(val) || 2);
+                    }, rect);
+                  }
+                }}
+                className="w-10 h-6 bg-white rounded-full shadow-md border-2 border-slate-300 hover:border-orange-400 hover:scale-110 active:scale-95 transition-all cursor-pointer pointer-events-auto select-none flex items-center justify-center"
+              >
+                <div className="flex flex-col items-center justify-center gap-0.5">
+                  <span className="text-[10px] font-black leading-none text-slate-700">
+                    {block.times || 2}
+                  </span>
+                  <svg className="w-2.5 h-1.5 text-slate-400 fill-current" viewBox="0 0 10 6">
+                    <path d="M0,0 L10,0 L5,6 Z" />
+                  </svg>
+                </div>
               </div>
             )}
           </div>

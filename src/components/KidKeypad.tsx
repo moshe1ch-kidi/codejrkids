@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Delete, Check, Rocket } from 'lucide-react';
 import { getAssetUrl } from '../utils/assets';
+import { SceneThumbnail } from './SceneThumbnail';
 
-export type KeypadMode = 'number' | 'text' | 'speed' | 'character' | 'message_color';
+export type KeypadMode = 'number' | 'text' | 'speed' | 'character' | 'message_color' | 'scene';
 
 interface KidKeypadProps {
   isOpen: boolean;
@@ -15,6 +16,7 @@ interface KidKeypadProps {
   onConfirm: (value: string) => void;
   characters?: { id: string; name: string; spriteUrl: string }[];
   activeCharacterId?: string;
+  scenes?: any[];
 }
 
 const PRESET_PHRASES = [
@@ -26,7 +28,7 @@ const PRESET_PHRASES = [
   'Go!'
 ];
 
-export function KidKeypad({ isOpen, mode, initialValue, anchorRect, onClose, onConfirm, characters, activeCharacterId }: KidKeypadProps) {
+export function KidKeypad({ isOpen, mode, initialValue, anchorRect, onClose, onConfirm, characters, activeCharacterId, scenes = [] }: KidKeypadProps) {
   const [value, setValue] = useState(initialValue);
   const [coords, setCoords] = useState({ top: 0, left: 0, arrowLeft: 0, placement: 'bottom', isReady: false });
 
@@ -42,8 +44,8 @@ export function KidKeypad({ isOpen, mode, initialValue, anchorRect, onClose, onC
     if (isOpen) {
       const updatePosition = () => {
         // Set fixed mini-dimensions depending on the active input mode
-        const keypadWidth = mode === 'number' ? 150 : mode === 'speed' ? 196 : mode === 'character' ? 220 : mode === 'message_color' ? 280 : 210;
-        const keypadHeight = mode === 'number' ? 220 : mode === 'speed' ? 76 : mode === 'character' ? 200 : mode === 'message_color' ? 200 : 240;
+        const keypadWidth = mode === 'number' ? 150 : mode === 'speed' ? 196 : mode === 'character' ? 220 : mode === 'message_color' ? 280 : mode === 'scene' ? 320 : 210;
+        const keypadHeight = mode === 'number' ? 220 : mode === 'speed' ? 76 : mode === 'character' ? 200 : mode === 'message_color' ? 200 : mode === 'scene' ? 240 : 240;
 
         if (anchorRect) {
           // Center the popover with the clicked bubble
@@ -149,12 +151,12 @@ export function KidKeypad({ isOpen, mode, initialValue, anchorRect, onClose, onC
               position: 'absolute', 
               top: coords.top, 
               left: coords.left,
-              width: mode === 'number' ? 150 : mode === 'speed' ? 196 : mode === 'character' ? 'auto' : mode === 'message_color' ? 280 : 210
+              width: mode === 'number' ? 150 : mode === 'speed' ? 196 : mode === 'character' ? 'auto' : mode === 'message_color' ? 280 : mode === 'scene' ? 320 : 210
             }}
             className={`pointer-events-auto shadow-2xl z-50 overflow-hidden select-none ${
               mode === 'speed'
                 ? "bg-[#ff9900] border-2 border-[#e68a00] p-2 rounded-2xl flex gap-1.5"
-                : mode === 'character' || mode === 'message_color'
+                : mode === 'character' || mode === 'message_color' || mode === 'scene'
                   ? "bg-[#eef2f6] rounded-[24px] border-[4px] border-[#ffc600] p-3 flex flex-col gap-2 shadow-[0_10px_25px_-5px_rgba(0,0,0,0.15),0_8px_16px_-6px_rgba(0,0,0,0.15)]"
                   : "bg-white rounded-2xl border-2 border-slate-200/90 p-2.5 flex flex-col gap-2"
             }`}
@@ -165,7 +167,7 @@ export function KidKeypad({ isOpen, mode, initialValue, anchorRect, onClose, onC
                 className={`absolute -top-2 w-0 h-0 border-l-[7px] border-l-transparent border-r-[7px] border-r-transparent border-b-[8px] ${
                   mode === 'speed' 
                     ? 'border-b-[#e68a00]' 
-                    : (mode === 'character' || mode === 'message_color')
+                    : (mode === 'character' || mode === 'message_color' || mode === 'scene')
                       ? 'border-b-[#ffc600]'
                       : 'border-b-slate-200'
                 }`} 
@@ -174,7 +176,7 @@ export function KidKeypad({ isOpen, mode, initialValue, anchorRect, onClose, onC
                 <div className={`absolute top-[1.5px] -left-[6px] w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-b-[7px] ${
                   mode === 'speed' 
                     ? 'border-b-[#ff9900]' 
-                    : (mode === 'character' || mode === 'message_color')
+                    : (mode === 'character' || mode === 'message_color' || mode === 'scene')
                       ? 'border-b-[#eef2f6]'
                       : 'border-b-white'
                 }`} />
@@ -185,7 +187,7 @@ export function KidKeypad({ isOpen, mode, initialValue, anchorRect, onClose, onC
                 className={`absolute -bottom-2 w-0 h-0 border-l-[7px] border-l-transparent border-r-[7px] border-r-transparent border-t-[8px] ${
                   mode === 'speed' 
                     ? 'border-t-[#e68a00]' 
-                    : (mode === 'character' || mode === 'message_color')
+                    : (mode === 'character' || mode === 'message_color' || mode === 'scene')
                       ? 'border-t-[#ffc600]'
                       : 'border-t-slate-200'
                 }`} 
@@ -194,7 +196,7 @@ export function KidKeypad({ isOpen, mode, initialValue, anchorRect, onClose, onC
                 <div className={`absolute bottom-[1.5px] -left-[6px] w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[7px] ${
                   mode === 'speed' 
                     ? 'border-t-[#ff9900]' 
-                    : (mode === 'character' || mode === 'message_color')
+                    : (mode === 'character' || mode === 'message_color' || mode === 'scene')
                       ? 'border-t-[#eef2f6]'
                       : 'border-t-white'
                 }`} />
@@ -293,6 +295,45 @@ export function KidKeypad({ isOpen, mode, initialValue, anchorRect, onClose, onC
                             alt={item.val} 
                             className="max-w-full max-h-full object-contain pointer-events-none select-none drop-shadow-sm" 
                           />
+                        </div>
+                      </motion.button>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : mode === 'scene' ? (
+              <div className="flex flex-col gap-2 w-full">
+                <div className="text-xs font-black text-slate-500 uppercase tracking-wider mb-1 px-1">
+                  Select Target Scene
+                </div>
+                <div className="grid grid-cols-3 gap-3 p-1 max-h-[300px] overflow-y-auto kid-scrollbar">
+                  {scenes.map((scene, index) => {
+                    const sceneNumber = index + 1;
+                    const isSelected = value === String(sceneNumber);
+                    return (
+                      <motion.button
+                        key={scene.id}
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => {
+                          setValue(String(sceneNumber));
+                          onConfirm(String(sceneNumber));
+                          onClose();
+                        }}
+                        className={`flex flex-col items-center p-1.5 rounded-[16px] border-2 transition-all ${
+                          isSelected
+                            ? 'bg-white border-[#ff9900] shadow-md ring-2 ring-[#ff9900]/20'
+                            : 'bg-white hover:bg-slate-50 border-slate-200/80 shadow-sm'
+                        }`}
+                      >
+                        <SceneThumbnail 
+                          scene={scene} 
+                          sceneNumber={sceneNumber}
+                          size="small"
+                          className="mb-1"
+                        />
+                        <div className="text-[10px] font-black text-slate-700">
+                          Scene {sceneNumber}
                         </div>
                       </motion.button>
                     );

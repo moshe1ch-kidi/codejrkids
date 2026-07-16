@@ -45,7 +45,8 @@ const ALL_SPRITES = [
   { id: 'Dog', name: 'Dog', file: 'Dog.svg' },
   { id: 'Dragon', name: 'Dragon', file: 'Dragon.svg' },
   { id: 'Duck', name: 'Duck', file: 'Duck.svg' },
-  { id: 'Elephant', name: 'Elephant', file: 'Elephant.svg' }
+  { id: 'Elephant', name: 'Elephant', file: 'Elephant.svg' },
+  { id: 'pandamain', name: 'Panda', file: 'pandamain.svg' }
 ];
 
 export function SpriteGallery({ isOpen, onClose, onSelect, onPaintNew }: SpriteGalleryProps) {

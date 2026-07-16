@@ -14,7 +14,7 @@ interface WorkspaceProps {
   onTimesChange: (id: string, times: number) => void;
   onTextChange?: (id: string, text: string) => void;
   onOpenKeypad?: (
-    mode: 'number' | 'text' | 'speed' | 'character',
+    mode: 'number' | 'text' | 'speed' | 'character' | 'message_color' | 'scene',
     title: string,
     initialValue: string,
     onConfirm: (val: string) => void,
@@ -25,6 +25,7 @@ interface WorkspaceProps {
   onBlockClick?: (stackId: string, blockId: string) => void;
   workspaceRef: React.RefObject<HTMLDivElement>;
   characters?: Character[];
+  scenes?: any[];
 }
 
 export function Workspace({ 
@@ -37,7 +38,8 @@ export function Workspace({
   onDragStart,
   onBlockClick, 
   workspaceRef,
-  characters
+  characters,
+  scenes
 }: WorkspaceProps) {
   return (
     <div 
@@ -77,6 +79,7 @@ export function Workspace({
                   onDelete={onDelete}
                   isFirst={index === 0}
                   characters={characters}
+                  scenes={scenes}
                 />
              ))}
           </div>

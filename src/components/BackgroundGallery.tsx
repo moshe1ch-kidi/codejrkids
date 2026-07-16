@@ -1,4 +1,4 @@
- import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Search, Image as ImageIcon } from 'lucide-react';
 import { getAssetUrl } from '../utils/assets';

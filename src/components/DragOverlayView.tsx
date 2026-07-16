@@ -5,9 +5,10 @@ import { WorkspaceBlock } from './WorkspaceBlock';
 
 interface DragOverlayViewProps {
   dragState: DragState | null;
+  scenes?: any[];
 }
 
-export function DragOverlayView({ dragState }: DragOverlayViewProps) {
+export function DragOverlayView({ dragState, scenes = [] }: DragOverlayViewProps) {
   if (!dragState || !dragState.isDragging) return null;
 
   return (
@@ -29,6 +30,7 @@ export function DragOverlayView({ dragState }: DragOverlayViewProps) {
           onTimesChange={() => {}}
           onDelete={() => {}}
           isFirst={index === 0}
+          scenes={scenes}
         />
       ))}
     </div>

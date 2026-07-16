@@ -3,6 +3,7 @@ import { BLOCK_DEFS, BlockType, BlockCategory } from '../blocks';
 import { cn } from '../lib/utils';
 import { Rocket } from 'lucide-react';
 import { getAssetUrl } from '../utils/assets';
+import { SceneThumbnail } from './SceneThumbnail';
 
 const CATEGORY_COLORS: Record<BlockCategory, { bgStart: string; bgEnd: string; border: string; glow: string }> = {
   EVENTS: { bgStart: '#ffe57f', bgEnd: '#ffb300', border: '#fff5cc', glow: 'rgba(255, 198, 0, 0.3)' },
@@ -22,9 +23,10 @@ interface VisualBlockProps {
   times?: number;
   text?: string;
   isWorkspace?: boolean;
+  scene?: any;
 }
 
-export function VisualBlock({ type, isActive, onClick, className, times, text, isWorkspace }: VisualBlockProps) {
+export function VisualBlock({ type, isActive, onClick, className, times, text, isWorkspace, scene }: VisualBlockProps) {
   const def = BLOCK_DEFS[type];
   const colors = CATEGORY_COLORS[def.category] || { bgStart: '#ffe57f', bgEnd: '#ffb300', border: '#fff5cc', glow: 'rgba(255, 198, 0, 0.55)' };
 
@@ -113,16 +115,10 @@ export function VisualBlock({ type, isActive, onClick, className, times, text, i
             )}
           </div>
         ) : type === 'GOTO_PAGE' ? (
-          <div className="relative w-12 h-9 bg-white border border-slate-300 rounded shadow-sm flex items-center justify-center overflow-visible">
-            {/* Miniature content inside the page: Tik cat sprite! */}
-            <div className="absolute inset-0 bg-sky-50 flex items-center justify-center rounded overflow-hidden">
-              <img src={getAssetUrl('/sprites/cat1.svg')} className="w-5 h-5 object-contain" alt="" />
-            </div>
-            {/* Number badge on the top right (exactly like the picture!) */}
-            <div className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-[#2390b5] rounded-full border-2 border-white flex items-center justify-center text-white text-[10px] font-black font-mono shadow-sm">
-              {times !== undefined ? times : 2}
-            </div>
-          </div>
+          <SceneThumbnail 
+            scene={scene} 
+            sceneNumber={times !== undefined ? times : 2} 
+          />
         ) : null}
       </div>
     </div>
