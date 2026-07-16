@@ -30,7 +30,7 @@ const INITIAL_SPRITE_STATE = {
   visible: true,
   sayText: '',
   speedDelay: 100, // Default Medium
-  lastAnimationDuration: 0.1
+  lastAnimationDuration: 0
 };
 
 const DELAY_MS = 100; // Time between blocks (Medium)
@@ -135,7 +135,8 @@ export default function App() {
           y: hY,
           homeX: hX,
           homeY: hY,
-          sayText: ''
+          sayText: '',
+          lastAnimationDuration: 0
         };
       });
       return next;
@@ -1268,8 +1269,10 @@ export default function App() {
           </div>
 
           <Stage 
+            key={activeSceneId}
             characters={characters} 
             activeCharacterId={activeCharacterId} 
+            activeSceneId={activeSceneId}
             spriteStates={spriteStates} 
             showGrid={showGrid}
             background={activeScene?.background}
@@ -1577,8 +1580,10 @@ export default function App() {
           {/* Scaled Stage Container */}
           <div className="flex-1 flex items-center justify-center w-full min-h-0 relative">
             <Stage 
+              key={activeSceneId}
               characters={characters} 
               activeCharacterId={activeCharacterId} 
+              activeSceneId={activeSceneId}
               spriteStates={spriteStates} 
               showGrid={showGrid}
               background={activeScene?.background}
