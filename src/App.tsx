@@ -17,7 +17,7 @@ import { RecordModal } from './components/RecordModal';
 import { cn } from './lib/utils';
 import { BlockType, BlockInstance, Stack } from './blocks';
 import { DragState } from './dragState';
-import { detachBlock, attachBlock } from './workspaceUtils';
+import { detachBlock, attachBlock, cloneBlocks } from './workspaceUtils';
 import { getAssetUrl } from './utils/assets';
 
 const INITIAL_SPRITE_STATE = {
@@ -312,7 +312,14 @@ export default function App() {
 
       // Find snap target
       document.querySelectorAll('.block-socket').forEach(el => el.classList.remove('bg-yellow-400', 'opacity-50'));
+      document.querySelectorAll('.character-drop-target').forEach(el => el.classList.remove('ring-4', 'ring-[#AD1457]', 'scale-105'));
       snapTargetRef.current = null;
+
+      const elementAtPoint = document.elementFromPoint(e.clientX, e.clientY);
+      const characterElement = elementAtPoint?.closest('.character-drop-target');
+      if (characterElement && characterElement.getAttribute('data-character-id') !== activeCharacterId) {
+        characterElement.classList.add('ring-4', 'ring-[#AD1457]', 'scale-105');
+      }
 
       const sockets = document.querySelectorAll('.block-socket');
       let closest: Element | null = null;
@@ -359,9 +366,15 @@ export default function App() {
       if (!dragState?.isDragging) return;
 
       document.querySelectorAll('.block-socket').forEach(el => el.classList.remove('bg-yellow-400', 'opacity-50'));
+      document.querySelectorAll('.character-drop-target').forEach(el => el.classList.remove('ring-4', 'ring-[#AD1457]', 'scale-105'));
       
       const target = snapTargetRef.current;
       const workspaceRect = workspaceRef.current?.getBoundingClientRect();
+
+      // Check if dropping over a character in the sidebar for copying
+      const elementAtPoint = document.elementFromPoint(e.clientX, e.clientY);
+      const characterElement = elementAtPoint?.closest('.character-drop-target');
+      const targetCharId = characterElement?.getAttribute('data-character-id');
 
       let finalBlocks: BlockInstance[] = [];
       const wasClick = dragState.source === 'WORKSPACE' && 
@@ -397,6 +410,40 @@ export default function App() {
         finalBlocks = [newBlock];
       } else if (dragState.source === 'WORKSPACE' && dragState.blocks) {
         finalBlocks = dragState.blocks;
+      }
+
+      if (targetCharId && targetCharId !== activeCharacterId && finalBlocks.length > 0) {
+        // SCRATCH JR STYLE COPY: Drop on another character
+        const clonedBlocks = cloneBlocks(finalBlocks);
+        const newStack: Stack = {
+          id: `stack-${Date.now()}`,
+          x: 20, // Default position in new character's workspace
+          y: 20,
+          blocks: clonedBlocks
+        };
+
+        updateScenes(prev => prev.map(s => {
+          if (s.id === activeSceneId) {
+            const charStacks = s.characterStacks || {};
+            return {
+              ...s,
+              characterStacks: {
+                ...charStacks,
+                [targetCharId]: [...(charStacks[targetCharId] || []), newStack]
+              }
+            };
+          }
+          return s;
+        }));
+
+        // Restore original stacks for current character if it was a workspace drag
+        if (dragState.source === 'WORKSPACE' && dragState.originalStacks) {
+          setStacks(dragState.originalStacks);
+        }
+        
+        setDragState(null);
+        snapTargetRef.current = null;
+        return;
       }
 
       if (wasClick && dragState.originalStacks) {
@@ -1221,8 +1268,9 @@ export default function App() {
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
                       onClick={() => setActiveCharacterId(char.id)}
+                      data-character-id={char.id}
                       className={cn(
-                        "w-full h-24 rounded-3xl flex flex-col items-center justify-center relative transition-all duration-200 border-4 cursor-pointer",
+                        "w-full h-24 rounded-3xl flex flex-col items-center justify-center relative transition-all duration-200 border-4 cursor-pointer character-drop-target",
                         isActive 
                           ? "bg-[#D81B60] border-[#AD1457] shadow-lg scale-105 z-10" 
                           : "bg-white/40 border-transparent hover:bg-white/60"
