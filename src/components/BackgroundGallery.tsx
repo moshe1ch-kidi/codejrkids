@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Search, Image as ImageIcon } from 'lucide-react';
 import { getAssetUrl } from '../utils/assets';
@@ -10,6 +10,16 @@ interface BackgroundGalleryProps {
 }
 
 const ALL_BACKGROUNDS = [
+  { id: 'Playroom', name: 'Playroom', file: '01_cheder_mischakim_640x480.svg', displayName: 'חדר משחקים' },
+  { id: 'Beach', name: 'Beach', file: '02_chof_yam_640x480.svg', displayName: 'חוף ים' },
+  { id: 'Space', name: 'Space', file: '03_chalal_640x480.svg', displayName: 'חלל' },
+  { id: 'UrbanStreet', name: 'UrbanStreet', file: '04_rechov_ironi_640x480.svg', displayName: 'רחוב עירוני' },
+  { id: 'MagicForest', name: 'MagicForest', file: '05_yaar_kasum_640x480.svg', displayName: 'יער קסום' },
+  { id: 'CandyKingdom', name: 'CandyKingdom', file: '06_mamlechet_mamtakim_640x480.svg', displayName: 'ממלכת ממתקים' },
+  { id: 'ScienceLab', name: 'ScienceLab', file: '07_maabada_madait_640x480.svg', displayName: 'מעבדה מדעית' },
+  { id: 'AncientCastle', name: 'AncientCastle', file: '08_tira_atika_640x480.svg', displayName: 'טירה עתיקה' },
+  { id: 'OceanFloor', name: 'OceanFloor', file: '09_karkait_hayam_640x480.svg', displayName: 'קרקעית הים' },
+  { id: 'Volcano', name: 'Volcano', file: '10_har_gaash_640x480.svg', displayName: 'הר געש' },
   { id: 'BeachDay', name: 'BeachDay', file: 'BeachDay.svg', displayName: 'Beach (Day)' },
   { id: 'BeachNight', name: 'BeachNight', file: 'BeachNight.svg', displayName: 'Beach (Night)' },
   { id: 'BeachSunrise', name: 'BeachSunrise', file: 'BeachSunrise.svg', displayName: 'Beach (Sunrise)' },
