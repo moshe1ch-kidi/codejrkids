@@ -1,11 +1,11 @@
- import React from 'react';
+import React from 'react';
 import { getAssetUrl } from '../utils/assets';
 
 interface Scene {
   id: string;
   background?: string;
   characters?: { id: string; name: string; spriteUrl: string; }[];
-  spriteStates?: Record<string, { x: number; y: number; scale: number; visible: boolean; }>;
+  spriteStates?: Record<string, { x: number; y: number; scale: number; flipX?: boolean; visible: boolean; }>;
 }
 
 interface SceneThumbnailProps {
@@ -64,6 +64,9 @@ export function SceneThumbnail({ scene, sceneNumber, className, size = 'small' }
               <img 
                 src={char.spriteUrl} 
                 className="w-full h-full object-contain drop-shadow-md block"
+                style={{
+                  transform: (state as any)?.flipX ? 'scaleX(-1)' : 'none'
+                }}
                 alt="" 
               />
             </div>
