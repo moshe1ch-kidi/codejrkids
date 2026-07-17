@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { 
   Play, Square, RotateCcw, Image as ImageIcon, 
   Settings2, Plus, Flag, Trash2, Rocket, Brush, X, Grid, Pencil, Monitor, Save, FolderOpen
@@ -880,52 +880,60 @@ export default function App() {
       switch (block.type) {
         case 'MOVE_RIGHT': {
           const steps = block.times !== undefined ? block.times : 1;
-          const totalDuration = charDelay * steps;
-          setSpriteStateForChar(charId, prev => ({ 
-            ...prev, 
-            x: prev.x + steps,
-            flipX: false,
-            lastAnimationDuration: (totalDuration + GAP_COMPENSATION) / 1000 
-          }));
-          await new Promise(r => setTimeout(r, Math.max(0, totalDuration - GAP_COMPENSATION)));
-          checkForCollisions(charId);
+          for (let i = 0; i < steps; i++) {
+            if (shouldStopRef.current) break;
+            setSpriteStateForChar(charId, prev => ({ 
+              ...prev, 
+              x: prev.x + 1,
+              flipX: false,
+              lastAnimationDuration: charDelay / 1000 
+            }));
+            await new Promise(r => setTimeout(r, charDelay));
+            checkForCollisions(charId);
+          }
           break;
         }
         case 'MOVE_LEFT': {
           const steps = block.times !== undefined ? block.times : 1;
-          const totalDuration = charDelay * steps;
-          setSpriteStateForChar(charId, prev => ({ 
-            ...prev, 
-            x: prev.x - steps,
-            flipX: true,
-            lastAnimationDuration: (totalDuration + GAP_COMPENSATION) / 1000 
-          }));
-          await new Promise(r => setTimeout(r, Math.max(0, totalDuration - GAP_COMPENSATION)));
-          checkForCollisions(charId);
+          for (let i = 0; i < steps; i++) {
+            if (shouldStopRef.current) break;
+            setSpriteStateForChar(charId, prev => ({ 
+              ...prev, 
+              x: prev.x - 1,
+              flipX: true,
+              lastAnimationDuration: charDelay / 1000 
+            }));
+            await new Promise(r => setTimeout(r, charDelay));
+            checkForCollisions(charId);
+          }
           break;
         }
         case 'MOVE_UP': {
           const steps = block.times !== undefined ? block.times : 1;
-          const totalDuration = charDelay * steps;
-          setSpriteStateForChar(charId, prev => ({ 
-            ...prev, 
-            y: prev.y + steps,
-            lastAnimationDuration: (totalDuration + GAP_COMPENSATION) / 1000 
-          }));
-          await new Promise(r => setTimeout(r, Math.max(0, totalDuration - GAP_COMPENSATION)));
-          checkForCollisions(charId);
+          for (let i = 0; i < steps; i++) {
+            if (shouldStopRef.current) break;
+            setSpriteStateForChar(charId, prev => ({ 
+              ...prev, 
+              y: prev.y + 1,
+              lastAnimationDuration: charDelay / 1000 
+            }));
+            await new Promise(r => setTimeout(r, charDelay));
+            checkForCollisions(charId);
+          }
           break;
         }
         case 'MOVE_DOWN': {
           const steps = block.times !== undefined ? block.times : 1;
-          const totalDuration = charDelay * steps;
-          setSpriteStateForChar(charId, prev => ({ 
-            ...prev, 
-            y: prev.y - steps,
-            lastAnimationDuration: (totalDuration + GAP_COMPENSATION) / 1000 
-          }));
-          await new Promise(r => setTimeout(r, Math.max(0, totalDuration - GAP_COMPENSATION)));
-          checkForCollisions(charId);
+          for (let i = 0; i < steps; i++) {
+            if (shouldStopRef.current) break;
+            setSpriteStateForChar(charId, prev => ({ 
+              ...prev, 
+              y: prev.y - 1,
+              lastAnimationDuration: charDelay / 1000 
+            }));
+            await new Promise(r => setTimeout(r, charDelay));
+            checkForCollisions(charId);
+          }
           break;
         }
         case 'TURN_RIGHT': {
