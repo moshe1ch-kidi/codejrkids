@@ -1,4 +1,4 @@
- import React from 'react';
+import React from 'react';
 import { DragState } from '../dragState';
 import { VisualBlock } from './VisualBlock';
 import { WorkspaceBlock } from './WorkspaceBlock';
