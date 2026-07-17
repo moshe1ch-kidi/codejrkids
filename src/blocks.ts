@@ -1,4 +1,4 @@
- export type BlockCategory = 'EVENTS' | 'MOTION' | 'LOOKS' | 'SOUND' | 'CONTROL' | 'END';
+export type BlockCategory = 'EVENTS' | 'MOTION' | 'LOOKS' | 'SOUND' | 'CONTROL' | 'END';
 
 export type BlockType = 
   | 'START_FLAG'
