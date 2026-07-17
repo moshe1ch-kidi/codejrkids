@@ -315,6 +315,16 @@ export default function App() {
   const activeRunsCountRef = useRef(0);
   const runningStacksRef = useRef<Set<string>>(new Set());
 
+  const playConnectSound = useCallback(() => {
+    try {
+      const audio = new Audio(getAssetUrl('/sound/scratchjr_block_connect.wav'));
+      audio.volume = 0.5;
+      audio.play().catch(e => console.log('Failed to play connect sound:', e));
+    } catch (e) {
+      console.log('Audio error:', e);
+    }
+  }, []);
+
   // --- Drag and Drop State ---
   const [dragState, setDragState] = useState<DragState | null>(null);
   const snapTargetRef = useRef<{ containerId: string; afterId: string } | null>(null);
@@ -344,7 +354,7 @@ export default function App() {
 
       const sockets = document.querySelectorAll('.block-socket');
       let closest: Element | null = null;
-      let minDistance = 60; // snap threshold in px
+      let minDistance = 80; // increased snap threshold in px
 
       sockets.forEach(socket => {
         const containerId = (socket as HTMLElement).dataset.containerId;
@@ -355,17 +365,20 @@ export default function App() {
         const sx = rect.left + rect.width / 2;
         const sy = rect.top + rect.height / 2;
         
-        // Drag pointer pos (maybe offset to the left edge of the dragged block)
-        // Let's use the pointer position for snapping
-        const px = e.clientX;
-        const py = e.clientY;
+        // Use the connection point of the dragged block for snapping
+        // ScratchJr blocks connect at the left side (peg)
+        const blockLeft = e.clientX - (dragState.offsetX || 0);
+        const blockTop = e.clientY - (dragState.offsetY || 0);
+        
+        const px = blockLeft + 10; // Offset slightly to account for the peg shape
+        const py = blockTop + 32;  // Vertical center of the block (height is 64px)
 
         const dx = Math.abs(sx - px);
         const dy = Math.abs(sy - py);
 
-        // Snapping only occurs if the block is vertically close to the row (dy < 28px)
-        // and horizontally reasonably close (dx < 60px)
-        if (dy < 28 && dx < 60) {
+        // Snapping only occurs if the block is vertically close to the row (dy < 40px)
+        // and horizontally reasonably close (dx < 80px)
+        if (dy < 40 && dx < 80) {
           const dist = Math.hypot(dx, dy);
           if (dist < minDistance) {
             minDistance = dist;
@@ -534,6 +547,7 @@ export default function App() {
       if (finalBlocks.length > 0) {
         if (target) {
           setStacks(prev => attachBlock(prev, target.containerId, target.afterId, finalBlocks));
+          playConnectSound();
         } else if (workspaceRect) {
           // Drop on workspace background
           const x = e.clientX - workspaceRect.left - dragState.offsetX;
