@@ -82,6 +82,19 @@ export default function App() {
     height: typeof window !== 'undefined' ? window.innerHeight : 768 
   });
   const [showMobileWarning, setShowMobileWarning] = useState(true);
+  const [armedDeleteCharId, setArmedDeleteCharId] = useState<string | null>(null);
+  const [armedDeleteSceneId, setArmedDeleteSceneId] = useState<string | null>(null);
+  const deleteHoldTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    if (armedDeleteCharId || armedDeleteSceneId) {
+      const timer = setTimeout(() => {
+        setArmedDeleteCharId(null);
+        setArmedDeleteSceneId(null);
+      }, 3000); // Reset after 3 seconds of inactivity
+      return () => clearTimeout(timer);
+    }
+  }, [armedDeleteCharId, armedDeleteSceneId]);
 
   useEffect(() => {
     if (!isPresentationMode) return;
@@ -599,6 +612,41 @@ export default function App() {
       offsetX: e.clientX - rect.left,
       offsetY: e.clientY - rect.top
     });
+  };
+
+  const handleCharDeletePointerDown = (e: React.PointerEvent, charId: string) => {
+    e.stopPropagation();
+    if (armedDeleteCharId === charId) return;
+    
+    deleteHoldTimerRef.current = setTimeout(() => {
+      setArmedDeleteCharId(charId);
+      // Optional: haptic feedback could go here
+    }, 800);
+  };
+
+  const handleCharDeletePointerUp = (e: React.PointerEvent) => {
+    e.stopPropagation();
+    if (deleteHoldTimerRef.current) {
+      clearTimeout(deleteHoldTimerRef.current);
+      deleteHoldTimerRef.current = null;
+    }
+  };
+
+  const handleSceneDeletePointerDown = (e: React.PointerEvent, sceneId: string) => {
+    e.stopPropagation();
+    if (armedDeleteSceneId === sceneId) return;
+    
+    deleteHoldTimerRef.current = setTimeout(() => {
+      setArmedDeleteSceneId(sceneId);
+    }, 800);
+  };
+
+  const handleSceneDeletePointerUp = (e: React.PointerEvent) => {
+    e.stopPropagation();
+    if (deleteHoldTimerRef.current) {
+      clearTimeout(deleteHoldTimerRef.current);
+      deleteHoldTimerRef.current = null;
+    }
   };
 
   const handleWorkspaceDragStart = (e: React.PointerEvent, stackId: string, blockId: string) => {
@@ -1376,11 +1424,25 @@ export default function App() {
                           </button>
                           {characters.length > 1 && (
                             <button 
-                              onClick={(e) => handleDeleteCharacter(char.id, e)}
-                              className="absolute top-1 left-1 w-8 h-8 bg-red-500/80 hover:bg-red-500 rounded-full flex items-center justify-center transition-colors shadow-sm z-20"
-                              title="Delete Character"
+                              onPointerDown={(e) => handleCharDeletePointerDown(e, char.id)}
+                              onPointerUp={handleCharDeletePointerUp}
+                              onPointerLeave={handleCharDeletePointerUp}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (armedDeleteCharId === char.id) {
+                                  handleDeleteCharacter(char.id, e);
+                                  setArmedDeleteCharId(null);
+                                }
+                              }}
+                              className={cn(
+                                "absolute top-1 left-1 w-8 h-8 rounded-full flex items-center justify-center transition-all shadow-sm z-20",
+                                armedDeleteCharId === char.id 
+                                  ? "bg-green-500 scale-110 shadow-[0_0_10px_rgba(34,197,94,0.6)]" 
+                                  : "bg-red-500/80 hover:bg-red-500"
+                              )}
+                              title={armedDeleteCharId === char.id ? "Click to confirm delete" : "Hold to unlock delete"}
                             >
-                              <Trash2 className="w-4 h-4 text-white" />
+                              <Trash2 className={cn("w-4 h-4 text-white transition-transform", armedDeleteCharId === char.id && "scale-110")} />
                             </button>
                           )}
                         </>
@@ -1470,14 +1532,25 @@ export default function App() {
                           />
                           {isActive && scenes.length > 1 && (
                             <button
+                              onPointerDown={(e) => handleSceneDeletePointerDown(e, scene.id)}
+                              onPointerUp={handleSceneDeletePointerUp}
+                              onPointerLeave={handleSceneDeletePointerUp}
                               onClick={(e) => {
                                 e.stopPropagation();
-                                handleDeleteScene(scene.id);
+                                if (armedDeleteSceneId === scene.id) {
+                                  handleDeleteScene(scene.id);
+                                  setArmedDeleteSceneId(null);
+                                }
                               }}
-                              className="absolute top-1 left-1 w-6 h-6 bg-red-500/80 hover:bg-red-500 rounded-full flex items-center justify-center transition-colors shadow-sm z-20"
-                              title="Delete Scene"
+                              className={cn(
+                                "absolute top-1 left-1 w-6 h-6 rounded-full flex items-center justify-center transition-all shadow-sm z-20",
+                                armedDeleteSceneId === scene.id 
+                                  ? "bg-green-500 scale-110 shadow-[0_0_8px_rgba(34,197,94,0.6)]" 
+                                  : "bg-red-500/80 hover:bg-red-500"
+                              )}
+                              title={armedDeleteSceneId === scene.id ? "Click to confirm delete" : "Hold to unlock delete"}
                             >
-                              <Trash2 className="w-3 h-3 text-white" />
+                              <Trash2 className={cn("w-3 h-3 text-white transition-transform", armedDeleteSceneId === scene.id && "scale-110")} />
                             </button>
                           )}
                         </div>
