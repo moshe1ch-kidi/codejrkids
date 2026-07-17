@@ -15,6 +15,7 @@ interface SpriteState {
   y: number;
   rotation: number;
   scale: number;
+  flipX?: boolean;
   visible: boolean;
   sayText: string;
   speedDelay?: number;
@@ -165,7 +166,8 @@ const StageCharacter = React.memo(function StageCharacter({
     left: `${leftPercent}%`,
     top: `${topPercent}%`,
     rotate: state.rotation,
-    scale: state.scale,
+    scaleX: (state as any).flipX ? -state.scale : state.scale,
+    scaleY: state.scale,
     opacity: state.visible ? 1 : 0
   };
 
