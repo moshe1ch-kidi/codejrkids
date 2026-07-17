@@ -35,7 +35,11 @@ export function KidKeypad({ isOpen, mode, initialValue, anchorRect, onClose, onC
   // Sync state value when opened
   useEffect(() => {
     if (isOpen) {
-      setValue(initialValue);
+      if (mode === 'number' || mode === 'text') {
+        setValue('');
+      } else {
+        setValue(initialValue);
+      }
     }
   }, [isOpen, initialValue, mode]);
 
@@ -98,9 +102,7 @@ export function KidKeypad({ isOpen, mode, initialValue, anchorRect, onClose, onC
   };
 
   const handleDelete = () => {
-    if (value.length <= 1) {
-      setValue('0');
-    } else {
+    if (value.length > 0) {
       setValue(prev => prev.slice(0, -1));
     }
   };
