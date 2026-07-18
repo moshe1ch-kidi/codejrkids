@@ -337,19 +337,19 @@ export default function App() {
 
       // Find snap target
       document.querySelectorAll('.block-socket').forEach(el => el.classList.remove('bg-yellow-400', 'opacity-50'));
-      document.querySelectorAll('.character-drop-target').forEach(el => el.classList.remove('ring-4', 'ring-[#AD1457]', 'scale-105'));
-      document.querySelectorAll('.scene-drop-target').forEach(el => el.classList.remove('ring-4', 'ring-[#AD1457]', 'scale-105'));
+      document.querySelectorAll('.character-drop-target').forEach(el => el.classList.remove('ring-4', 'ring-[#E5C470]', 'scale-105'));
+      document.querySelectorAll('.scene-drop-target').forEach(el => el.classList.remove('ring-4', 'ring-[#E5C470]', 'scale-105'));
       snapTargetRef.current = null;
 
       const elementAtPoint = document.elementFromPoint(e.clientX, e.clientY);
       const characterElement = elementAtPoint?.closest('.character-drop-target');
       if (characterElement && characterElement.getAttribute('data-character-id') !== activeCharacterId && dragState.source !== 'CHARACTER') {
-        characterElement.classList.add('ring-4', 'ring-[#AD1457]', 'scale-105');
+        characterElement.classList.add('ring-4', 'ring-[#E5C470]', 'scale-105');
       }
 
       const sceneElement = elementAtPoint?.closest('.scene-drop-target');
       if (sceneElement && sceneElement.getAttribute('data-scene-id') !== activeSceneId && dragState.source === 'CHARACTER') {
-        sceneElement.classList.add('ring-4', 'ring-[#AD1457]', 'scale-105');
+        sceneElement.classList.add('ring-4', 'ring-[#E5C470]', 'scale-105');
       }
 
       const sockets = document.querySelectorAll('.block-socket');
@@ -400,8 +400,8 @@ export default function App() {
       if (!dragState?.isDragging) return;
 
       document.querySelectorAll('.block-socket').forEach(el => el.classList.remove('bg-yellow-400', 'opacity-50'));
-      document.querySelectorAll('.character-drop-target').forEach(el => el.classList.remove('ring-4', 'ring-[#AD1457]', 'scale-105'));
-      document.querySelectorAll('.scene-drop-target').forEach(el => el.classList.remove('ring-4', 'ring-[#AD1457]', 'scale-105'));
+      document.querySelectorAll('.character-drop-target').forEach(el => el.classList.remove('ring-4', 'ring-[#E5C470]', 'scale-105'));
+      document.querySelectorAll('.scene-drop-target').forEach(el => el.classList.remove('ring-4', 'ring-[#E5C470]', 'scale-105'));
       
       const target = snapTargetRef.current;
       const workspaceRect = workspaceRef.current?.getBoundingClientRect();
@@ -1421,16 +1421,23 @@ export default function App() {
                       className={cn(
                         "w-full h-24 rounded-3xl flex flex-col items-center justify-center relative transition-all duration-200 border-4 cursor-pointer character-drop-target",
                         isActive 
-                          ? "bg-[#D81B60] border-[#AD1457] shadow-lg scale-105 z-10" 
+                          ? "bg-[#FDDE90] border-[#F57C00] shadow-lg scale-105 z-10" 
                           : "bg-white/40 border-transparent hover:bg-white/60"
                       )}
                     >
-                      <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center mb-1 overflow-hidden border-2 border-white/40 shadow-inner">
-                        <img src={char.spriteUrl} alt={char.name} className="w-10 h-10 object-contain" />
+                      <div className="transition-all duration-300 flex items-center justify-center mb-1">
+                        <img 
+                          src={char.spriteUrl} 
+                          alt={char.name} 
+                          className={cn(
+                            "transition-all duration-300 object-contain drop-shadow-sm",
+                            isActive ? "w-16 h-16" : "w-14 h-14"
+                          )} 
+                        />
                       </div>
                       <span className={cn(
                         "text-[10px] font-extrabold px-2 py-0.5 rounded-full truncate max-w-[90%] shadow-sm",
-                        isActive ? "bg-white text-[#D81B60]" : "bg-white/80 text-gray-700"
+                        isActive ? "bg-white text-[#A07B1E]" : "bg-white/80 text-gray-700"
                       )}>
                         {char.name}
                       </span>
@@ -1442,10 +1449,10 @@ export default function App() {
                               setEditingCharacterId(char.id);
                               setIsPaintEditorOpen(true);
                             }}
-                            className="absolute top-1 right-1 w-8 h-8 bg-white/20 hover:bg-white/40 rounded-full flex items-center justify-center z-20"
+                            className="absolute top-1 right-1 w-8 h-8 bg-white border-2 border-black hover:bg-gray-100 shadow-sm rounded-full flex items-center justify-center z-20 transition-all"
                             title="Edit Character"
                           >
-                            <Pencil className="w-4 h-4 text-white" />
+                            <Pencil className="w-4 h-4 text-black" />
                           </button>
                           {characters.length > 1 && (
                             <button 
@@ -1543,7 +1550,7 @@ export default function App() {
                       className={cn(
                         "w-full h-24 rounded-3xl flex flex-col items-center justify-center relative transition-all duration-200 border-4 overflow-hidden cursor-pointer scene-drop-target",
                         isActive 
-                          ? "bg-[#D81B60] border-[#AD1457] shadow-lg scale-105 z-10" 
+                          ? "bg-[#FDDE90] border-[#F57C00] shadow-lg scale-105 z-10" 
                           : "bg-white/40 border-transparent hover:bg-white/60"
                       )}
                     >
