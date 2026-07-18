@@ -1392,12 +1392,9 @@ export default function App() {
         {/* Top Half: Stage & Scenes */}
         <div className="flex-1 flex gap-6 min-h-[460px] shrink-0 overflow-hidden">
           {/* Left Sidebar: Characters */}
-          <div className="w-64 bg-[#FBD5A5] rounded-[32px] flex flex-col items-center py-4 gap-3 border-4 border-[#F9C17D] shadow-inner shrink-0 animate-fade-in overflow-hidden h-fit">
+          <div className="w-64 bg-[#FBD5A5] rounded-[32px] flex flex-col items-center py-4 gap-3 border-4 border-[#F9C17D] shadow-inner shrink-0 animate-fade-in overflow-hidden h-full">
             {/* Scrollable list of characters */}
-            <div className={cn(
-              "w-full kid-scrollbar flex flex-col gap-2 px-1 min-h-0 shrink-0 items-center pb-2",
-              characters.length > 3 ? "overflow-y-auto h-[304px]" : "overflow-y-hidden h-fit"
-            )}>
+            <div className="w-full kid-scrollbar flex flex-col gap-2 px-1 flex-1 overflow-y-auto items-center pb-2">
               <motion.button
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.9 }}
@@ -1522,12 +1519,9 @@ export default function App() {
           />
 
           {/* Right Sidebar: Scenes */}
-          <div className="w-44 bg-[#FBD5A5] rounded-[32px] flex flex-col items-center py-4 gap-3 border-4 border-[#F9C17D] shadow-inner shrink-0 animate-fade-in overflow-hidden h-fit">
+          <div className="w-44 bg-[#FBD5A5] rounded-[32px] flex flex-col items-center py-4 gap-3 border-4 border-[#F9C17D] shadow-inner shrink-0 animate-fade-in overflow-hidden h-full">
             {/* Scrollable list of scenes */}
-            <div className={cn(
-              "w-full kid-scrollbar flex flex-col items-center gap-3 px-1 pb-4 min-h-0 shrink-0",
-              scenes.length > 3 ? "overflow-y-auto h-[320px]" : "overflow-y-hidden h-fit"
-            )}>
+            <div className="w-full kid-scrollbar flex flex-col items-center gap-3 px-1 pb-4 flex-1 overflow-y-auto">
               <motion.button
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.9 }}
