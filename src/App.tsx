@@ -27,7 +27,7 @@ const INITIAL_SPRITE_STATE = {
   homeX: 11,
   homeY: 8,
   rotation: 0,
-  scale: 1,
+  scale: 1.2,
   flipX: false,
   visible: true,
   sayText: '',
@@ -1020,7 +1020,7 @@ export default function App() {
           break;
         }
         case 'RESET_SIZE':
-          setSpriteStateForChar(charId, prev => ({ ...prev, scale: 1 }));
+          setSpriteStateForChar(charId, prev => ({ ...prev, scale: 1.2 }));
           break;
         case 'HIDE':
           setSpriteStateForChar(charId, prev => ({ ...prev, visible: false }));
