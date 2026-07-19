@@ -1,6 +1,6 @@
-import React from 'react';
+ import React from 'react';
 import { motion } from 'motion/react';
-import { Rocket } from 'lucide-react';
+import { Rocket, X } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { getAssetUrl } from '../utils/assets';
 
@@ -38,6 +38,7 @@ interface StageProps {
   onSelectCharacter?: (charId: string) => void;
   onCharacterClick?: (charId: string) => void;
   onUpdateCharacterPosition?: (charId: string, x: number, y: number) => void;
+  onDeleteCharacter?: (charId: string) => void;
 }
 
 interface StageCharacterProps {
@@ -53,6 +54,7 @@ interface StageCharacterProps {
   onDragMove: (x: number, y: number) => void;
   onDragEnd: (x: number, y: number) => void;
   onClick?: () => void;
+  onDelete?: () => void;
 }
 
 const StageCharacter = React.memo(function StageCharacter({ 
@@ -66,11 +68,21 @@ const StageCharacter = React.memo(function StageCharacter({
   onDragStart, 
   onDragMove, 
   onDragEnd,
-  onClick
+  onClick,
+  onDelete
 }: StageCharacterProps) {
   const prevPosRef = React.useRef({ x: state.x, y: state.y });
   const wrapCounterRef = React.useRef(0);
+  const [isLongPressed, setIsLongPressed] = React.useState(false);
+  const longPressTimerRef = React.useRef<NodeJS.Timeout | null>(null);
   
+  React.useEffect(() => {
+    if (!isLongPressed) return;
+    const handleGlobalClick = () => setIsLongPressed(false);
+    window.addEventListener('pointerdown', handleGlobalClick);
+    return () => window.removeEventListener('pointerdown', handleGlobalClick);
+  }, [isLongPressed]);
+
   const dx = Math.abs(state.x - prevPosRef.current.x);
   const dy = Math.abs(state.y - prevPosRef.current.y);
   
@@ -97,6 +109,12 @@ const StageCharacter = React.memo(function StageCharacter({
     }
     onDragStart();
     
+    // Set up long press timer
+    longPressTimerRef.current = setTimeout(() => {
+      setIsLongPressed(true);
+      // Optional: haptic feedback or sound could go here
+    }, 800);
+
     const stageEl = document.getElementById('scratch-stage');
     if (!stageEl) return;
     
@@ -118,7 +136,13 @@ const StageCharacter = React.memo(function StageCharacter({
       const deltaPxX = moveEvent.clientX - startClientX;
       const deltaPxY = moveEvent.clientY - startClientY;
       
-      if (Math.abs(deltaPxX) > 3 || Math.abs(deltaPxY) > 3) hasMoved = true;
+      if (Math.abs(deltaPxX) > 3 || Math.abs(deltaPxY) > 3) {
+        hasMoved = true;
+        if (longPressTimerRef.current) {
+          clearTimeout(longPressTimerRef.current);
+          longPressTimerRef.current = null;
+        }
+      }
       
       const deltaGridX = deltaPxX / cellW;
       const deltaGridY = -deltaPxY / cellH; // Y is inverted in browser pixels
@@ -134,12 +158,21 @@ const StageCharacter = React.memo(function StageCharacter({
     };
     
     const handlePointerUp = (upEvent: PointerEvent) => {
+      if (longPressTimerRef.current) {
+        clearTimeout(longPressTimerRef.current);
+        longPressTimerRef.current = null;
+      }
+
       target.releasePointerCapture(upEvent.pointerId);
       window.removeEventListener('pointermove', handlePointerMove);
       window.removeEventListener('pointerup', handlePointerUp);
       
-      if (!hasMoved) {
+      if (!hasMoved && !isLongPressed) {
         onClick?.();
+      } else if (!hasMoved && isLongPressed) {
+        // If clicking again after long press, maybe we want to hide the X?
+        // But usually ScratchJr keeps it until you delete or click away.
+        // Let's at least prevent it from triggering the character click action.
       }
 
       const deltaPxX = upEvent.clientX - startClientX;
@@ -165,7 +198,7 @@ const StageCharacter = React.memo(function StageCharacter({
   const currentStyles = {
     left: `${leftPercent}%`,
     top: `${topPercent}%`,
-    rotate: state.rotation,
+    rotate: isLongPressed ? [state.rotation - 4, state.rotation + 4, state.rotation - 4] : state.rotation,
     scaleX: (state as any).flipX ? -state.scale : state.scale,
     scaleY: state.scale,
     opacity: state.visible ? 1 : 0
@@ -176,17 +209,40 @@ const StageCharacter = React.memo(function StageCharacter({
       key={motionKey}
       initial={false}
       animate={currentStyles}
-      transition={isDragging ? { duration: 0 } : {
-        type: "tween",
-        ease: "linear",
-        duration: animationDuration
+      transition={{
+        rotate: isLongPressed ? {
+          duration: 0.2,
+          repeat: Infinity,
+          ease: "easeInOut"
+        } : { duration: animationDuration },
+        left: isDragging ? { duration: 0 } : { duration: animationDuration },
+        top: isDragging ? { duration: 0 } : { duration: animationDuration },
+        default: { duration: animationDuration }
       }}
       onPointerDown={handlePointerDown}
       className={cn(
-        "absolute w-[15%] aspect-square -translate-x-1/2 -translate-y-1/2 flex items-center justify-center p-1 select-none transition-shadow cursor-grab active:cursor-grabbing touch-none",
-        isActive ? "z-20" : "z-10"
+        "absolute w-[15%] aspect-square -translate-x-1/2 -translate-y-1/2 flex items-center justify-center p-1 select-none transition-shadow touch-none",
+        isActive ? "z-20" : "z-10",
+        isLongPressed ? "cursor-default" : "cursor-grab active:cursor-grabbing"
       )}
     >
+      {/* Delete Button (ScratchJr style X) */}
+      {isLongPressed && (
+        <button
+          onPointerDown={(e) => {
+            e.stopPropagation();
+          }}
+          onClick={(e) => {
+            e.stopPropagation();
+            onDelete?.();
+            setIsLongPressed(false);
+          }}
+          className="absolute -top-6 -left-6 w-10 h-10 bg-[#E53935] border-4 border-white rounded-full flex items-center justify-center shadow-[0_4px_10px_rgba(0,0,0,0.3)] z-40 animate-in zoom-in duration-200 hover:scale-110 active:scale-95 transition-transform"
+        >
+          <X className="w-6 h-6 text-white stroke-[4]" />
+        </button>
+      )}
+
       {/* Speech Bubble */}
       {state.sayText && (
         <div 
@@ -226,7 +282,8 @@ export const Stage = React.memo(function Stage({
   onUpdateTextPosition,
   onSelectCharacter,
   onCharacterClick,
-  onUpdateCharacterPosition
+  onUpdateCharacterPosition,
+  onDeleteCharacter
 }: StageProps) {
   const INITIAL_STATE: SpriteState = {
     x: 11,
@@ -599,6 +656,7 @@ export const Stage = React.memo(function Stage({
                   onSelectCharacter?.(char.id);
                   onCharacterClick?.(char.id);
                 }}
+                onDelete={() => onDeleteCharacter?.(char.id)}
               />
             );
           })}
