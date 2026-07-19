@@ -21,18 +21,6 @@ export function DragOverlayView({ dragState, scenes = [], characters = [] }: Dra
         <VisualBlock type={dragState.blockType} />
       )}
       
-      {dragState.source === 'CHARACTER' && (
-        <div className="w-24 h-24 bg-white/80 rounded-3xl border-4 border-[#D81B60] flex items-center justify-center shadow-2xl p-2">
-          {characters.find(c => c.id === dragState.characterId) && (
-            <img 
-              src={characters.find(c => c.id === dragState.characterId).spriteUrl} 
-              alt="" 
-              className="w-16 h-16 object-contain" 
-            />
-          )}
-        </div>
-      )}
-      
       {dragState.source === 'WORKSPACE' && dragState.blocks && dragState.blocks.map((block, index) => (
         <WorkspaceBlock 
           key={block.id}
