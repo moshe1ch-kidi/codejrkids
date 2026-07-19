@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+ import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Undo, Redo, Camera, Check, ArrowUpRight, 
@@ -427,6 +427,10 @@ export function PaintEditor({
   const [draggedShapeStartPoints, setDraggedShapeStartPoints] = useState<Point[]>([]);
   const [brushScalingStartBox, setBrushScalingStartBox] = useState<{ minX: number, maxX: number, minY: number, maxY: number } | null>(null);
 
+  const [isRotatingShape, setIsRotatingShape] = useState(false);
+  const [rotationStartAngle, setRotationStartAngle] = useState(0);
+  const [rotationInitialPoints, setRotationInitialPoints] = useState<Point[]>([]);
+
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const loadedImages = useRef<{ [key: string]: HTMLImageElement }>({});
@@ -592,13 +596,17 @@ export function PaintEditor({
         }
       }
 
-      if ((shape.type === 'circle' || shape.type === 'custom') && shape.points.length >= 4) {
-        const cx = (shape.points[1].x + shape.points[3].x) / 2;
-        const cy = (shape.points[0].y + shape.points[2].y) / 2;
-        const rx = Math.abs(shape.points[1].x - shape.points[3].x) / 2;
-        const ry = Math.abs(shape.points[2].y - shape.points[0].y) / 2;
-        const dx = x - cx;
-        const dy = y - cy;
+      if ((shape.type === 'circle' || shape.type === 'custom' || shape.type === 'image') && shape.points.length >= 4) {
+        const centroid = getCentroid(shape.points);
+        const minX = Math.min(...shape.points.map(p => p.x));
+        const maxX = Math.max(...shape.points.map(p => p.x));
+        const minY = Math.min(...shape.points.map(p => p.y));
+        const maxY = Math.max(...shape.points.map(p => p.y));
+        const rx = (maxX - minX) / 2;
+        const ry = (maxY - minY) / 2;
+        const dx = x - centroid.x;
+        const dy = y - centroid.y;
+        // Use a generous hit area for these shapes
         if ((dx * dx) / ((rx + 15) * (rx + 15)) + (dy * dy) / ((ry + 15) * (ry + 15)) <= 1) {
           return shape;
         }
@@ -609,23 +617,15 @@ export function PaintEditor({
         for (let j = 0; j < shape.points.length; j++) {
           const p1 = shape.points[j];
           const p2 = shape.points[(j + 1) % shape.points.length];
-          if (distToSegment({ x, y }, p1, p2) < 15) {
+          if (distToSegment({ x, y }, p1, p2) < 18) {
             return shape;
           }
         }
       } else if (shape.type === 'brush') {
         for (let j = 0; j < shape.points.length - 1; j++) {
-          if (distToSegment({ x, y }, shape.points[j], shape.points[j + 1]) < 18) {
+          if (distToSegment({ x, y }, shape.points[j], shape.points[j + 1]) < 20) {
             return shape;
           }
-        }
-      } else if (shape.type === 'image' && shape.points.length >= 4) {
-        const minX = Math.min(...shape.points.map(p => p.x));
-        const maxX = Math.max(...shape.points.map(p => p.x));
-        const minY = Math.min(...shape.points.map(p => p.y));
-        const maxY = Math.max(...shape.points.map(p => p.y));
-        if (x >= minX - 15 && x <= maxX + 15 && y >= minY - 15 && y <= maxY + 15) {
-          return shape;
         }
       }
     }
@@ -691,12 +691,13 @@ export function PaintEditor({
         }
       } else if (shape.type === 'circle') {
         if (shape.points.length >= 4) {
-          const cx = (shape.points[1].x + shape.points[3].x) / 2;
-          const cy = (shape.points[0].y + shape.points[2].y) / 2;
-          const rx = Math.abs(shape.points[1].x - shape.points[3].x) / 2;
-          const ry = Math.abs(shape.points[2].y - shape.points[0].y) / 2;
+          const centroid = getCentroid(shape.points);
+          const rx = Math.hypot(shape.points[1].x - shape.points[3].x, shape.points[1].y - shape.points[3].y) / 2;
+          const ry = Math.hypot(shape.points[0].x - shape.points[2].x, shape.points[0].y - shape.points[2].y) / 2;
+          const rotation = Math.atan2(shape.points[1].y - shape.points[3].y, shape.points[1].x - shape.points[3].x);
+          
           ctx.beginPath();
-          ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
+          ctx.ellipse(centroid.x, centroid.y, rx, ry, rotation, 0, Math.PI * 2);
           if (shape.fillColor && shape.fillColor !== 'transparent') {
             ctx.fillStyle = shape.fillColor;
             ctx.fill();
@@ -707,13 +708,14 @@ export function PaintEditor({
         }
       } else if (shape.type === 'custom' && shape.pathData) {
         if (shape.points.length >= 4) {
-          const cx = (shape.points[1].x + shape.points[3].x) / 2;
-          const cy = (shape.points[0].y + shape.points[2].y) / 2;
-          const rx = Math.abs(shape.points[1].x - shape.points[3].x) / 2;
-          const ry = Math.abs(shape.points[2].y - shape.points[0].y) / 2;
+          const centroid = getCentroid(shape.points);
+          const rx = Math.hypot(shape.points[1].x - shape.points[3].x, shape.points[1].y - shape.points[3].y) / 2;
+          const ry = Math.hypot(shape.points[0].x - shape.points[2].x, shape.points[0].y - shape.points[2].y) / 2;
+          const rotation = Math.atan2(shape.points[1].y - shape.points[3].y, shape.points[1].x - shape.points[3].x);
           
           ctx.save();
-          ctx.translate(cx, cy);
+          ctx.translate(centroid.x, centroid.y);
+          ctx.rotate(rotation);
           ctx.scale((rx * 2) / 100, (ry * 2) / 100);
           ctx.translate(-50, -50);
           
@@ -731,14 +733,18 @@ export function PaintEditor({
         }
       } else if (shape.type === 'image') {
         if (shape.points.length >= 4) {
-          ctx.beginPath(); // Clear any previous path
-          const minX = Math.min(...shape.points.map(p => p.x));
-          const maxX = Math.max(...shape.points.map(p => p.x));
-          const minY = Math.min(...shape.points.map(p => p.y));
-          const maxY = Math.max(...shape.points.map(p => p.y));
+          const centroid = getCentroid(shape.points);
+          const w = Math.hypot(shape.points[1].x - shape.points[0].x, shape.points[1].y - shape.points[0].y);
+          const h = Math.hypot(shape.points[3].x - shape.points[0].x, shape.points[3].y - shape.points[0].y);
+          const rotation = Math.atan2(shape.points[1].y - shape.points[0].y, shape.points[1].x - shape.points[0].x);
+
           const img = loadedImages.current[shape.id];
           if (img) {
-            ctx.drawImage(img, minX, minY, maxX - minX, maxY - minY);
+            ctx.save();
+            ctx.translate(centroid.x, centroid.y);
+            ctx.rotate(rotation);
+            ctx.drawImage(img, -w/2, -h/2, w, h);
+            ctx.restore();
           } else {
             const newImg = new Image();
             newImg.src = shape.imgUrl || '';
@@ -800,6 +806,42 @@ export function PaintEditor({
           ctx.stroke();
           ctx.restore();
         });
+
+        // Draw rotation handle
+        const minX = Math.min(...handlePoints.map(p => p.x));
+        const maxX = Math.max(...handlePoints.map(p => p.x));
+        const minY = Math.min(...handlePoints.map(p => p.y));
+        const rotHandleX = (minX + maxX) / 2;
+        const rotHandleY = minY - 40;
+
+        // Line to handle
+        ctx.save();
+        ctx.strokeStyle = '#0288d1';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([4, 4]);
+        ctx.beginPath();
+        ctx.moveTo(rotHandleX, minY);
+        ctx.lineTo(rotHandleX, rotHandleY);
+        ctx.stroke();
+        ctx.restore();
+
+        // Handle circle
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(rotHandleX, rotHandleY, 10, 0, Math.PI * 2);
+        ctx.fillStyle = '#0288d1';
+        ctx.fill();
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        
+        // Add a small rotation icon inside
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(rotHandleX, rotHandleY, 5, 0, Math.PI * 1.5);
+        ctx.stroke();
+        ctx.restore();
       }
     }
   };
@@ -908,9 +950,25 @@ export function PaintEditor({
         const centroid = getCentroid(clickedShape.points);
         const updated = shapes.map(s => {
           if (s.id === clickedShape.id) {
+            const rotatedPoints = s.points.map(p => rotatePoint(p, centroid, Math.PI / 2));
+            
+            // Reorder points for fixed-geometry shapes to keep handles and rendering consistent
+            if ((s.type === 'circle' || s.type === 'custom' || s.type === 'rect' || s.type === 'image') && rotatedPoints.length === 4) {
+              const [p0, p1, p2, p3] = rotatedPoints;
+              rotatedPoints[0] = p3;
+              rotatedPoints[1] = p0;
+              rotatedPoints[2] = p1;
+              rotatedPoints[3] = p2;
+            } else if (s.type === 'triangle' && rotatedPoints.length === 3) {
+              const [p0, p1, p2] = rotatedPoints;
+              rotatedPoints[0] = p2;
+              rotatedPoints[1] = p0;
+              rotatedPoints[2] = p1;
+            }
+            
             return {
               ...s,
-              points: s.points.map(p => rotatePoint(p, centroid, Math.PI / 2))
+              points: rotatedPoints
             };
           }
           return s;
@@ -946,6 +1004,23 @@ export function PaintEditor({
             setIsReshaping(true);
             setSelectedPointIndex(clickedHandleIdx);
             setDragStartPos(currentPoint);
+            return;
+          }
+
+          // Check for rotation handle (ScratchJr style: above the shape)
+          const centroid = getCentroid(selectedShape.points);
+          const minX = Math.min(...handlePoints.map(p => p.x));
+          const maxX = Math.max(...handlePoints.map(p => p.x));
+          const minY = Math.min(...handlePoints.map(p => p.y));
+          
+          const rotHandleX = (minX + maxX) / 2;
+          const rotHandleY = minY - 40;
+          
+          if (Math.hypot(rotHandleX - x, rotHandleY - y) < 20) {
+            setIsRotatingShape(true);
+            const startAngle = Math.atan2(y - centroid.y, x - centroid.x);
+            setRotationStartAngle(startAngle);
+            setRotationInitialPoints(selectedShape.points.map(p => ({ ...p })));
             return;
           }
         }
@@ -1117,6 +1192,18 @@ export function PaintEditor({
             points: draggedShapeStartPoints.map(p => ({ x: p.x + dx, y: p.y + dy }))
           };
         }));
+      } else if (isRotatingShape && selectedShapeId) {
+        setShapes(prev => prev.map(shape => {
+          if (shape.id !== selectedShapeId) return shape;
+          const centroid = getCentroid(rotationInitialPoints);
+          const currentAngle = Math.atan2(y - centroid.y, x - centroid.x);
+          const deltaAngle = currentAngle - rotationStartAngle;
+          
+          return {
+            ...shape,
+            points: rotationInitialPoints.map(p => rotatePoint(p, centroid, deltaAngle))
+          };
+        }));
       }
       return;
     }
@@ -1175,10 +1262,11 @@ export function PaintEditor({
   };
 
   const stopDrawing = () => {
-    if (isDrawing || isReshaping || isDraggingShape) {
+    if (isDrawing || isReshaping || isDraggingShape || isRotatingShape) {
       setIsDrawing(false);
       setIsReshaping(false);
       setIsDraggingShape(false);
+      setIsRotatingShape(false);
       setSelectedPointIndex(null);
       setBrushScalingStartBox(null);
       saveStateToHistory(shapes);
@@ -1469,16 +1557,6 @@ export function PaintEditor({
                 title="Select & Move"
               >
                 <ArrowUpRight className="w-6 h-6 stroke-[3] -rotate-45" />
-              </button>
-
-              <button
-                onClick={() => setActiveTool('rotate')}
-                className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all bg-white border-b-4 border-slate-300 shadow-sm active:translate-y-[2px] active:border-b-2 ${
-                  activeTool === 'rotate' ? '!bg-[#D84315] text-white border-[#9E2A2B] scale-105' : 'hover:bg-slate-50 text-slate-700'
-                }`}
-                title="Rotate"
-              >
-                <RotateCw className="w-6 h-6 stroke-[2.5]" />
               </button>
 
               <button
