@@ -1616,10 +1616,10 @@ export function PaintEditor({
                 <AnimatePresence>
                   {isShapesPopoverOpen && (
                     <motion.div
-                      initial={{ opacity: 0, scale: 0.9, x: -20 }}
+                      initial={{ opacity: 0, scale: 0.9, x: 20 }}
                       animate={{ opacity: 1, scale: 1, x: 0 }}
-                      exit={{ opacity: 0, scale: 0.9, x: -20 }}
-                      className="absolute left-full top-1/2 -translate-y-1/2 ml-4 bg-white rounded-3xl shadow-2xl border-2 border-slate-200 p-4 w-max max-w-[80vw] overflow-x-auto z-50 flex flex-col gap-3"
+                      exit={{ opacity: 0, scale: 0.9, x: 20 }}
+                      className="absolute right-full top-1/2 -translate-y-1/2 mr-4 bg-white rounded-3xl shadow-2xl border-2 border-slate-200 p-4 w-max max-w-[80vw] overflow-x-auto z-50 flex flex-col gap-3"
                     >
                       {SHAPE_ROWS.map((row, rowIdx) => (
                         <div key={rowIdx} className="flex gap-2 justify-center">
