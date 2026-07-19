@@ -412,7 +412,11 @@ export function PaintEditor({
   
   // Vector shape state list
   const [shapes, setShapes] = useState<Shape[]>([]);
-  const [selectedShapeId, setSelectedShapeId] = useState<string | null>(null);
+  const [selectedShapeIds, setSelectedShapeIds] = useState<string[]>([]);
+
+  // Marquee selection state
+  const [isMarqueeSelecting, setIsMarqueeSelecting] = useState(false);
+  const [marqueeRect, setMarqueeRect] = useState<{ startX: number, startY: number, currentX: number, currentY: number } | null>(null);
 
   // Undo / Redo history stack of vector frames
   const [history, setHistory] = useState<Shape[][]>([]);
@@ -424,7 +428,7 @@ export function PaintEditor({
   const [isDraggingShape, setIsDraggingShape] = useState(false);
   const [selectedPointIndex, setSelectedPointIndex] = useState<number | null>(null);
   const [dragStartPos, setDragStartPos] = useState<Point>({ x: 0, y: 0 });
-  const [draggedShapeStartPoints, setDraggedShapeStartPoints] = useState<Point[]>([]);
+  const [draggedShapeStartPoints, setDraggedShapeStartPoints] = useState<Record<string, Point[]>>({});
   const [brushScalingStartBox, setBrushScalingStartBox] = useState<{ minX: number, maxX: number, minY: number, maxY: number } | null>(null);
 
   const [isRotatingShape, setIsRotatingShape] = useState(false);
@@ -448,7 +452,7 @@ export function PaintEditor({
       setActiveTool('brush');
       setSelectedColor('#000000');
       setBrushWidth(8);
-      setSelectedShapeId(null);
+      setSelectedShapeIds([]);
 
       const preloadAndInit = async () => {
         if (initialShapes && initialShapes.length > 0) {
@@ -545,7 +549,7 @@ export function PaintEditor({
       const prevIndex = historyIndex - 1;
       setShapes(history[prevIndex]);
       setHistoryIndex(prevIndex);
-      setSelectedShapeId(null);
+      setSelectedShapeIds([]);
     }
   };
 
@@ -554,15 +558,15 @@ export function PaintEditor({
       const nextIndex = historyIndex + 1;
       setShapes(history[nextIndex]);
       setHistoryIndex(nextIndex);
-      setSelectedShapeId(null);
+      setSelectedShapeIds([]);
     }
   };
 
   const handleColorSelect = (color: string) => {
     setSelectedColor(color);
-    if (selectedShapeId) {
+    if (selectedShapeIds.length > 0) {
       const updated = shapes.map(s => {
-        if (s.id === selectedShapeId) {
+        if (selectedShapeIds.includes(s.id)) {
           return { ...s, color: color };
         }
         return s;
@@ -573,9 +577,9 @@ export function PaintEditor({
 
   const handleBrushWidthSelect = (width: number) => {
     setBrushWidth(width);
-    if (selectedShapeId) {
+    if (selectedShapeIds.length > 0) {
       const updated = shapes.map(s => {
-        if (s.id === selectedShapeId) {
+        if (selectedShapeIds.includes(s.id)) {
           return { ...s, width: width };
         }
         return s;
@@ -630,6 +634,15 @@ export function PaintEditor({
       }
     }
     return null;
+  };
+
+  const isShapeInRect = (shape: Shape, rectX: number, rectY: number, rectW: number, rectH: number): boolean => {
+    const minX = Math.min(rectX, rectX + rectW);
+    const maxX = Math.max(rectX, rectX + rectW);
+    const minY = Math.min(rectY, rectY + rectH);
+    const maxY = Math.max(rectY, rectY + rectH);
+
+    return shape.points.some(p => p.x >= minX && p.x <= maxX && p.y >= minY && p.y <= maxY);
   };
 
   // Rendering shapes onto Canvas
@@ -758,10 +771,12 @@ export function PaintEditor({
       ctx.restore();
     });
 
-    // Draw circular control points & dashes for selected shape
-    if (drawHandles && activeTool === 'select' && selectedShapeId) {
-      const selectedShape = shapes.find(s => s.id === selectedShapeId);
-      if (selectedShape) {
+    // Draw circular control points & dashes for selected shapes
+    if (drawHandles && activeTool === 'select' && selectedShapeIds.length > 0) {
+      selectedShapeIds.forEach(id => {
+        const selectedShape = shapes.find(s => s.id === id);
+        if (!selectedShape) return;
+
         let handlePoints: Point[] = [];
         if (selectedShape.type === 'brush') {
           const box = getBrushBoundingBox(selectedShape.points);
@@ -795,54 +810,74 @@ export function PaintEditor({
           ctx.restore();
         }
 
-        handlePoints.forEach((pt) => {
+        // Only draw interaction handles for a single selection or primary selection
+        if (selectedShapeIds.length === 1) {
+          handlePoints.forEach((pt) => {
+            ctx.save();
+            ctx.beginPath();
+            ctx.arc(pt.x, pt.y, 8, 0, Math.PI * 2);
+            ctx.fillStyle = '#ffffff';
+            ctx.fill();
+            ctx.strokeStyle = '#0288d1';
+            ctx.lineWidth = 3;
+            ctx.stroke();
+            ctx.restore();
+          });
+
+          // Draw rotation handle
+          const minX = Math.min(...handlePoints.map(p => p.x));
+          const maxX = Math.max(...handlePoints.map(p => p.x));
+          const minY = Math.min(...handlePoints.map(p => p.y));
+          const rotHandleX = (minX + maxX) / 2;
+          const rotHandleY = minY - 40;
+
+          // Line to handle
           ctx.save();
-          ctx.beginPath();
-          ctx.arc(pt.x, pt.y, 8, 0, Math.PI * 2);
-          ctx.fillStyle = '#ffffff';
-          ctx.fill();
           ctx.strokeStyle = '#0288d1';
-          ctx.lineWidth = 3;
+          ctx.lineWidth = 2;
+          ctx.setLineDash([4, 4]);
+          ctx.beginPath();
+          ctx.moveTo(rotHandleX, minY);
+          ctx.lineTo(rotHandleX, rotHandleY);
           ctx.stroke();
           ctx.restore();
-        });
 
-        // Draw rotation handle
-        const minX = Math.min(...handlePoints.map(p => p.x));
-        const maxX = Math.max(...handlePoints.map(p => p.x));
-        const minY = Math.min(...handlePoints.map(p => p.y));
-        const rotHandleX = (minX + maxX) / 2;
-        const rotHandleY = minY - 40;
+          // Handle circle
+          ctx.save();
+          ctx.beginPath();
+          ctx.arc(rotHandleX, rotHandleY, 10, 0, Math.PI * 2);
+          ctx.fillStyle = '#0288d1';
+          ctx.fill();
+          ctx.strokeStyle = '#ffffff';
+          ctx.lineWidth = 2;
+          ctx.stroke();
+          
+          // Add a small rotation icon inside
+          ctx.strokeStyle = '#ffffff';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.arc(rotHandleX, rotHandleY, 5, 0, Math.PI * 1.5);
+          ctx.stroke();
+          ctx.restore();
+        }
+      });
+    }
 
-        // Line to handle
-        ctx.save();
-        ctx.strokeStyle = '#0288d1';
-        ctx.lineWidth = 2;
-        ctx.setLineDash([4, 4]);
-        ctx.beginPath();
-        ctx.moveTo(rotHandleX, minY);
-        ctx.lineTo(rotHandleX, rotHandleY);
-        ctx.stroke();
-        ctx.restore();
-
-        // Handle circle
-        ctx.save();
-        ctx.beginPath();
-        ctx.arc(rotHandleX, rotHandleY, 10, 0, Math.PI * 2);
-        ctx.fillStyle = '#0288d1';
-        ctx.fill();
-        ctx.strokeStyle = '#ffffff';
-        ctx.lineWidth = 2;
-        ctx.stroke();
-        
-        // Add a small rotation icon inside
-        ctx.strokeStyle = '#ffffff';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.arc(rotHandleX, rotHandleY, 5, 0, Math.PI * 1.5);
-        ctx.stroke();
-        ctx.restore();
-      }
+    // Draw marquee selection rectangle
+    if (isMarqueeSelecting && marqueeRect) {
+      ctx.save();
+      ctx.strokeStyle = '#29b6f6';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([5, 5]);
+      const x = Math.min(marqueeRect.startX, marqueeRect.currentX);
+      const y = Math.min(marqueeRect.startY, marqueeRect.currentY);
+      const w = Math.abs(marqueeRect.startX - marqueeRect.currentX);
+      const h = Math.abs(marqueeRect.startY - marqueeRect.currentY);
+      ctx.strokeRect(x, y, w, h);
+      
+      ctx.fillStyle = 'rgba(41, 182, 246, 0.1)';
+      ctx.fillRect(x, y, w, h);
+      ctx.restore();
     }
   };
 
@@ -852,7 +887,7 @@ export function PaintEditor({
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
     renderAllShapes(ctx, canvas.width, canvas.height, true);
-  }, [shapes, selectedShapeId, activeTool]);
+  }, [shapes, selectedShapeIds, isMarqueeSelecting, marqueeRect, activeTool]);
 
   const startDrawing = (e: React.PointerEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
@@ -922,9 +957,13 @@ export function PaintEditor({
     if (activeTool === 'scissors') {
       const clickedShape = findShapeAtPosition(x, y);
       if (clickedShape) {
-        const updated = shapes.filter(s => s.id !== clickedShape.id);
+        let idsToDelete = [clickedShape.id];
+        if (selectedShapeIds.includes(clickedShape.id)) {
+          idsToDelete = selectedShapeIds;
+        }
+        const updated = shapes.filter(s => !idsToDelete.includes(s.id));
         saveStateToHistory(updated);
-        setSelectedShapeId(null);
+        setSelectedShapeIds([]);
       }
       return;
     }
@@ -932,14 +971,31 @@ export function PaintEditor({
     if (activeTool === 'stamp') {
       const clickedShape = findShapeAtPosition(x, y);
       if (clickedShape) {
-        const newId = `shape-${Date.now()}`;
-        const duplicated: Shape = {
-          ...clickedShape,
-          id: newId,
-          points: clickedShape.points.map(p => ({ x: p.x + 25, y: p.y + 25 }))
-        };
-        saveStateToHistory([...shapes, duplicated]);
-        setSelectedShapeId(newId);
+        let idsToDuplicate = [clickedShape.id];
+        if (selectedShapeIds.includes(clickedShape.id)) {
+          idsToDuplicate = selectedShapeIds;
+        }
+
+        const newShapes: Shape[] = [];
+        const newSelectedIds: string[] = [];
+
+        idsToDuplicate.forEach(id => {
+          const original = shapes.find(s => s.id === id);
+          if (original) {
+            const newId = `shape-${Date.now()}-${Math.random()}`;
+            newShapes.push({
+              ...original,
+              id: newId,
+              points: original.points.map(p => ({ x: p.x + 25, y: p.y + 25 }))
+            });
+            newSelectedIds.push(newId);
+          }
+        });
+
+        if (newShapes.length > 0) {
+          saveStateToHistory([...shapes, ...newShapes]);
+          setSelectedShapeIds(newSelectedIds);
+        }
       }
       return;
     }
@@ -984,8 +1040,8 @@ export function PaintEditor({
     }
 
     if (activeTool === 'select') {
-      if (selectedShapeId) {
-        const selectedShape = shapes.find(s => s.id === selectedShapeId);
+      if (selectedShapeIds.length === 1) {
+        const selectedShape = shapes.find(s => s.id === selectedShapeIds[0]);
         if (selectedShape) {
           let handlePoints = selectedShape.points;
           if (selectedShape.type === 'brush') {
@@ -1028,12 +1084,26 @@ export function PaintEditor({
 
       const clickedShape = findShapeAtPosition(x, y);
       if (clickedShape) {
-        setSelectedShapeId(clickedShape.id);
+        let newSelection = selectedShapeIds;
+        if (!selectedShapeIds.includes(clickedShape.id)) {
+          newSelection = [clickedShape.id];
+          setSelectedShapeIds(newSelection);
+        }
         setIsDraggingShape(true);
         setDragStartPos(currentPoint);
-        setDraggedShapeStartPoints(clickedShape.points.map(p => ({ ...p })));
+        // Store initial points for all selected shapes
+        const initialPointsMap: Record<string, Point[]> = {};
+        shapes.forEach(s => {
+          if (newSelection.includes(s.id)) {
+            initialPointsMap[s.id] = s.points.map(p => ({ ...p }));
+          }
+        });
+        setDraggedShapeStartPoints(initialPointsMap);
       } else {
-        setSelectedShapeId(null);
+        // Start marquee selection
+        setIsMarqueeSelecting(true);
+        setMarqueeRect({ startX: x, startY: y, currentX: x, currentY: y });
+        setSelectedShapeIds([]);
       }
       return;
     }
@@ -1114,7 +1184,7 @@ export function PaintEditor({
 
     if (newShape) {
       setShapes([...shapes, newShape]);
-      setSelectedShapeId(newId);
+      setSelectedShapeIds([newId]);
     }
   };
 
@@ -1129,9 +1199,15 @@ export function PaintEditor({
     const currentPoint = { x, y };
 
     if (activeTool === 'select') {
-      if (isReshaping && selectedShapeId && selectedPointIndex !== null) {
+      if (isMarqueeSelecting && marqueeRect) {
+        setMarqueeRect(prev => prev ? { ...prev, currentX: x, currentY: y } : null);
+        return;
+      }
+
+      if (isReshaping && selectedShapeIds.length === 1 && selectedPointIndex !== null) {
+        const selectedId = selectedShapeIds[0];
         setShapes(prev => prev.map(shape => {
-          if (shape.id !== selectedShapeId) return shape;
+          if (shape.id !== selectedId) return shape;
 
           if (shape.type === 'brush' && brushScalingStartBox) {
             const box = brushScalingStartBox;
@@ -1182,19 +1258,25 @@ export function PaintEditor({
 
           return { ...shape, points: updatedPoints };
         }));
-      } else if (isDraggingShape && selectedShapeId) {
+      } else if (isDraggingShape && selectedShapeIds.length > 0) {
         const dx = x - dragStartPos.x;
         const dy = y - dragStartPos.y;
+        
         setShapes(prev => prev.map(shape => {
-          if (shape.id !== selectedShapeId) return shape;
+          if (!selectedShapeIds.includes(shape.id)) return shape;
+          
+          const initialPoints = draggedShapeStartPoints[shape.id];
+          if (!initialPoints) return shape;
+
           return {
             ...shape,
-            points: draggedShapeStartPoints.map(p => ({ x: p.x + dx, y: p.y + dy }))
+            points: initialPoints.map(p => ({ x: p.x + dx, y: p.y + dy }))
           };
         }));
-      } else if (isRotatingShape && selectedShapeId) {
+      } else if (isRotatingShape && selectedShapeIds.length === 1) {
+        const selectedId = selectedShapeIds[0];
         setShapes(prev => prev.map(shape => {
-          if (shape.id !== selectedShapeId) return shape;
+          if (shape.id !== selectedId) return shape;
           const centroid = getCentroid(rotationInitialPoints);
           const currentAngle = Math.atan2(y - centroid.y, x - centroid.x);
           const deltaAngle = currentAngle - rotationStartAngle;
@@ -1211,7 +1293,7 @@ export function PaintEditor({
     if (!isDrawing) return;
 
     setShapes(prev => prev.map(shape => {
-      if (shape.id !== selectedShapeId) return shape;
+      if (!selectedShapeIds.includes(shape.id)) return shape;
 
       if (shape.type === 'brush') {
         return { ...shape, points: [...shape.points, currentPoint] };
@@ -1262,6 +1344,22 @@ export function PaintEditor({
   };
 
   const stopDrawing = () => {
+    if (isMarqueeSelecting && marqueeRect) {
+      const x = Math.min(marqueeRect.startX, marqueeRect.currentX);
+      const y = Math.min(marqueeRect.startY, marqueeRect.currentY);
+      const w = Math.abs(marqueeRect.startX - marqueeRect.currentX);
+      const h = Math.abs(marqueeRect.startY - marqueeRect.currentY);
+
+      const inRectIds = shapes
+        .filter(s => isShapeInRect(s, x, y, w, h))
+        .map(s => s.id);
+      
+      setSelectedShapeIds(inRectIds);
+      setIsMarqueeSelecting(false);
+      setMarqueeRect(null);
+      return;
+    }
+
     if (isDrawing || isReshaping || isDraggingShape || isRotatingShape) {
       setIsDrawing(false);
       setIsReshaping(false);
@@ -1367,7 +1465,7 @@ export function PaintEditor({
     };
 
     saveStateToHistory([...shapes, newImgShape]);
-    setSelectedShapeId(newId);
+    setSelectedShapeIds([newId]);
     stopCameraStream();
   };
 
