@@ -789,8 +789,8 @@ export default function App() {
     setIsGalleryOpen(false);
   };
 
-  const handleDeleteCharacter = (id: string, e: React.MouseEvent) => {
-    e.stopPropagation();
+  const handleDeleteCharacter = (id: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
     if (characters.length <= 1) return;
     setCharacters(prev => prev.filter(c => c.id !== id));
     setSpriteStates(prev => {
@@ -1515,6 +1515,11 @@ export default function App() {
                   }
                 };
               });
+            }}
+            onDeleteCharacter={(charId) => {
+              if (characters.length > 1) {
+                handleDeleteCharacter(charId);
+              }
             }}
           />
 
