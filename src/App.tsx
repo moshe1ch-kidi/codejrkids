@@ -1263,7 +1263,8 @@ export default function App() {
     shouldStopRef.current = true;
     setIsRunning(false);
     setActiveBlockId(null);
-    resetStage();
+    activeRunsCountRef.current = 0;
+    runningStacksRef.current.clear();
   };
 
   const handleCharacterClick = (charId: string) => {
@@ -1504,14 +1505,15 @@ export default function App() {
             onUpdateCharacterPosition={(charId, x, y) => {
               setSpriteStates(prev => {
                 const current = prev[charId] || INITIAL_SPRITE_STATE;
+                const isManualDrag = !isRunning;
                 return {
                   ...prev,
                   [charId]: {
                     ...current,
                     x,
                     y,
-                    homeX: x,
-                    homeY: y
+                    homeX: isManualDrag ? x : current.homeX,
+                    homeY: isManualDrag ? y : current.homeY
                   }
                 };
               });
