@@ -1,7 +1,7 @@
  import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { 
   Play, Square, RotateCcw, Image as ImageIcon, 
-  Settings2, Plus, Flag, Trash2, Rocket, Brush, X, Grid, Pencil, Monitor, Save, FolderOpen, Link, Puzzle, Code2, ExternalLink
+  Settings2, Plus, Flag, Trash2, Rocket, Brush, X, Grid, Pencil, Monitor, Save, FolderOpen, Globe
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { Stage } from './components/Stage';
@@ -242,8 +242,8 @@ export default function App() {
   const [isGalleryOpen, setIsGalleryOpen] = useState(false);
   const [isTextModalOpen, setIsTextModalOpen] = useState(false);
   const [isPaintEditorOpen, setIsPaintEditorOpen] = useState(false);
-  const [isLinksMenuOpen, setIsLinksMenuOpen] = useState(false);
   const [isRecordModalOpen, setIsRecordModalOpen] = useState(false);
+  const [isLinksDrawerOpen, setIsLinksDrawerOpen] = useState(false);
   const [recordings, setRecordings] = useState<Record<number, string>>({});
   const [editingCharacterId, setEditingCharacterId] = useState<string | null>(null);
   
@@ -1284,46 +1284,18 @@ export default function App() {
     <div className="h-screen max-h-screen bg-[#F4EFE6] flex flex-col font-sans select-none overflow-hidden">
       {/* Header */}
       <header className="bg-white h-16 flex items-center justify-between z-20 relative px-6 shadow-sm border-b border-[#e5dfd3]">
-        <div className="flex items-center gap-3 w-56 shrink-0 relative">
-          <div className="w-10 h-10 bg-orange-400 rounded-xl flex items-center justify-center shadow-sm"> 
+        <div className="flex items-center gap-3 w-56 shrink-0">
+          <div className="w-10 h-10 bg-orange-400 rounded-xl flex items-center justify-center shadow-sm">
              <Rocket className="w-6 h-6 text-white" />
           </div>
           <h1 className="text-xl font-black text-gray-800 tracking-tight">CODEJR</h1>
           <button
-            onClick={() => setIsLinksMenuOpen(!isLinksMenuOpen)}
-            className="w-10 h-10 bg-indigo-100 hover:bg-indigo-200 text-indigo-600 rounded-full flex items-center justify-center transition-colors shadow-sm ml-1"
-            title="External Links"
+            onClick={() => setIsLinksDrawerOpen(true)}
+            className="w-9 h-9 bg-amber-100 hover:bg-amber-200 border-2 border-amber-300 rounded-xl flex items-center justify-center transition-transform hover:scale-105 shadow-sm"
+            title="אתרים מומלצים"
           >
-            <Link className="w-5 h-5" />
+            <Globe className="w-5 h-5 text-amber-800" />
           </button>
-          {isLinksMenuOpen && (
-            <div className="absolute top-14 left-0 bg-white rounded-xl shadow-xl border border-gray-100 p-2 flex flex-col gap-2 min-w-[200px] z-50">
-              <a
-                href="https://stackkidi.org/"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-3 px-4 py-3 hover:bg-orange-50 rounded-lg transition-colors group"
-              >
-                <div className="w-20 h-20 bg-orange-100 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform overflow-hidden p-1">
-                  <img src={getAssetUrl("/UI/stackkidi.png")} alt="Stack KiDi" className="w-full h-full object-contain" />
-                </div>
-                <span className="font-bold text-gray-700">Stack KiDi</span>
-                <ExternalLink className="w-4 h-4 text-gray-400 ml-auto" />
-              </a>
-              <a
-                href="https://codekidi.org/"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-3 px-4 py-3 hover:bg-blue-50 rounded-lg transition-colors group"
-              >
-                <div className="w-20 h-20 bg-blue-100 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform overflow-hidden p-1">
-                  <img src={getAssetUrl("/UI/codekidi.png")} alt="Code KiDi" className="w-full h-full object-contain" />
-                </div>
-                <span className="font-bold text-gray-700">Code KiDi</span>
-                <ExternalLink className="w-4 h-4 text-gray-400 ml-auto" />
-              </a>
-            </div>
-          )}
         </div>
         
         <div className="flex items-center justify-center gap-4 absolute left-1/2 -translate-x-1/2">
@@ -1413,9 +1385,104 @@ export default function App() {
         
         <div className="w-48 shrink-0"></div>
       </header>
+
+      {/* Main Content */}
       <main className="flex-1 flex flex-col max-w-[1700px] mx-auto w-full p-4 gap-4 min-h-0 overflow-y-auto kid-scrollbar">
+        
         {/* Top Half: Stage & Scenes */}
         <div className="flex-1 flex gap-6 min-h-[460px] shrink-0 overflow-hidden">
+          {/* Left Sidebar: Characters */}
+          <div className="w-64 bg-[#FBD5A5] rounded-[32px] flex flex-col items-center py-4 gap-3 border-4 border-[#F9C17D] shadow-inner shrink-0  overflow-hidden h-full">
+            {/* Scrollable list of characters */}
+            <div className="w-full kid-scrollbar flex flex-col gap-2 px-1 flex-1 overflow-y-auto items-center pb-2">
+              <motion.button
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.9 }}
+                onClick={() => setIsGalleryOpen(true)}
+                className="w-12 h-12 bg-[#7CB342] border-4 border-[#558B2F] rounded-2xl flex items-center justify-center shadow-lg text-white mt-1 shrink-0 sticky top-1 z-30 mb-2"
+                title="Add Character"
+              >
+                <Plus className="w-7 h-7 stroke-[3]" />
+              </motion.button>
+
+              {characters.map((char) => {
+                const isActive = char.id === activeCharacterId;
+                return (
+                  <div key={char.id} className="w-full px-3">
+                    <motion.div
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      onPointerDown={(e) => handleCharacterDragStart(e, char.id)}
+                      onClick={() => setActiveCharacterId(char.id)}
+                      data-character-id={char.id}
+                      className={cn(
+                        "w-full h-24 rounded-3xl flex flex-col items-center justify-center relative transition-all duration-200 border-4 cursor-pointer character-drop-target",
+                        isActive 
+                          ? "bg-[#FDDE90] border-[#F57C00] shadow-lg scale-105 z-10" 
+                          : "bg-white/40 border-transparent hover:bg-white/60"
+                      )}
+                    >
+                      <div className="transition-all duration-300 flex items-center justify-center mb-1">
+                        <img 
+                          src={char.spriteUrl} 
+                          alt={char.name} 
+                          className={cn(
+                            "transition-all duration-300 object-contain drop-shadow-sm",
+                            isActive ? "w-16 h-16" : "w-14 h-14"
+                          )} 
+                        />
+                      </div>
+                      <span className={cn(
+                        "text-[10px] font-extrabold px-2 py-0.5 rounded-full truncate max-w-[90%] shadow-sm",
+                        isActive ? "bg-white text-[#A07B1E]" : "bg-white/80 text-gray-700"
+                      )}>
+                        {char.name}
+                      </span>
+                      {isActive && (
+                        <>
+                          <button 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setEditingCharacterId(char.id);
+                              setIsPaintEditorOpen(true);
+                            }}
+                            className="absolute top-1 right-1 w-8 h-8 bg-white border-2 border-black hover:bg-gray-100 shadow-sm rounded-full flex items-center justify-center z-20 transition-all"
+                            title="Edit Character"
+                          >
+                            <Pencil className="w-4 h-4 text-black" />
+                          </button>
+                          {characters.length > 1 && (
+                            <button 
+                              onPointerDown={(e) => handleCharDeletePointerDown(e, char.id)}
+                              onPointerUp={handleCharDeletePointerUp}
+                              onPointerLeave={handleCharDeletePointerUp}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (armedDeleteCharId === char.id) {
+                                  handleDeleteCharacter(char.id, e);
+                                  setArmedDeleteCharId(null);
+                                }
+                              }}
+                              className={cn(
+                                "absolute top-1 left-1 w-8 h-8 rounded-full flex items-center justify-center transition-all shadow-sm z-20",
+                                armedDeleteCharId === char.id 
+                                  ? "bg-green-500 scale-110 shadow-[0_0_10px_rgba(34,197,94,0.6)]" 
+                                  : "bg-red-500/80 hover:bg-red-500"
+                              )}
+                              title={armedDeleteCharId === char.id ? "Click to confirm delete" : "Hold to unlock delete"}
+                            >
+                              <Trash2 className={cn("w-4 h-4 text-white transition-transform", armedDeleteCharId === char.id && "scale-110")} />
+                            </button>
+                          )}
+                        </>
+                      )}
+                    </motion.div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
           <Stage 
             key={activeSceneId}
             characters={characters} 
@@ -1743,6 +1810,57 @@ export default function App() {
               onCharacterClick={(charId) => handleCharacterClick(charId)}
             />
           </div>
+        </div>
+      )}
+
+      {/* Links Sliding Panel / Drawer */}
+      {isLinksDrawerOpen && (
+        <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/40 backdrop-blur-sm animate-fadeIn">
+          <motion.div 
+            initial={{ scale: 0.9, opacity: 0, y: 20 }}
+            animate={{ scale: 1, opacity: 1, y: 0 }}
+            exit={{ scale: 0.9, opacity: 0, y: 20 }}
+            className="bg-[#FBD5A5] border-4 border-[#F57C00] rounded-[32px] p-6 shadow-2xl max-w-md w-full mx-4 flex flex-col items-center relative"
+          >
+            <button 
+              onClick={() => setIsLinksDrawerOpen(false)}
+              className="absolute top-4 right-4 w-10 h-10 bg-white/80 hover:bg-white text-gray-700 rounded-full flex items-center justify-center font-bold text-lg shadow-md transition-transform hover:scale-110"
+            >
+              <X className="w-6 h-6" />
+            </button>
+
+            <h2 className="text-2xl font-black text-gray-800 mb-6 text-center">אתרים מומלצים</h2>
+
+            <div className="flex flex-row gap-6 w-full justify-center items-center py-4">
+              <a 
+                href="https://stackkidi.org/" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="flex flex-col items-center gap-3 p-4 bg-white/80 hover:bg-white rounded-2xl border-2 border-amber-300 hover:border-orange-400 shadow-md transition-all hover:scale-105 group w-36 text-center"
+              >
+                <img 
+                  src={getAssetUrl("/UI/stackkidi.png")} 
+                  alt="StackKidi" 
+                  className="w-16 h-16 object-contain group-hover:scale-110 transition-transform" 
+                />
+                <span className="font-extrabold text-sm text-gray-800">StackKidi</span>
+              </a>
+
+              <a 
+                href="https://codekidi.org/" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="flex flex-col items-center gap-3 p-4 bg-white/80 hover:bg-white rounded-2xl border-2 border-amber-300 hover:border-orange-400 shadow-md transition-all hover:scale-105 group w-36 text-center"
+              >
+                <img 
+                  src={getAssetUrl("/UI/codekidi.png")} 
+                  alt="CodeKidi" 
+                  className="w-16 h-16 object-contain group-hover:scale-110 transition-transform" 
+                />
+                <span className="font-extrabold text-sm text-gray-800">CodeKidi</span>
+              </a>
+            </div>
+          </motion.div>
         </div>
       )}
 
