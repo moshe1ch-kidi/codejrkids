@@ -1,4 +1,4 @@
- import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { 
   Play, Square, RotateCcw, Image as ImageIcon, 
   Settings2, Plus, Flag, Trash2, Rocket, Brush, X, Grid, Pencil, Monitor, Save, FolderOpen, Globe
@@ -98,10 +98,23 @@ export default function App() {
   }, [armedDeleteCharId, armedDeleteSceneId]);
 
   useEffect(() => {
-    const img1 = new Image();
-    img1.src = getAssetUrl("/UI/stackkidi.png");
-    const img2 = new Image();
-    img2.src = getAssetUrl("/UI/codekidi.png");
+    const assetsToPreload = [
+      "/UI/stackkidi.png",
+      "/UI/codekidi.png",
+      "/UI/scene1.svg",
+      "/UI/gridOn.svg",
+      "/UI/addText.svg",
+      "/UI/fullOff2.svg",
+      "/UI/resetAll.svg",
+      "/UI/stop1.svg",
+      "/UI/go.svg",
+      "/sprites/pandamain.svg",
+      "/sprites/cat1.svg"
+    ];
+    assetsToPreload.forEach(path => {
+      const img = new Image();
+      img.src = getAssetUrl(path);
+    });
   }, []);
 
 
