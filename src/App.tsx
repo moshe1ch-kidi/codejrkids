@@ -1,4 +1,4 @@
- import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { 
   Play, Square, RotateCcw, Image as ImageIcon, 
   Settings2, Plus, Flag, Trash2, Rocket, Brush, X, Grid, Pencil, Monitor, Save, FolderOpen
@@ -1784,7 +1784,7 @@ export default function App() {
           </div>
 
           {/* Full Screen Stage Container */}
-          <div className="flex-1 w-full relative overflow-hidden flex items-center justify-center p-2 sm:p-6 pb-8">
+          <div className="flex-1 w-full relative overflow-hidden p-2 sm:p-6 pb-8 flex flex-col">
             <Stage 
               key={activeSceneId}
               characters={characters} 
