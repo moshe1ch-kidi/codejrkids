@@ -75,9 +75,9 @@ export default function App() {
   }, [scenes]);
   const [activeSceneId, setActiveSceneId] = useState('scene-1');
   const [isBackgroundGalleryOpen, setIsBackgroundGalleryOpen] = useState(false);
+  const [isPresentationMode, setIsPresentationMode] = useState(false);
   const [activeCharacterId, setActiveCharacterId] = useState('char-1');
   const [showGrid, setShowGrid] = useState(false);
-  const [isPresentationMode, setIsPresentationMode] = useState(false);
   const [windowSize, setWindowSize] = useState({ 
     width: typeof window !== 'undefined' ? window.innerWidth : 1024, 
     height: typeof window !== 'undefined' ? window.innerHeight : 768 
@@ -97,14 +97,6 @@ export default function App() {
     }
   }, [armedDeleteCharId, armedDeleteSceneId]);
 
-  useEffect(() => {
-    if (!isPresentationMode) return;
-    const handleResize = () => {
-      setWindowSize({ width: window.innerWidth, height: window.innerHeight });
-    };
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, [isPresentationMode]);
 
   const activeScene = scenes.find(s => s.id === activeSceneId) || scenes[0];
   const characters = activeScene?.characters || [];
@@ -1325,13 +1317,12 @@ export default function App() {
           >
             <img src={getAssetUrl("/UI/addText.svg")} alt="Text" className="w-[72px] h-[72px] object-contain" />
           </button>
-
           <button 
             onClick={() => setIsPresentationMode(true)}
             className="hover:scale-110 transition-transform"
             title="Full Screen"
           >
-            <img src={getAssetUrl("/UI/fullOff2.svg")} alt="Full Screen" className="w-[72px] h-[72px] object-contain" />
+            <img src={getAssetUrl("/UI/fullOff2.svg")} alt="Full Screen" className="w-[60px] h-[60px] object-contain" />
           </button>
 
           <div className="w-px h-10 bg-gray-300 mx-2"></div>
@@ -1393,7 +1384,7 @@ export default function App() {
         {/* Top Half: Stage & Scenes */}
         <div className="flex-1 flex gap-6 min-h-[460px] shrink-0 overflow-hidden">
           {/* Left Sidebar: Characters */}
-          <div className="w-64 bg-[#FBD5A5] rounded-[32px] flex flex-col items-center py-4 gap-3 border-4 border-[#F9C17D] shadow-inner shrink-0 animate-fade-in overflow-hidden h-full">
+          <div className="w-64 bg-[#FBD5A5] rounded-[32px] flex flex-col items-center py-4 gap-3 border-4 border-[#F9C17D] shadow-inner shrink-0  overflow-hidden h-full">
             {/* Scrollable list of characters */}
             <div className="w-full kid-scrollbar flex flex-col gap-2 px-1 flex-1 overflow-y-auto items-center pb-2">
               <motion.button
@@ -1526,7 +1517,7 @@ export default function App() {
           />
 
           {/* Right Sidebar: Scenes */}
-          <div className="w-44 bg-[#FBD5A5] rounded-[32px] flex flex-col items-center py-4 gap-3 border-4 border-[#F9C17D] shadow-inner shrink-0 animate-fade-in overflow-hidden h-full">
+          <div className="w-44 bg-[#FBD5A5] rounded-[32px] flex flex-col items-center py-4 gap-3 border-4 border-[#F9C17D] shadow-inner shrink-0  overflow-hidden h-full">
             {/* Scrollable list of scenes */}
             <div className="w-full kid-scrollbar flex flex-col items-center gap-3 px-1 pb-4 flex-1 overflow-y-auto">
               <motion.button
@@ -1740,84 +1731,67 @@ export default function App() {
       />
 
       {isPresentationMode && (
-        <div className="fixed inset-0 bg-[#F4EFE6] z-[9999] flex flex-col items-center justify-between p-6 select-none overflow-hidden animate-fade-in">
+        <div className="fixed inset-0 bg-[#F4EFE6] z-[9999] flex flex-col select-none overflow-hidden">
           {/* Top Control Bar */}
-          <div className="w-full max-w-5xl flex items-center justify-between bg-white/85 backdrop-blur-md px-6 py-3 rounded-3xl shadow-md border border-[#e5dfd3] z-10 shrink-0">
-            {/* Play, Stop, Reset (RTL flow) */}
-            <div className="flex items-center gap-4">
+          <div className="h-[88px] w-full flex items-center justify-between bg-white/80 backdrop-blur-md px-6 md:px-12 border-b-2 border-white/50 shrink-0 shadow-sm z-10">
+            {/* Play/Stop Controls */}
+            <div className="flex items-center gap-6">
               <button 
                 onClick={playScene}
                 disabled={isRunning || stacks.length === 0}
-                className="hover:scale-110 transition-transform disabled:opacity-50 disabled:cursor-not-allowed"
+                className="hover:scale-110 transition-transform disabled:opacity-50 disabled:cursor-not-allowed drop-shadow-md"
                 title="Go"
               >
-                <img src={getAssetUrl("/UI/go.svg")} alt="Go" className="w-[60px] h-[60px] object-contain" />
+                <img src={getAssetUrl("/UI/go.svg")} alt="Go" className="w-[64px] h-[64px] object-contain" />
               </button>
               
               <button 
                 onClick={stopScene}
                 disabled={!isRunning}
-                className="hover:scale-110 transition-transform disabled:opacity-50 disabled:cursor-not-allowed"
+                className="hover:scale-110 transition-transform disabled:opacity-50 disabled:cursor-not-allowed drop-shadow-md"
                 title="Stop"
               >
-                <img src={getAssetUrl("/UI/stop1.svg")} alt="Stop" className="w-[60px] h-[60px] object-contain" />
+                <img src={getAssetUrl("/UI/stop1.svg")} alt="Stop" className="w-[64px] h-[64px] object-contain" />
               </button>
 
               <button 
                 onClick={resetStage}
-                className="hover:scale-110 transition-transform"
-                title="Reset"
+                className="hover:scale-110 transition-transform drop-shadow-md"
+                title="Reset Stage"
               >
-                <img src={getAssetUrl("/UI/resetAll.svg")} alt="Reset" className="w-[60px] h-[60px] object-contain" />
+                <img src={getAssetUrl("/UI/resetAll.svg")} alt="Reset" className="w-[64px] h-[64px] object-contain" />
               </button>
             </div>
 
-            {/* Title / Project Name */}
-            <div className="hidden sm:flex items-center gap-3">
-              <div className="w-8 h-8 bg-orange-400 rounded-lg flex items-center justify-center">
-                <Rocket className="w-5 h-5 text-white" />
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-indigo-500 rounded-xl flex items-center justify-center shadow-md">
+                <Rocket className="w-6 h-6 text-white" />
               </div>
-              <h2 className="text-lg font-black text-gray-800 tracking-tight">Presentation</h2>
+              <h2 className="text-xl font-black text-slate-800 tracking-tight hidden sm:block">Presentation Mode</h2>
             </div>
 
-            {/* Close / Minimize Mode */}
-            <div>
-              <button 
-                onClick={() => {
-                  stopScene();
-                  setIsPresentationMode(false);
-                }}
-                className="hover:scale-110 transition-transform"
-                title="Exit Full Screen"
-              >
-                <svg width="60" height="60" viewBox="0 0 72 72" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <ellipse cx="36" cy="62" rx="26" ry="6" fill="#333333" fillOpacity="0.2"/>
-                  <rect x="6" y="6" width="60" height="52" rx="26" fill="#E53935" stroke="#C62828" strokeWidth="4"/>
-                  <rect x="10" y="10" width="52" height="44" rx="22" fill="url(#red_grad)"/>
-                  <path d="M14 24C14 18.4772 18.4772 14 24 14H48C53.5228 14 58 18.4772 58 24C58 25 53 20 48 20H24C19 20 14 25 14 24Z" fill="white" fillOpacity="0.45"/>
-                  <g stroke="white" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M25 25L47 47M47 25L25 47" />
-                  </g>
-                  <defs>
-                    <linearGradient id="red_grad" x1="36" y1="10" x2="36" y2="54" gradientUnits="userSpaceOnUse">
-                      <stop offset="0%" stopColor="#EF5350"/>
-                      <stop offset="100%" stopColor="#E53935"/>
-                    </linearGradient>
-                  </defs>
-                </svg>
-              </button>
-            </div>
+            {/* Exit Full Screen */}
+            <button 
+              onClick={() => {
+                stopScene();
+                setIsPresentationMode(false);
+              }}
+              className="hover:scale-110 transition-transform drop-shadow-md"
+              title="Exit Full Screen"
+            >
+              <img src={getAssetUrl("/UI/fullOff2.svg")} alt="Exit Full Screen" className="w-[64px] h-[64px] object-contain" />
+            </button>
           </div>
 
-          {/* Scaled Stage Container */}
-          <div className="flex-1 flex items-center justify-center w-full min-h-0 relative">
+          {/* Full Screen Stage Container */}
+          <div className="flex-1 w-full relative overflow-hidden p-2 sm:p-6 pb-8 flex flex-col">
             <Stage 
               key={activeSceneId}
               characters={characters} 
               activeCharacterId={activeCharacterId} 
               activeSceneId={activeSceneId}
               spriteStates={spriteStates} 
-              showGrid={showGrid}
+              showGrid={false}
               background={activeScene?.background}
               sceneTitle={activeScene?.text}
               sceneTitleColor={activeScene?.textColor}
@@ -1828,9 +1802,6 @@ export default function App() {
               onCharacterClick={(charId) => handleCharacterClick(charId)}
             />
           </div>
-          
-          {/* Bottom Bar spacer to match top spacing */}
-          <div className="h-6 shrink-0" />
         </div>
       )}
 
