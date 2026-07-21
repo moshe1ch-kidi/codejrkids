@@ -207,7 +207,7 @@ const StageCharacter = React.memo(function StageCharacter({
   return (
     <motion.div
       key={motionKey}
-      initial={false}
+      initial={currentStyles}
       animate={currentStyles}
       transition={{
         rotate: isLongPressed ? {
@@ -310,13 +310,15 @@ export const Stage = React.memo(function Stage({
   const containerRef = React.useRef<HTMLDivElement>(null);
   const [scale, setScale] = React.useState(1);
 
-  React.useEffect(() => {
+  React.useLayoutEffect(() => {
     const container = containerRef.current;
     if (!container) return;
 
     const updateScale = () => {
+      if (!container) return;
       const rect = container.getBoundingClientRect();
-      const padding = 16; // Use smaller padding to maximize available space
+      
+      const padding = 48; // Increased padding to ensure frame stays well within bounds
       const availableWidth = Math.max(100, rect.width - padding);
       const availableHeight = Math.max(100, rect.height - padding);
 
@@ -326,7 +328,7 @@ export const Stage = React.memo(function Stage({
       let newScale = Math.min(scaleX, scaleY);
       
       // Limit upscale to 2.2x, downscale as needed
-      if (newScale > 2.2) newScale = 2.2;
+      
       if (newScale < 0.15) newScale = 0.15;
 
       setScale(newScale);
@@ -349,7 +351,7 @@ export const Stage = React.memo(function Stage({
   return (
     <div 
       ref={containerRef}
-      className="flex-1 flex flex-col items-center justify-center p-2 sm:p-4 min-h-0 w-full overflow-hidden"
+      className="flex-1 flex flex-col items-center justify-center min-h-0 w-full overflow-hidden"
     >
       {/* Wrapper to reserve exact scaled layout space */}
       <div 
@@ -361,7 +363,7 @@ export const Stage = React.memo(function Stage({
           justifyContent: 'center',
           position: 'relative'
         }}
-        className="shrink-0 transition-all duration-75"
+        className="shrink-0"
       >
         {/* Scratch-style Rounded Purple Frame */}
         <div 
@@ -372,7 +374,7 @@ export const Stage = React.memo(function Stage({
             height: baseHeight,
             position: 'absolute'
           }}
-          className="p-4 bg-[#9575CD] rounded-[40px] border-[6px] border-[#7E57C2] shadow-[0_20px_60px_rgba(0,0,0,0.15),inset_0_-10px_20px_rgba(0,0,0,0.1)] shrink-0 transition-transform duration-75"
+          className="p-4 bg-[#9575CD] rounded-[40px] border-[6px] border-[#7E57C2] shadow-[0_20px_60px_rgba(0,0,0,0.15),inset_0_-10px_20px_rgba(0,0,0,0.1)] shrink-0"
         >
         {/* Decorative Glossy Highlights */}
         <div className="absolute top-4 left-6 w-40 h-8 bg-white/20 rounded-full blur-md -rotate-6" />
@@ -437,6 +439,10 @@ export const Stage = React.memo(function Stage({
               "absolute z-40 text-center pointer-events-auto -translate-x-1/2 -translate-y-1/2 touch-none",
               disableDragging ? "cursor-pointer" : "cursor-grab active:cursor-grabbing"
             )}
+            initial={{
+              left: `${(sceneTitlePosition.x - 0.5) * 5}%`,
+              top: `${100 - (sceneTitlePosition.y - 0.5) * (100 / 15)}%`
+            }}
             animate={{
               left: `${(sceneTitlePosition.x - 0.5) * 5}%`,
               top: `${100 - (sceneTitlePosition.y - 0.5) * (100 / 15)}%`
