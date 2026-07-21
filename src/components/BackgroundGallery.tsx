@@ -133,6 +133,8 @@ export function BackgroundGallery({ isOpen, onClose, onSelect }: BackgroundGalle
                         <img
                           src={bgUrl}
                           alt={bg.displayName}
+                          loading="lazy"
+                          decoding="async"
                           className="w-full h-full object-cover pointer-events-none select-none transition-transform duration-300 group-hover:scale-105"
                         />
                       </div>
