@@ -1,7 +1,8 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { 
   Play, Square, RotateCcw, Image as ImageIcon, 
-  Settings2, Plus, Flag, Trash2, Rocket, Brush, X, Grid, Pencil, Monitor, Save, FolderOpen
+  Settings2, Plus, Flag, Trash2, Rocket, Brush, X, Grid, Pencil, Monitor, Save, FolderOpen,
+  Menu, ExternalLink, Globe
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { Stage } from './components/Stage';
@@ -83,6 +84,7 @@ export default function App() {
     height: typeof window !== 'undefined' ? window.innerHeight : 768 
   });
   const [showMobileWarning, setShowMobileWarning] = useState(true);
+  const [isMenuDrawerOpen, setIsMenuDrawerOpen] = useState(false);
   const [armedDeleteCharId, setArmedDeleteCharId] = useState<string | null>(null);
   const [armedDeleteSceneId, setArmedDeleteSceneId] = useState<string | null>(null);
   const deleteHoldTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -1283,11 +1285,13 @@ export default function App() {
     <div className="h-screen max-h-screen bg-[#F4EFE6] flex flex-col font-sans select-none overflow-hidden">
       {/* Header */}
       <header className="bg-white h-16 flex items-center justify-between z-20 relative px-6 shadow-sm border-b border-[#e5dfd3]">
-        <div className="flex items-center gap-4 w-48 shrink-0">
-          <div className="w-10 h-10 bg-orange-400 rounded-xl flex items-center justify-center shadow-sm">
-             <Rocket className="w-6 h-6 text-white" />
+        <div className="flex items-center gap-3 w-48 shrink-0">
+          <div className="flex items-center gap-2.5 cursor-pointer">
+            <div className="w-10 h-10 bg-orange-400 rounded-xl flex items-center justify-center shadow-sm">
+               <Rocket className="w-6 h-6 text-white" />
+            </div>
+            <h1 className="text-xl font-black text-gray-800 tracking-tight">CODEJR</h1>
           </div>
-          <h1 className="text-xl font-black text-gray-800 tracking-tight">CODEJR</h1>
         </div>
         
         <div className="flex items-center justify-center gap-4 absolute left-1/2 -translate-x-1/2">
@@ -1375,7 +1379,15 @@ export default function App() {
           </label>
         </div>
         
-        <div className="w-48 shrink-0"></div>
+        <div className="w-48 shrink-0 flex items-center justify-end pr-4">
+          <button
+            onClick={() => setIsMenuDrawerOpen(true)}
+            className="w-10 h-10 flex items-center justify-center bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white rounded-xl transition-all shadow-sm hover:shadow-md active:scale-95 hover:scale-105 border border-orange-300/40"
+            title="Coding Sites"
+          >
+            <Globe className="w-5 h-5" />
+          </button>
+        </div>
       </header>
 
       {/* Main Content */}
@@ -1821,6 +1833,91 @@ export default function App() {
           >
             Continue anyway
           </button>
+        </div>
+      )}
+
+      {/* Slide-out / Popover Menu Panel */}
+      {isMenuDrawerOpen && (
+        <div className="fixed inset-0 z-[99999] flex items-start justify-end p-4 pt-16">
+          {/* Backdrop */}
+          <div 
+            className="fixed inset-0 bg-black/30 backdrop-blur-xs transition-opacity"
+            onClick={() => setIsMenuDrawerOpen(false)}
+          />
+          
+          {/* Drawer Panel */}
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.95, y: -8 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: -8 }}
+            transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+            className="relative w-80 max-w-[90vw] h-fit bg-white rounded-2xl shadow-2xl flex flex-col z-10 p-4 border border-gray-100"
+          >
+            <div className="flex items-center justify-between pb-3 border-b border-gray-100 mb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center text-orange-600 shrink-0">
+                  <Globe className="w-4 h-4" />
+                </div>
+                <h2 className="text-base font-bold text-gray-800">Coding Sites</h2>
+              </div>
+              <button 
+                onClick={() => setIsMenuDrawerOpen(false)}
+                className="w-7 h-7 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-colors text-gray-500 hover:text-gray-700 shrink-0"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="flex flex-col gap-3.5">
+              {/* CodeKidi */}
+              <div>
+                <p className="text-xs font-semibold text-orange-600 mb-1 text-left">
+                  For kids who master ScratchJr
+                </p>
+                <a 
+                  href="https://codekidi.org/" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-3.5 p-3 rounded-xl bg-orange-50 hover:bg-orange-100/80 border border-orange-200 transition-all group shadow-xs hover:shadow-sm"
+                >
+                  <div className="w-20 h-20 bg-white rounded-xl shadow-xs flex items-center justify-center p-2 shrink-0 border border-orange-100 group-hover:scale-105 transition-transform">
+                    <img src={getAssetUrl("/UI/codekidi.png")} alt="CodeKidi" className="w-full h-full object-contain" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between">
+                      <span className="font-extrabold text-gray-900 text-base group-hover:text-orange-600 transition-colors">CodeKidi</span>
+                      <ExternalLink className="w-4 h-4 text-orange-400 group-hover:translate-x-0.5 transition-transform" />
+                    </div>
+                    <span className="text-xs text-gray-500 block truncate mt-1">codekidi.org</span>
+                  </div>
+                </a>
+              </div>
+
+              {/* StackKidi */}
+              <div>
+                <p className="text-xs font-semibold text-blue-600 mb-1 text-left">
+                  ScratchJr equivalent with vertical coding
+                </p>
+                <a 
+                  href="https://stackkidi.org/" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-3.5 p-3 rounded-xl bg-blue-50 hover:bg-blue-100/80 border border-blue-200 transition-all group shadow-xs hover:shadow-sm"
+                >
+                  <div className="w-20 h-20 bg-white rounded-xl shadow-xs flex items-center justify-center p-2 shrink-0 border border-blue-100 group-hover:scale-105 transition-transform">
+                    <img src={getAssetUrl("/UI/stackkidi.png")} alt="StackKidi" className="w-full h-full object-contain" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between">
+                      <span className="font-extrabold text-gray-900 text-base group-hover:text-blue-600 transition-colors">StackKidi</span>
+                      <ExternalLink className="w-4 h-4 text-blue-400 group-hover:translate-x-0.5 transition-transform" />
+                    </div>
+                    <span className="text-xs text-gray-500 block truncate mt-1">stackkidi.org</span>
+                  </div>
+                </a>
+              </div>
+            </div>
+          </motion.div>
         </div>
       )}
     </div>
