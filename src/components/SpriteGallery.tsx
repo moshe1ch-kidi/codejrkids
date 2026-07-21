@@ -1,4 +1,4 @@
- import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Search, Brush, Upload } from 'lucide-react';
 import { getAssetUrl } from '../utils/assets';
@@ -187,6 +187,8 @@ export function SpriteGallery({ isOpen, onClose, onSelect, onPaintNew }: SpriteG
                       <img
                         src={spriteUrl}
                         alt={sprite.name}
+                        loading="lazy"
+                        decoding="async"
                         className="w-full h-full object-contain pointer-events-none select-none drop-shadow-sm"
                       />
                     </div>
