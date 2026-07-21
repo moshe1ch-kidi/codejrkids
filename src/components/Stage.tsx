@@ -315,7 +315,9 @@ export const Stage = React.memo(function Stage({
     if (!container) return;
 
     const updateScale = () => {
+      if (!container) return;
       const rect = container.getBoundingClientRect();
+      
       const padding = 48; // Increased padding to ensure frame stays well within bounds
       const availableWidth = Math.max(100, rect.width - padding);
       const availableHeight = Math.max(100, rect.height - padding);
