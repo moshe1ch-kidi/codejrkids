@@ -1,7 +1,7 @@
  import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { 
   Play, Square, RotateCcw, Image as ImageIcon, 
-  Settings2, Plus, Flag, Trash2, Rocket, Brush, X, Grid, Pencil, Monitor, Save, FolderOpen, Globe
+  Settings2, Plus, Flag, Trash2, Rocket, Brush, X, Grid, Pencil, Monitor, Save, FolderOpen
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { Stage } from './components/Stage';
@@ -243,7 +243,6 @@ export default function App() {
   const [isTextModalOpen, setIsTextModalOpen] = useState(false);
   const [isPaintEditorOpen, setIsPaintEditorOpen] = useState(false);
   const [isRecordModalOpen, setIsRecordModalOpen] = useState(false);
-  const [isLinksDrawerOpen, setIsLinksDrawerOpen] = useState(false);
   const [recordings, setRecordings] = useState<Record<number, string>>({});
   const [editingCharacterId, setEditingCharacterId] = useState<string | null>(null);
   
@@ -1284,18 +1283,11 @@ export default function App() {
     <div className="h-screen max-h-screen bg-[#F4EFE6] flex flex-col font-sans select-none overflow-hidden">
       {/* Header */}
       <header className="bg-white h-16 flex items-center justify-between z-20 relative px-6 shadow-sm border-b border-[#e5dfd3]">
-        <div className="flex items-center gap-3 w-56 shrink-0">
+        <div className="flex items-center gap-4 w-48 shrink-0">
           <div className="w-10 h-10 bg-orange-400 rounded-xl flex items-center justify-center shadow-sm">
              <Rocket className="w-6 h-6 text-white" />
           </div>
           <h1 className="text-xl font-black text-gray-800 tracking-tight">CODEJR</h1>
-          <button
-            onClick={() => setIsLinksDrawerOpen(true)}
-            className="w-9 h-9 bg-amber-100 hover:bg-amber-200 border-2 border-amber-300 rounded-xl flex items-center justify-center transition-transform hover:scale-105 shadow-sm"
-            title="אתרים מומלצים"
-          >
-            <Globe className="w-5 h-5 text-amber-800" />
-          </button>
         </div>
         
         <div className="flex items-center justify-center gap-4 absolute left-1/2 -translate-x-1/2">
@@ -1792,7 +1784,7 @@ export default function App() {
           </div>
 
           {/* Full Screen Stage Container */}
-          <div className="flex-1 w-full relative overflow-hidden p-2 sm:p-6 pb-8 flex flex-col">
+          <div className="flex-1 w-full relative overflow-hidden flex items-center justify-center p-2 sm:p-6 pb-8">
             <Stage 
               key={activeSceneId}
               characters={characters} 
@@ -1810,57 +1802,6 @@ export default function App() {
               onCharacterClick={(charId) => handleCharacterClick(charId)}
             />
           </div>
-        </div>
-      )}
-
-      {/* Links Sliding Panel / Drawer */}
-      {isLinksDrawerOpen && (
-        <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/40 backdrop-blur-sm animate-fadeIn">
-          <motion.div 
-            initial={{ scale: 0.9, opacity: 0, y: 20 }}
-            animate={{ scale: 1, opacity: 1, y: 0 }}
-            exit={{ scale: 0.9, opacity: 0, y: 20 }}
-            className="bg-[#FBD5A5] border-4 border-[#F57C00] rounded-[32px] p-6 shadow-2xl max-w-md w-full mx-4 flex flex-col items-center relative"
-          >
-            <button 
-              onClick={() => setIsLinksDrawerOpen(false)}
-              className="absolute top-4 right-4 w-10 h-10 bg-white/80 hover:bg-white text-gray-700 rounded-full flex items-center justify-center font-bold text-lg shadow-md transition-transform hover:scale-110"
-            >
-              <X className="w-6 h-6" />
-            </button>
-
-            <h2 className="text-2xl font-black text-gray-800 mb-6 text-center">אתרים מומלצים</h2>
-
-            <div className="flex flex-row gap-6 w-full justify-center items-center py-4">
-              <a 
-                href="https://stackkidi.org/" 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="flex flex-col items-center gap-3 p-4 bg-white/80 hover:bg-white rounded-2xl border-2 border-amber-300 hover:border-orange-400 shadow-md transition-all hover:scale-105 group w-36 text-center"
-              >
-                <img 
-                  src={getAssetUrl("/UI/stackkidi.png")} 
-                  alt="StackKidi" 
-                  className="w-16 h-16 object-contain group-hover:scale-110 transition-transform" 
-                />
-                <span className="font-extrabold text-sm text-gray-800">StackKidi</span>
-              </a>
-
-              <a 
-                href="https://codekidi.org/" 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="flex flex-col items-center gap-3 p-4 bg-white/80 hover:bg-white rounded-2xl border-2 border-amber-300 hover:border-orange-400 shadow-md transition-all hover:scale-105 group w-36 text-center"
-              >
-                <img 
-                  src={getAssetUrl("/UI/codekidi.png")} 
-                  alt="CodeKidi" 
-                  className="w-16 h-16 object-contain group-hover:scale-110 transition-transform" 
-                />
-                <span className="font-extrabold text-sm text-gray-800">CodeKidi</span>
-              </a>
-            </div>
-          </motion.div>
         </div>
       )}
 
