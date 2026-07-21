@@ -97,6 +97,13 @@ export default function App() {
     }
   }, [armedDeleteCharId, armedDeleteSceneId]);
 
+  useEffect(() => {
+    const img1 = new Image();
+    img1.src = getAssetUrl("/UI/stackkidi.png");
+    const img2 = new Image();
+    img2.src = getAssetUrl("/UI/codekidi.png");
+  }, []);
+
 
   const activeScene = scenes.find(s => s.id === activeSceneId) || scenes[0];
   const characters = activeScene?.characters || [];
