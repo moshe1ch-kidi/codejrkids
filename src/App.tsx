@@ -1285,10 +1285,10 @@ export default function App() {
     <div className="h-screen max-h-screen bg-[#F4EFE6] flex flex-col font-sans select-none overflow-hidden">
       {/* Header */}
       <header className="bg-white h-16 flex items-center justify-between z-20 relative px-6 shadow-sm border-b border-[#e5dfd3]">
-        <div className="flex items-center gap-3 w-48 shrink-0">
+        <div className="flex items-center gap-3 shrink-0">
           <div className="flex items-center gap-2.5 cursor-pointer">
-            <div className="w-10 h-10 bg-orange-400 rounded-xl flex items-center justify-center shadow-sm">
-               <Rocket className="w-6 h-6 text-white" />
+            <div className="w-14 h-14 rounded-xl flex items-center justify-center overflow-hidden">
+              <img src={getAssetUrl("/UI/codejr_icon_1.png")} alt="CodeJR Logo" className="w-full h-full object-cover" />
             </div>
             <h1 className="text-xl font-black text-gray-800 tracking-tight">CODEJR</h1>
           </div>
