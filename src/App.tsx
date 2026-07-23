@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { 
   Play, Square, RotateCcw, Image as ImageIcon, 
   Settings2, Plus, Flag, Trash2, Rocket, Brush, X, Grid, Pencil, Monitor, Save, FolderOpen,
-  Menu, ExternalLink, Globe
+  Menu, ExternalLink, Globe, MessageSquarePlus, Mail
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { Stage } from './components/Stage';
@@ -16,6 +16,7 @@ import { KidKeypad, KeypadMode } from './components/KidKeypad';
 import { TextEditorModal, FontSize } from './components/TextEditorModal';
 import { RecordModal } from './components/RecordModal';
 import { SceneThumbnail } from './components/SceneThumbnail';
+import { ContactModal } from './components/ContactModal';
 import { cn } from './lib/utils';
 import { BlockType, BlockInstance, Stack } from './blocks';
 import { DragState } from './dragState';
@@ -245,6 +246,7 @@ export default function App() {
   const [isTextModalOpen, setIsTextModalOpen] = useState(false);
   const [isPaintEditorOpen, setIsPaintEditorOpen] = useState(false);
   const [isRecordModalOpen, setIsRecordModalOpen] = useState(false);
+  const [isContactModalOpen, setIsContactModalOpen] = useState(false);
   const [recordings, setRecordings] = useState<Record<number, string>>({});
   const [editingCharacterId, setEditingCharacterId] = useState<string | null>(null);
   
@@ -1377,6 +1379,16 @@ export default function App() {
               className="hidden" 
             />
           </label>
+
+          <div className="w-px h-10 bg-gray-300 mx-2"></div>
+
+          <button
+            onClick={() => setIsContactModalOpen(true)}
+            className="w-[72px] h-[72px] flex items-center justify-center hover:scale-110 transition-transform cursor-pointer"
+            title="Contact Us"
+          >
+            <Mail className="w-11 h-11 text-blue-500 stroke-[2]" />
+          </button>
         </div>
         
         <div className="w-48 shrink-0 flex items-center justify-end pr-4">
@@ -1920,6 +1932,11 @@ export default function App() {
           </motion.div>
         </div>
       )}
+      {/* Contact Modal */}
+      <ContactModal 
+        isOpen={isContactModalOpen} 
+        onClose={() => setIsContactModalOpen(false)} 
+      />
     </div>
   );
 }
