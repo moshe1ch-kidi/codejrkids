@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from "react";
+ import React, { useState, useEffect } from "react";
 import { MessageSquarePlus, Send, X, CheckCircle, RefreshCw, Trash2, Mail, User, ShieldCheck, MessageSquare, Lock, KeyRound, LogOut, Settings } from "lucide-react";
 import { sendContactMessage, fetchContactMessages, deleteContactMessage, ContactMessage } from "../lib/firebase";
+import { getAssetUrl } from "../utils/assets";
 
 interface ContactModalProps {
   isOpen: boolean;
@@ -140,7 +141,7 @@ export const ContactModal: React.FC<ContactModalProps> = ({ isOpen, onClose }) =
               className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-md p-1 overflow-hidden cursor-pointer select-none transition-transform active:scale-95 border-0 focus:outline-none"
               title="CodeJR Icon"
             >
-              <img src="/UI/codejr_icon_1.png" alt="CodeJR Icon" className="w-full h-full object-contain pointer-events-none" />
+              <img src={getAssetUrl('/UI/codejr_icon_1.png')} alt="CodeJR Icon" className="w-full h-full object-contain pointer-events-none" />
             </button>
             <div>
               <h2 className="text-xl font-bold">Contact Us - CodeJR</h2>
