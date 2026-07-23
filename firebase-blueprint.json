@@ -1,0 +1,19 @@
+{
+  "entities": {
+    "contact_messages": {
+      "title": "Contact Messages",
+      "description": "User contact and feedback submissions",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique ID" },
+        "name": { "type": "string", "description": "Sender name" },
+        "contact": { "type": "string", "description": "Email or phone" },
+        "subject": { "type": "string", "description": "Subject category" },
+        "message": { "type": "string", "description": "Message body" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Submission time" },
+        "status": { "type": "string", "description": "Status of the message" }
+      },
+      "required": ["name", "contact", "message", "createdAt"]
+    }
+  }
+}
