@@ -1,12 +1,15 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Search, Image as ImageIcon } from 'lucide-react';
+import { X, Search, Image as ImageIcon, Upload, Brush, Pencil } from 'lucide-react';
 import { getAssetUrl } from '../utils/assets';
+import { Shape } from './PaintEditor';
 
 interface BackgroundGalleryProps {
   isOpen: boolean;
   onClose: () => void;
-  onSelect: (bg: { name: string; url: string }) => void;
+  onSelect: (bg: { name: string; url: string; shapes?: Shape[] }) => void;
+  onPaintNew?: () => void;
+  onEditBackground?: (bg: { name: string; url: string; shapes?: Shape[] }) => void;
 }
 
 const ALL_BACKGROUNDS = [
@@ -36,7 +39,7 @@ const ALL_BACKGROUNDS = [
   { id: 'Woods', name: 'Woods', file: 'Woods.svg', displayName: 'Woods' },
 ];
 
-export function BackgroundGallery({ isOpen, onClose, onSelect }: BackgroundGalleryProps) {
+export function BackgroundGallery({ isOpen, onClose, onSelect, onPaintNew, onEditBackground }: BackgroundGalleryProps) {
   const [searchQuery, setSearchQuery] = useState('');
 
   const filteredBackgrounds = ALL_BACKGROUNDS.filter(bg => {
@@ -100,52 +103,132 @@ export function BackgroundGallery({ isOpen, onClose, onSelect }: BackgroundGalle
 
           {/* Backgrounds Grid */}
           <div className="flex-1 overflow-y-auto p-6 bg-slate-50/30">
-            {filteredBackgrounds.length > 0 ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-                {/* Default plain background option */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+              {/* Paint new background card */}
+              <motion.div
+                whileHover={{ scale: 1.03, y: -4 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => {
+                  if (onPaintNew) {
+                    onPaintNew();
+                  }
+                }}
+                className="cursor-pointer bg-gradient-to-br from-amber-50 to-orange-50 border-2 border-dashed border-orange-300 hover:border-orange-400 rounded-3xl p-3 flex flex-col items-center justify-center gap-2 shadow-sm hover:shadow-md transition-all h-52 relative group"
+              >
+                <div className="w-20 h-20 flex items-center justify-center bg-white rounded-2xl group-hover:bg-orange-100/40 transition-colors shadow-inner">
+                  <div className="w-12 h-12 bg-orange-500 rounded-full flex items-center justify-center shadow-md">
+                    <Brush className="w-6 h-6 text-white stroke-[2.5]" />
+                  </div>
+                </div>
+                <span className="text-orange-800 font-extrabold text-sm tracking-tight text-center">
+                  Create New Background
+                </span>
+              </motion.div>
+
+              {/* Upload background card */}
+              <label className="cursor-pointer">
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      const reader = new FileReader();
+                      reader.onload = (event) => {
+                        const url = event.target?.result as string;
+                        onSelect({ name: file.name.split('.')[0], url });
+                        onClose();
+                      };
+                      reader.readAsDataURL(file);
+                    }
+                  }}
+                />
                 <motion.div
                   whileHover={{ scale: 1.03, y: -4 }}
                   whileTap={{ scale: 0.98 }}
-                  onClick={() => onSelect({ name: 'None', url: '' })}
-                  className="cursor-pointer bg-white border-2 border-slate-100 hover:border-sky-300 rounded-3xl p-3 flex flex-col gap-3 shadow-sm hover:shadow-md transition-all h-52 relative group overflow-hidden"
+                  className="bg-gradient-to-br from-indigo-50 to-sky-50 border-2 border-dashed border-sky-300 hover:border-sky-400 rounded-3xl p-3 flex flex-col items-center justify-center gap-2 shadow-sm hover:shadow-md transition-all h-52 relative group"
                 >
-                  <div className="flex-1 bg-sky-100 rounded-2xl flex items-center justify-center relative overflow-hidden border border-slate-100">
-                    <div className="absolute top-[10%] left-[10%] w-[15%] h-[8%] bg-white rounded-full opacity-60 blur-sm"></div>
-                    <div className="absolute top-[25%] right-[15%] w-[20%] h-[10%] bg-white rounded-full opacity-60 blur-sm"></div>
-                    <span className="text-sky-600 font-bold text-xs bg-white/85 px-2 py-1 rounded-full shadow-sm z-10">Default Background</span>
+                  <div className="w-20 h-20 flex items-center justify-center bg-white rounded-2xl group-hover:bg-sky-100/40 transition-colors shadow-inner">
+                    <div className="w-12 h-12 bg-sky-500 rounded-full flex items-center justify-center shadow-md">
+                      <Upload className="w-6 h-6 text-white stroke-[2.5]" />
+                    </div>
                   </div>
-                  <span className="text-slate-700 font-bold text-sm tracking-tight text-center">
-                    Plain Background (None)
+                  <span className="text-sky-800 font-extrabold text-sm tracking-tight text-center">
+                    Upload Background
                   </span>
                 </motion.div>
+              </label>
 
-                {filteredBackgrounds.map((bg) => {
-                  const bgUrl = getAssetUrl(`/background/${bg.file}`);
-                  return (
-                    <motion.div
-                      key={bg.id}
-                      whileHover={{ scale: 1.03, y: -4 }}
-                      whileTap={{ scale: 0.98 }}
-                      onClick={() => onSelect({ name: bg.displayName, url: bgUrl })}
-                      className="cursor-pointer bg-white border-2 border-slate-100 hover:border-sky-300 rounded-3xl p-3 flex flex-col gap-3 shadow-sm hover:shadow-md transition-all h-52 relative group overflow-hidden"
-                    >
-                      <div className="flex-1 bg-slate-100 rounded-2xl overflow-hidden border border-slate-100">
-                        <img
-                          src={bgUrl}
-                          alt={bg.displayName}
-                          loading="lazy"
-                          decoding="async"
-                          className="w-full h-full object-cover pointer-events-none select-none transition-transform duration-300 group-hover:scale-105"
-                        />
-                      </div>
-                      <span className="text-slate-700 font-bold text-sm tracking-tight text-center">
-                        {bg.displayName}
-                      </span>
-                    </motion.div>
-                  );
-                })}
-              </div>
-            ) : (
+              {/* Default plain background option */}
+              <motion.div
+                whileHover={{ scale: 1.03, y: -4 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => onSelect({ name: 'None', url: '' })}
+                className="cursor-pointer bg-white border-2 border-slate-100 hover:border-sky-300 rounded-3xl p-3 flex flex-col gap-3 shadow-sm hover:shadow-md transition-all h-52 relative group overflow-hidden"
+              >
+                {onEditBackground && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onEditBackground({ name: 'Plain Background', url: '' });
+                    }}
+                    className="absolute top-2 right-2 w-9 h-9 bg-white border-2 border-orange-400 hover:bg-orange-50 text-orange-600 rounded-full flex items-center justify-center shadow-md z-20 transition-all opacity-90 hover:opacity-100 hover:scale-110"
+                    title="Edit background"
+                  >
+                    <Pencil className="w-4 h-4 stroke-[2.5]" />
+                  </button>
+                )}
+                <div className="flex-1 bg-sky-100 rounded-2xl flex items-center justify-center relative overflow-hidden border border-slate-100">
+                  <div className="absolute top-[10%] left-[10%] w-[15%] h-[8%] bg-white rounded-full opacity-60 blur-sm"></div>
+                  <div className="absolute top-[25%] right-[15%] w-[20%] h-[10%] bg-white rounded-full opacity-60 blur-sm"></div>
+                  <span className="text-sky-600 font-bold text-xs bg-white/85 px-2 py-1 rounded-full shadow-sm z-10">Default Background</span>
+                </div>
+                <span className="text-slate-700 font-bold text-sm tracking-tight text-center">
+                  Plain Background (None)
+                </span>
+              </motion.div>
+
+              {filteredBackgrounds.map((bg) => {
+                const bgUrl = getAssetUrl(`/background/${bg.file}`);
+                return (
+                  <motion.div
+                    key={bg.id}
+                    whileHover={{ scale: 1.03, y: -4 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => onSelect({ name: bg.displayName, url: bgUrl })}
+                    className="cursor-pointer bg-white border-2 border-slate-100 hover:border-sky-300 rounded-3xl p-3 flex flex-col gap-3 shadow-sm hover:shadow-md transition-all h-52 relative group overflow-hidden"
+                  >
+                    {onEditBackground && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onEditBackground({ name: bg.displayName, url: bgUrl });
+                        }}
+                        className="absolute top-2 right-2 w-9 h-9 bg-white border-2 border-orange-400 hover:bg-orange-50 text-orange-600 rounded-full flex items-center justify-center shadow-md z-20 transition-all opacity-90 hover:opacity-100 hover:scale-110"
+                        title="Edit background"
+                      >
+                        <Pencil className="w-4 h-4 stroke-[2.5]" />
+                      </button>
+                    )}
+                    <div className="flex-1 bg-slate-100 rounded-2xl overflow-hidden border border-slate-100">
+                      <img
+                        src={bgUrl}
+                        alt={bg.displayName}
+                        loading="lazy"
+                        decoding="async"
+                        className="w-full h-full object-cover pointer-events-none select-none transition-transform duration-300 group-hover:scale-105"
+                      />
+                    </div>
+                    <span className="text-slate-700 font-bold text-sm tracking-tight text-center">
+                      {bg.displayName}
+                    </span>
+                  </motion.div>
+                );
+              })}
+            </div>
+
+            {filteredBackgrounds.length === 0 && searchQuery !== '' && (
               <div className="flex flex-col items-center justify-center h-64 text-slate-400 gap-4">
                 <Search className="w-16 h-16 opacity-40" />
                 <span className="text-lg font-medium">No matching backgrounds found</span>
@@ -157,3 +240,5 @@ export function BackgroundGallery({ isOpen, onClose, onSelect }: BackgroundGalle
     </AnimatePresence>
   );
 }
+
+

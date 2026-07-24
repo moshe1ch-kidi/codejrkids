@@ -1,11 +1,12 @@
-import React, { useState, useRef, useEffect } from 'react';
+ import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Undo, Redo, Camera, Check, ArrowUpRight, 
   RotateCw, Copy, Scissors, PaintBucket,
-  Brush, Circle, Square, Triangle, Shapes, X
+  Brush, Circle, Square, Triangle, Shapes, X, Pencil,
+  Heart, Sun, Car, Lightbulb
 } from 'lucide-react';
-import { SHAPE_ROWS } from '../lib/shapes';
+import { SHAPE_CATEGORIES } from '../lib/shapes';
 
 export interface Point {
   x: number;
@@ -33,6 +34,7 @@ export interface PaintEditorProps {
   initialName?: string;
   initialShapes?: Shape[];
   initialSpriteUrl?: string;
+  isBackground?: boolean;
 }
 
 const PALETTE_COLORS_ROW1 = [
@@ -395,19 +397,49 @@ async function parseSvgTextToShapes(svgText: string): Promise<Shape[]> {
   }
 }
 
-export function PaintEditor({ 
+function PaintBucketIcon({ className = "w-6 h-6", color = "#f59e0b" }: { className?: string; color?: string }) {
+  return (
+    <svg viewBox="0 0 32 32" className={className} fill="none" xmlns="http://www.w3.org/2000/svg">
+      {/* Dark arch handle at top-left */}
+      <path d="M 9 11 C 6 5, 15 2.5, 17 8.5" fill="none" stroke="#334155" strokeWidth="2.5" strokeLinecap="round" />
+      
+      {/* Tilted light-grey bucket body */}
+      <path 
+        d="M 11 8.5 L 18 11 C 19.5 11.5 20 13.5 19 15 L 14.5 23 C 13.5 24.5 11.5 24.5 10 23.5 L 5.5 18 C 4.5 17 4.5 15 5.5 13.5 L 9.5 9 C 10 8.2 10.5 8.2 11 8.5 Z" 
+        fill="#dce3eb" 
+        stroke="#475569" 
+        strokeWidth="1.2" 
+        strokeLinejoin="round" 
+      />
+      
+      {/* Dripping paint stream pouring down from top-right to bottom-right tip */}
+      <path 
+        d="M 15.5 11 C 18.5 10.5, 21.5 12, 22.5 15.5 L 23.5 23.5 C 23.5 27, 19.5 27, 19.5 23.5 L 19.5 17 C 19 14.5 17.5 12.5 15.5 11 Z" 
+        fill={color} 
+        stroke="#334155" 
+        strokeWidth="1" 
+        strokeLinejoin="round" 
+      />
+    </svg>
+  );
+}
+
+export function PaintEditor({
   isOpen, 
   onClose, 
   onSave, 
   initialName, 
   initialShapes, 
-  initialSpriteUrl 
+  initialSpriteUrl,
+  isBackground = false
 }: PaintEditorProps) {
   const [characterName, setCharacterName] = useState('Character');
   const [activeTool, setActiveTool] = useState<ToolType>('brush');
   const [activeCustomShapeData, setActiveCustomShapeData] = useState<string>('');
   const [isShapesPopoverOpen, setIsShapesPopoverOpen] = useState(false);
+  const [selectedCategoryTab, setSelectedCategoryTab] = useState('geometry');
   const [selectedColor, setSelectedColor] = useState('#000000');
+  const [colorTarget, setColorTarget] = useState<'stroke' | 'fill'>('stroke');
   const [brushWidth, setBrushWidth] = useState(8);
   
   // Vector shape state list
@@ -426,6 +458,7 @@ export function PaintEditor({
   const [isDrawing, setIsDrawing] = useState(false);
   const [isReshaping, setIsReshaping] = useState(false);
   const [isDraggingShape, setIsDraggingShape] = useState(false);
+  const [isHoveringShape, setIsHoveringShape] = useState(false);
   const [selectedPointIndex, setSelectedPointIndex] = useState<number | null>(null);
   const [dragStartPos, setDragStartPos] = useState<Point>({ x: 0, y: 0 });
   const [draggedShapeStartPoints, setDraggedShapeStartPoints] = useState<Record<string, Point[]>>({});
@@ -448,7 +481,7 @@ export function PaintEditor({
   // Initialize Canvas vectors with image preloading
   useEffect(() => {
     if (isOpen) {
-      setCharacterName(initialName || 'Character');
+      setCharacterName(initialName || (isBackground ? 'Background' : 'Character'));
       setActiveTool('brush');
       setSelectedColor('#000000');
       setBrushWidth(8);
@@ -504,19 +537,28 @@ export function PaintEditor({
               imgWidth = img.width;
               imgHeight = img.height;
               
-              const maxDim = 350;
-              const ratio = Math.min(maxDim / imgWidth, maxDim / imgHeight);
-              const finalW = imgWidth * ratio;
-              const finalH = imgHeight * ratio;
-              const startX = (450 - finalW) / 2;
-              const startY = (450 - finalH) / 2;
-              
-              initImgShape.points = [
-                { x: startX, y: startY },
-                { x: startX + finalW, y: startY },
-                { x: startX + finalW, y: startY + finalH },
-                { x: startX, y: startY + finalH }
-              ];
+              if (isBackground) {
+                initImgShape.points = [
+                  { x: 0, y: 0 },
+                  { x: 450, y: 0 },
+                  { x: 450, y: 450 },
+                  { x: 0, y: 450 }
+                ];
+              } else {
+                const maxDim = 350;
+                const ratio = Math.min(maxDim / imgWidth, maxDim / imgHeight);
+                const finalW = imgWidth * ratio;
+                const finalH = imgHeight * ratio;
+                const startX = (450 - finalW) / 2;
+                const startY = (450 - finalH) / 2;
+                
+                initImgShape.points = [
+                  { x: startX, y: startY },
+                  { x: startX + finalW, y: startY },
+                  { x: startX + finalW, y: startY + finalH },
+                  { x: startX, y: startY + finalH }
+                ];
+              }
               resolve();
             };
             img.onerror = () => resolve();
@@ -534,7 +576,7 @@ export function PaintEditor({
 
       preloadAndInit();
     }
-  }, [isOpen, initialName, initialShapes, initialSpriteUrl]);
+  }, [isOpen, initialName, initialShapes, initialSpriteUrl, isBackground]);
 
   // History Helper
   const saveStateToHistory = (newShapes: Shape[]) => {
@@ -565,9 +607,14 @@ export function PaintEditor({
   const handleColorSelect = (color: string) => {
     setSelectedColor(color);
     if (selectedShapeIds.length > 0) {
+      const isFillMode = activeTool === 'fill' || colorTarget === 'fill';
       const updated = shapes.map(s => {
         if (selectedShapeIds.includes(s.id)) {
-          return { ...s, color: color };
+          if (isFillMode) {
+            return { ...s, fillColor: color };
+          } else {
+            return { ...s, color: color };
+          }
         }
         return s;
       });
@@ -901,55 +948,69 @@ export function PaintEditor({
 
     if (activeTool === 'fill') {
       const clickedShape = findShapeAtPosition(x, y);
-      if (clickedShape) {
-        if (clickedShape.type === 'image') {
-          const img = loadedImages.current[clickedShape.id];
-          if (img) {
-            const minX = Math.min(...clickedShape.points.map(p => p.x));
-            const minY = Math.min(...clickedShape.points.map(p => p.y));
-            const maxX = Math.max(...clickedShape.points.map(p => p.x));
-            const maxY = Math.max(...clickedShape.points.map(p => p.y));
-            const w = maxX - minX;
-            const h = maxY - minY;
-            
-            const tempCanvas = document.createElement('canvas');
-            tempCanvas.width = img.width;
-            tempCanvas.height = img.height;
-            const tempCtx = tempCanvas.getContext('2d');
-            if (tempCtx) {
-              tempCtx.drawImage(img, 0, 0);
-              const imgX = Math.floor(((x - minX) / w) * img.width);
-              const imgY = Math.floor(((y - minY) / h) * img.height);
-              
-              const imgData = tempCtx.getImageData(0, 0, img.width, img.height);
-              const fillColor = hexToRgb(selectedColor);
-              floodFill(imgData, imgX, imgY, fillColor);
-              tempCtx.putImageData(imgData, 0, 0);
-              
-              const newUrl = tempCanvas.toDataURL();
-              const newImg = new Image();
-              newImg.src = newUrl;
-              newImg.onload = () => {
-                loadedImages.current[clickedShape.id] = newImg;
-                const updated = shapes.map(s => {
-                  if (s.id === clickedShape.id) {
-                    return { ...s, imgUrl: newUrl };
-                  }
-                  return s;
-                });
-                saveStateToHistory(updated);
-              };
-            }
+      if (clickedShape && (clickedShape.type === 'circle' || clickedShape.type === 'rect' || clickedShape.type === 'triangle' || clickedShape.type === 'custom' || clickedShape.type === 'brush')) {
+        const updated = shapes.map(s => {
+          if (s.id === clickedShape.id) {
+            return { ...s, fillColor: selectedColor };
           }
-        } else {
-          const updated = shapes.map(s => {
-            if (s.id === clickedShape.id) {
-              return { ...s, fillColor: selectedColor };
-            }
-            return s;
-          });
-          saveStateToHistory(updated);
-        }
+          return s;
+        });
+        saveStateToHistory(updated);
+        return;
+      }
+
+      // Perform full canvas flood fill on offscreen canvas
+      const offCanvas = document.createElement('canvas');
+      offCanvas.width = 450;
+      offCanvas.height = 450;
+      const offCtx = offCanvas.getContext('2d');
+      if (offCtx) {
+        renderAllShapes(offCtx, 450, 450, false);
+        const px = Math.max(0, Math.min(449, Math.floor(x)));
+        const py = Math.max(0, Math.min(449, Math.floor(y)));
+        const imgData = offCtx.getImageData(0, 0, 450, 450);
+        const fillColorRgb = hexToRgb(selectedColor);
+        floodFill(imgData, px, py, fillColorRgb);
+        offCtx.putImageData(imgData, 0, 0);
+
+        const newUrl = offCanvas.toDataURL('image/png');
+
+        const existingFillShapeIndex = shapes.findIndex(s =>
+          s.type === 'image' &&
+          s.points.length >= 4 &&
+          s.points[0].x === 0 && s.points[0].y === 0 &&
+          s.points[2].x === 450 && s.points[2].y === 450
+        );
+
+        const fillShapeId = existingFillShapeIndex !== -1 ? shapes[existingFillShapeIndex].id : `fill-bg-${Date.now()}`;
+
+        const newFillShape: Shape = {
+          id: fillShapeId,
+          type: 'image',
+          color: 'transparent',
+          width: 0,
+          noStroke: true,
+          points: [
+            { x: 0, y: 0 },
+            { x: 450, y: 0 },
+            { x: 450, y: 450 },
+            { x: 0, y: 450 }
+          ],
+          imgUrl: newUrl
+        };
+
+        const newImg = new Image();
+        newImg.src = newUrl;
+        newImg.onload = () => {
+          loadedImages.current[fillShapeId] = newImg;
+          let updatedShapes: Shape[];
+          if (existingFillShapeIndex !== -1) {
+            updatedShapes = shapes.map((s, idx) => idx === existingFillShapeIndex ? newFillShape : s);
+          } else {
+            updatedShapes = [newFillShape, ...shapes];
+          }
+          saveStateToHistory(updatedShapes);
+        };
       }
       return;
     }
@@ -1286,6 +1347,9 @@ export function PaintEditor({
             points: rotationInitialPoints.map(p => rotatePoint(p, centroid, deltaAngle))
           };
         }));
+      } else {
+        const hovered = findShapeAtPosition(x, y);
+        setIsHoveringShape(!!hovered);
       }
       return;
     }
@@ -1477,11 +1541,35 @@ export function PaintEditor({
 
     // Export clean PNG without visual handles
     renderAllShapes(ctx, canvas.width, canvas.height, false);
-    const dataUrl = trimCanvas(canvas);
+    const dataUrl = isBackground ? canvas.toDataURL('image/png') : trimCanvas(canvas);
     
     // Restore visual handles
     renderAllShapes(ctx, canvas.width, canvas.height, true);
-    onSave(characterName || 'Character', dataUrl, shapes);
+    onSave(characterName || (isBackground ? 'Background' : 'Character'), dataUrl, shapes);
+  };
+
+  const getCanvasCursorStyle = () => {
+    if (activeTool === 'select') {
+      if (isDraggingShape) return 'grabbing';
+      if (selectedShapeIds.length > 0 || isHoveringShape) return 'grab';
+      return 'default';
+    }
+    if (activeTool === 'fill') {
+      const fillHex = selectedColor || '#f59e0b';
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
+        <path d="M 9 11 C 6 5, 15 2.5, 17 8.5" fill="none" stroke="%23334155" stroke-width="2.5" stroke-linecap="round"/>
+        <path d="M 11 8.5 L 18 11 C 19.5 11.5 20 13.5 19 15 L 14.5 23 C 13.5 24.5 11.5 24.5 10 23.5 L 5.5 18 C 4.5 17 4.5 15 5.5 13.5 L 9.5 9 C 10 8.2 10.5 8.2 11 8.5 Z" fill="%23dce3eb" stroke="%23475569" stroke-width="1.2" stroke-linejoin="round"/>
+        <path d="M 15.5 11 C 18.5 10.5, 21.5 12, 22.5 15.5 L 23.5 23.5 C 23.5 27, 19.5 27, 19.5 23.5 L 19.5 17 C 19 14.5 17.5 12.5 15.5 11 Z" fill="${encodeURIComponent(fillHex)}" stroke="%23334155" stroke-width="1" stroke-linejoin="round"/>
+      </svg>`;
+      return `url('data:image/svg+xml;utf8,${encodeURIComponent(svg)}') 21.5 25.5, pointer`;
+    }
+    if (activeTool === 'stamp') {
+      return `url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="%23ec4899" stroke="%231e293b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 22h14"/><path d="M19 17H5a1 1 0 0 1-1-1v-2a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1Z"/><path d="M12 13V8"/><path d="M12 3a3 3 0 0 0-3 3v2h6V6a3 3 0 0 0-3-3Z"/></svg>') 12 22, copy`;
+    }
+    if (activeTool === 'scissors') {
+      return `url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="%23ef4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><line x1="20" y1="4" x2="8.12" y2="15.88"/><line x1="14.47" y1="14.48" x2="20" y2="20"/><line x1="8.12" y1="8.12" x2="12" y2="12"/></svg>') 12 12, pointer`;
+    }
+    return 'crosshair';
   };
 
   if (!isOpen) return null;
@@ -1560,7 +1648,10 @@ export function PaintEditor({
             <div className="w-20 sm:w-24 shrink-0 flex flex-col items-center justify-between py-2">
               <div className="flex flex-col gap-3.5 w-full items-center">
                 <button
-                  onClick={() => setActiveTool('brush')}
+                  onClick={() => {
+                    setActiveTool('brush');
+                    setColorTarget('stroke');
+                  }}
                   className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all ${
                     activeTool === 'brush' ? 'bg-amber-100 scale-105 border-2 border-amber-400' : 'hover:bg-slate-200/50'
                   }`}
@@ -1570,7 +1661,10 @@ export function PaintEditor({
                 </button>
 
                 <button
-                  onClick={() => setActiveTool('circle')}
+                  onClick={() => {
+                    setActiveTool('circle');
+                    setColorTarget('stroke');
+                  }}
                   className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all ${
                     activeTool === 'circle' ? 'bg-amber-100 scale-105 border-2 border-amber-400' : 'hover:bg-slate-200/50'
                   }`}
@@ -1580,7 +1674,10 @@ export function PaintEditor({
                 </button>
 
                 <button
-                  onClick={() => setActiveTool('rect')}
+                  onClick={() => {
+                    setActiveTool('rect');
+                    setColorTarget('stroke');
+                  }}
                   className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all ${
                     activeTool === 'rect' ? 'bg-amber-100 scale-105 border-2 border-amber-400' : 'hover:bg-slate-200/50'
                   }`}
@@ -1590,7 +1687,10 @@ export function PaintEditor({
                 </button>
 
                 <button
-                  onClick={() => setActiveTool('triangle')}
+                  onClick={() => {
+                    setActiveTool('triangle');
+                    setColorTarget('stroke');
+                  }}
                   className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all ${
                     activeTool === 'triangle' ? 'bg-amber-100 scale-105 border-2 border-amber-400' : 'hover:bg-slate-200/50'
                   }`}
@@ -1632,8 +1732,12 @@ export function PaintEditor({
                   onPointerDown={startDrawing}
                   onPointerMove={draw}
                   onPointerUp={stopDrawing}
-                  onPointerLeave={stopDrawing}
-                  className="absolute inset-0 w-full h-full cursor-crosshair touch-none z-10"
+                  onPointerLeave={(e) => {
+                    setIsHoveringShape(false);
+                    stopDrawing();
+                  }}
+                  style={{ cursor: getCanvasCursorStyle() }}
+                  className="absolute inset-0 w-full h-full touch-none z-10"
                 />
                 <div 
                   className="absolute inset-0 pointer-events-none z-0 opacity-10" 
@@ -1691,13 +1795,16 @@ export function PaintEditor({
               </button>
 
               <button
-                onClick={() => setActiveTool('fill')}
+                onClick={() => {
+                  setActiveTool('fill');
+                  setColorTarget('fill');
+                }}
                 className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all bg-white border-b-4 border-slate-300 shadow-sm active:translate-y-[2px] active:border-b-2 ${
                   activeTool === 'fill' ? '!bg-[#D84315] text-white border-[#9E2A2B] scale-105' : 'hover:bg-slate-50 text-slate-700'
                 }`}
                 title="Paint Bucket"
               >
-                <PaintBucket className="w-6 h-6 stroke-[2.5]" />
+                <PaintBucketIcon className="w-7 h-7" color={selectedColor || '#f59e0b'} />
               </button>
 
               <div className="relative">
@@ -1717,30 +1824,59 @@ export function PaintEditor({
                       initial={{ opacity: 0, scale: 0.9, x: 20 }}
                       animate={{ opacity: 1, scale: 1, x: 0 }}
                       exit={{ opacity: 0, scale: 0.9, x: 20 }}
-                      className="absolute right-full top-1/2 -translate-y-1/2 mr-4 bg-white rounded-3xl shadow-2xl border-2 border-slate-200 p-4 w-max max-w-[80vw] overflow-x-auto z-50 flex flex-col gap-3"
+                      className="absolute right-full bottom-0 mr-4 bg-white rounded-3xl shadow-2xl border-2 border-slate-200 p-4 w-[360px] z-50 flex flex-col gap-3 max-h-[70vh] overflow-y-auto"
                     >
-                      {SHAPE_ROWS.map((row, rowIdx) => (
-                        <div key={rowIdx} className="flex gap-2 justify-center">
-                          {row.map(shape => (
+                      {/* Category Tabs - Icons only */}
+                      <div className="flex gap-2 overflow-x-auto pb-2 border-b border-slate-100 no-scrollbar shrink-0 justify-around">
+                        {SHAPE_CATEGORIES.map((cat) => {
+                          const isSelected = selectedCategoryTab === cat.id;
+                          const categoryIcons: Record<string, React.ReactNode> = {
+                            geometry: <Shapes className="w-5 h-5 text-purple-500 shrink-0" />,
+                            symbols: <Heart className="w-5 h-5 text-rose-500 fill-rose-500 shrink-0" />,
+                            nature: <Sun className="w-5 h-5 text-amber-500 fill-amber-400 shrink-0" />,
+                            vehicles: <Car className="w-5 h-5 text-sky-500 shrink-0" />,
+                            objects: <Lightbulb className="w-5 h-5 text-yellow-500 fill-yellow-400 shrink-0" />,
+                          };
+                          return (
                             <button
-                              key={shape.id}
-                              onClick={() => {
-                                setActiveTool('custom');
-                                setActiveCustomShapeData(shape.path);
-                                setIsShapesPopoverOpen(false);
-                              }}
-                              className={`w-10 h-10 rounded-xl flex items-center justify-center hover:bg-indigo-50 transition-colors border-2 ${
-                                activeTool === 'custom' && activeCustomShapeData === shape.path ? 'border-indigo-400 bg-indigo-50' : 'border-transparent'
+                              key={cat.id}
+                              onClick={() => setSelectedCategoryTab(cat.id)}
+                              className={`w-10 h-10 rounded-2xl flex items-center justify-center transition-all ${
+                                isSelected
+                                  ? 'bg-indigo-100 ring-2 ring-indigo-500 scale-105 shadow-sm'
+                                  : 'bg-slate-100 hover:bg-slate-200'
                               }`}
-                              title={shape.name}
+                              title={cat.title}
                             >
-                              <svg viewBox="0 0 100 100" className="w-6 h-6 text-slate-700 fill-current">
-                                <path d={shape.path} />
-                              </svg>
+                              {categoryIcons[cat.id]}
                             </button>
-                          ))}
-                        </div>
-                      ))}
+                          );
+                        })}
+                      </div>
+
+                      {/* Shapes Grid - Icons only without text labels */}
+                      <div className="grid grid-cols-4 gap-2.5 py-1 justify-items-center">
+                        {SHAPE_CATEGORIES.find((c) => c.id === selectedCategoryTab)?.shapes.map((shape) => (
+                          <button
+                            key={shape.id}
+                            onClick={() => {
+                              setActiveTool('custom');
+                              setActiveCustomShapeData(shape.path);
+                              setIsShapesPopoverOpen(false);
+                            }}
+                            className={`w-14 h-14 rounded-2xl flex items-center justify-center p-2 transition-all border-2 ${
+                              activeTool === 'custom' && activeCustomShapeData === shape.path
+                                ? 'border-indigo-500 bg-indigo-100 scale-105 shadow-sm'
+                                : 'border-slate-100 bg-slate-50/80 hover:bg-indigo-50 hover:border-indigo-200 hover:scale-105'
+                            }`}
+                            title={shape.name}
+                          >
+                            <svg viewBox="0 0 100 100" className="w-8 h-8 text-slate-700 fill-current">
+                              <path d={shape.path} />
+                            </svg>
+                          </button>
+                        ))}
+                      </div>
                     </motion.div>
                   )}
                 </AnimatePresence>
@@ -1750,7 +1886,59 @@ export function PaintEditor({
 
           {/* Color swatches & Cute mascot Splat */}
           <div className="p-4 bg-white border-t-2 border-[#e5dfd3] flex items-center justify-between shrink-0 relative z-20">
-            <div className="flex-1 flex flex-col gap-2.5 overflow-hidden">
+            <div className="flex-1 flex flex-col gap-2 overflow-hidden">
+              {/* Stroke vs Fill vs Transparent Selector - Icons only */}
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setColorTarget('stroke');
+                    if (activeTool === 'fill') setActiveTool('select');
+                  }}
+                  className={`w-10 h-10 rounded-2xl flex items-center justify-center border-2 transition-all ${
+                    colorTarget === 'stroke'
+                      ? 'bg-amber-500 text-white border-amber-600 shadow-sm scale-105'
+                      : 'bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200'
+                  }`}
+                  title="Line Color"
+                >
+                  <Pencil className="w-5 h-5 stroke-[2.5]" />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setColorTarget('fill');
+                    setActiveTool('fill');
+                  }}
+                  className={`w-10 h-10 rounded-2xl flex items-center justify-center border-2 transition-all ${
+                    colorTarget === 'fill'
+                      ? 'bg-amber-500 text-white border-amber-600 shadow-sm scale-105'
+                      : 'bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200'
+                  }`}
+                  title="Fill Color"
+                >
+                  <PaintBucketIcon className="w-6 h-6" color={selectedColor === 'transparent' ? '#f59e0b' : selectedColor} />
+                </button>
+
+                {colorTarget === 'fill' && (
+                  <button
+                    type="button"
+                    onClick={() => handleColorSelect('transparent')}
+                    className={`w-10 h-10 rounded-2xl flex items-center justify-center border-2 transition-all ${
+                      selectedColor === 'transparent'
+                        ? 'bg-red-50 text-red-600 border-red-400 ring-2 ring-red-400 scale-105'
+                        : 'bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200'
+                    }`}
+                    title="Transparent Fill (No Fill)"
+                  >
+                    <div className="w-5 h-5 rounded-full border-2 border-slate-400 relative overflow-hidden flex items-center justify-center bg-white">
+                      <div className="absolute w-full h-[2px] bg-red-500 rotate-45" />
+                    </div>
+                  </button>
+                )}
+              </div>
+
               <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
                 {PALETTE_COLORS_ROW1.map((color) => (
                   <button
