@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { 
   Play, Square, RotateCcw, Image as ImageIcon, 
   Settings2, Plus, Flag, Trash2, Rocket, Brush, X, Grid, Pencil, Monitor, Save, FolderOpen,
@@ -1289,54 +1289,88 @@ export default function App() {
     <div className="h-screen max-h-screen bg-[#F4EFE6] flex flex-col font-sans select-none overflow-hidden">
       {/* Header */}
       <header className="bg-white h-16 flex items-center justify-between z-20 relative px-6 shadow-sm border-b border-[#e5dfd3]">
-        {/* Left section: Logo + Green Flag, Stop, Reset */}
+        {/* Left section: Logo */}
         <div className="flex items-center gap-3 shrink-0">
           <div className="flex items-center gap-2.5 cursor-pointer">
-            <div className="w-14 h-14 rounded-xl flex items-center justify-center overflow-hidden">
+            <div className="w-12 h-12 rounded-xl flex items-center justify-center overflow-hidden">
               <img src={getAssetUrl("/UI/codejr_icon_1.png")} alt="CodeJR Logo" className="w-full h-full object-cover" />
             </div>
             <h1 className="text-xl font-black text-gray-800 tracking-tight">CODEJR</h1>
           </div>
-
-          <div className="w-px h-10 bg-gray-300 mx-1"></div>
-
-          {/* Green Flag, Stop, Reset moved to the left */}
-          <div className="flex items-center gap-2">
+        </div>
+        
+        {/* Center section: Green Flag, Stop | Separator | Add Text, Grid, Reset, Fullscreen, Background */}
+        <div className="flex items-center justify-center gap-2 absolute left-1/2 -translate-x-1/2 z-10">
+          {/* Green Flag & Stop */}
+          <div className="flex items-center gap-1">
             <button 
               onClick={playScene}
               disabled={isRunning || stacks.length === 0}
-              className="hover:scale-110 transition-transform disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-[56px] h-[56px] flex items-center justify-center hover:scale-110 transition-transform disabled:opacity-50 disabled:cursor-not-allowed"
               title="Go (Green Flag)"
             >
-              <img src={getAssetUrl("/UI/go.svg")} alt="Go" className="w-[64px] h-[64px] object-contain" />
+              <img src={getAssetUrl("/UI/go.svg")} alt="Go" className="w-full h-full object-contain" />
             </button>
             <button 
               onClick={stopScene}
               disabled={!isRunning}
-              className="hover:scale-110 transition-transform disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-[56px] h-[56px] flex items-center justify-center hover:scale-110 transition-transform disabled:opacity-50 disabled:cursor-not-allowed"
               title="Stop"
             >
-              <img src={getAssetUrl("/UI/stop1.svg")} alt="Stop" className="w-[64px] h-[64px] object-contain" />
-            </button>
-            <button 
-              onClick={resetStage}
-              className="hover:scale-110 transition-transform"
-              title="Reset Stage"
-            >
-              <img src={getAssetUrl("/UI/resetAll.svg")} alt="Reset" className="w-[64px] h-[64px] object-contain" />
+              <img src={getAssetUrl("/UI/stop1.svg")} alt="Stop" className="w-full h-full object-contain" />
             </button>
           </div>
-        </div>
-        
-        {/* Center section: 4 Stage Icons directly centered over stage */}
-        <div className="flex items-center justify-center gap-4 absolute left-1/2 -translate-x-1/2">
+
+          {/* Vertical Separator Line between STOP and ADD TEXT */}
+          <div className="w-px h-8 bg-gray-300 mx-1 shrink-0"></div>
+
+          {/* Add Text */}
+          <button 
+            onClick={() => setIsTextModalOpen(true)}
+            className="w-[56px] h-[56px] flex items-center justify-center hover:scale-110 transition-transform"
+            title="Add Text"
+          >
+            <img src={getAssetUrl("/UI/addText.svg")} alt="Text" className="w-full h-full object-contain" />
+          </button>
+
+          {/* Grid */}
+          <button 
+            onClick={() => setShowGrid(!showGrid)}
+            className={cn(
+              "w-[56px] h-[56px] flex items-center justify-center transition-transform hover:scale-110",
+              showGrid ? "scale-110 drop-shadow-[0_0_8px_rgba(249,115,22,0.6)]" : ""
+            )}
+            title="Show/Hide Grid"
+          >
+            <img src={getAssetUrl("/UI/gridOn.svg")} alt="Grid" className="w-full h-full object-contain" />
+          </button>
+
+          {/* Reset Stage (איפוס הבמה) */}
+          <button 
+            onClick={resetStage}
+            className="w-[56px] h-[56px] flex items-center justify-center hover:scale-110 transition-transform"
+            title="Reset Stage"
+          >
+            <img src={getAssetUrl("/UI/resetAll.svg")} alt="Reset" className="w-full h-full object-contain" />
+          </button>
+
+          {/* Full Screen */}
+          <button 
+            onClick={() => setIsPresentationMode(true)}
+            className="w-[56px] h-[56px] flex items-center justify-center hover:scale-110 transition-transform"
+            title="Full Screen"
+          >
+            <img src={getAssetUrl("/UI/fullOff2.svg")} alt="Full Screen" className="w-full h-full object-contain" />
+          </button>
+
+          {/* Background choice (Moved to the right of Full Screen) */}
           <div className="relative group flex items-center">
             <button 
               onClick={() => setIsBackgroundGalleryOpen(true)}
-              className="hover:scale-110 transition-transform"
+              className="w-[56px] h-[56px] flex items-center justify-center hover:scale-110 transition-transform"
               title="Choose Background"
             >
-              <img src={getAssetUrl("/UI/scene1.svg")} alt="Background" className="w-[68px] h-[68px] object-contain" />
+              <img src={getAssetUrl("/UI/scene1.svg")} alt="Background" className="w-full h-full object-contain" />
             </button>
             {activeScene?.background && (
               <button
@@ -1348,83 +1382,60 @@ export default function App() {
                   });
                   setIsPaintEditorOpen(true);
                 }}
-                className="absolute -top-1 -right-1 w-7 h-7 bg-amber-400 border-2 border-white hover:bg-amber-500 shadow-md rounded-full flex items-center justify-center z-20 transition-all hover:scale-110 cursor-pointer"
+                className="absolute -top-1 -right-1 w-6 h-6 bg-amber-400 border-2 border-white hover:bg-amber-500 shadow-md rounded-full flex items-center justify-center z-20 transition-all hover:scale-110 cursor-pointer"
                 title="Edit Current Background"
               >
-                <Pencil className="w-3.5 h-3.5 text-white stroke-[2.5]" />
+                <Pencil className="w-3 h-3 text-white stroke-[2.5]" />
               </button>
             )}
           </div>
-          
-          <button 
-            onClick={() => setShowGrid(!showGrid)}
-            className={cn(
-              "transition-transform hover:scale-110",
-              showGrid ? "scale-110 drop-shadow-[0_0_8px_rgba(249,115,22,0.6)]" : ""
-            )}
-            title="Show/Hide Grid"
-          >
-            <img src={getAssetUrl("/UI/gridOn.svg")} alt="Grid" className="w-[68px] h-[68px] object-contain" />
-          </button>
 
-          <button 
-            onClick={() => setIsTextModalOpen(true)}
-            className="hover:scale-110 transition-transform"
-            title="Add Text"
-          >
-            <img src={getAssetUrl("/UI/addText.svg")} alt="Text" className="w-[68px] h-[68px] object-contain" />
-          </button>
+          {/* Vertical Separator Line between Full Screen and Save/Load */}
+          <div className="w-px h-8 bg-gray-300 mx-1 shrink-0"></div>
 
-          <button 
-            onClick={() => setIsPresentationMode(true)}
-            className="hover:scale-110 transition-transform"
-            title="Full Screen"
-          >
-            <img src={getAssetUrl("/UI/fullOff2.svg")} alt="Full Screen" className="w-[58px] h-[58px] object-contain" />
-          </button>
+          {/* Save & Load Project Icons */}
+          <div className="flex items-center gap-1">
+            <button 
+              onClick={handleSaveProject}
+              className="w-[56px] h-[56px] flex items-center justify-center hover:scale-110 transition-transform"
+              title="Save Project"
+            >
+              <Save className="w-[36px] h-[36px] text-orange-500 stroke-[2.2]" />
+            </button>
+            
+            <label 
+              className="w-[56px] h-[56px] flex items-center justify-center hover:scale-110 transition-transform cursor-pointer"
+              title="Load Project"
+            >
+              <FolderOpen className="w-[36px] h-[36px] text-green-600 stroke-[2.2]" />
+              <input 
+                type="file" 
+                accept=".sjr" 
+                onChange={handleLoadProject} 
+                className="hidden" 
+              />
+            </label>
+          </div>
         </div>
         
-        {/* Right section: Save, Load, Contact, Cards, Menu */}
-        <div className="flex items-center justify-end gap-3 shrink-0">
-          <button 
-            onClick={handleSaveProject}
-            className="w-[60px] h-[60px] flex items-center justify-center hover:scale-110 transition-transform"
-            title="Save Project"
-          >
-            <Save className="w-10 h-10 text-orange-400 stroke-[2]" />
-          </button>
-          
-          <label 
-            className="w-[60px] h-[60px] flex items-center justify-center hover:scale-110 transition-transform cursor-pointer"
-            title="Load Project"
-          >
-            <FolderOpen className="w-10 h-10 text-green-500 stroke-[2]" />
-            <input 
-              type="file" 
-              accept=".sjr" 
-              onChange={handleLoadProject} 
-              className="hidden" 
-            />
-          </label>
-
-          <div className="w-px h-8 bg-gray-300 mx-1"></div>
-
+        {/* Right section: Contact, Cards, Menu */}
+        <div className="flex items-center justify-end gap-1.5 shrink-0">
           <button
             onClick={() => setIsContactModalOpen(true)}
-            className="w-[60px] h-[60px] flex items-center justify-center hover:scale-110 transition-transform cursor-pointer"
+            className="w-[56px] h-[56px] flex items-center justify-center hover:scale-110 transition-transform cursor-pointer"
             title="Contact Us"
           >
-            <img src={getAssetUrl('/UI/mail.svg')} alt="Contact Us" className="w-10 h-10 object-contain pointer-events-none" />
+            <img src={getAssetUrl('/UI/mail.svg')} alt="Contact Us" className="w-[38px] h-[38px] object-contain pointer-events-none" />
           </button>
 
           <a
             href="https://moshe310.wixsite.com/codejrenglish"
             target="_blank"
             rel="noopener noreferrer"
-            className="w-[60px] h-[60px] flex items-center justify-center hover:scale-110 transition-transform cursor-pointer"
-            title="Instruction Cards / כרטיסיות הדרכה"
+            className="w-[56px] h-[56px] flex items-center justify-center hover:scale-110 transition-transform cursor-pointer"
+            title="Instruction Cards"
           >
-            <img src={getAssetUrl('/UI/card.svg')} alt="Instruction Cards" className="w-10 h-10 object-contain pointer-events-none" />
+            <img src={getAssetUrl('/UI/card.svg')} alt="Instruction Cards" className="w-[38px] h-[38px] object-contain pointer-events-none" />
           </a>
 
           <div className="w-px h-8 bg-gray-300 mx-1"></div>
