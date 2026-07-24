@@ -1,4 +1,4 @@
- import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { 
   Play, Square, RotateCcw, Image as ImageIcon, 
   Settings2, Plus, Flag, Trash2, Rocket, Brush, X, Grid, Pencil, Monitor, Save, FolderOpen,
@@ -47,6 +47,7 @@ export default function App() {
     characterStacks?: Record<string, Stack[]>;
     stacks: Stack[]; 
     background?: string; 
+    backgroundShapes?: Shape[];
     text?: string; 
     textColor?: string; 
     textSize?: FontSize; 
@@ -249,6 +250,7 @@ export default function App() {
   const [isContactModalOpen, setIsContactModalOpen] = useState(false);
   const [recordings, setRecordings] = useState<Record<number, string>>({});
   const [editingCharacterId, setEditingCharacterId] = useState<string | null>(null);
+  const [editingBackground, setEditingBackground] = useState<{ name: string; url: string; shapes?: Shape[] } | null>(null);
   
   // Custom Kid-Friendly Keypad State
   const [keypadConfig, setKeypadConfig] = useState<{
@@ -752,10 +754,10 @@ export default function App() {
     }
   };
 
-  const handleSelectBackground = (bg: { name: string; url: string }) => {
+  const handleSelectBackground = (bg: { name: string; url: string; shapes?: Shape[] }) => {
     updateScenes(prev => prev.map(s => {
       if (s.id === activeSceneId) {
-        return { ...s, background: bg.url };
+        return { ...s, background: bg.url, backgroundShapes: bg.shapes };
       }
       return s;
     }));
@@ -1287,6 +1289,7 @@ export default function App() {
     <div className="h-screen max-h-screen bg-[#F4EFE6] flex flex-col font-sans select-none overflow-hidden">
       {/* Header */}
       <header className="bg-white h-16 flex items-center justify-between z-20 relative px-6 shadow-sm border-b border-[#e5dfd3]">
+        {/* Left section: Logo + Green Flag, Stop, Reset */}
         <div className="flex items-center gap-3 shrink-0">
           <div className="flex items-center gap-2.5 cursor-pointer">
             <div className="w-14 h-14 rounded-xl flex items-center justify-center overflow-hidden">
@@ -1294,16 +1297,64 @@ export default function App() {
             </div>
             <h1 className="text-xl font-black text-gray-800 tracking-tight">CODEJR</h1>
           </div>
+
+          <div className="w-px h-10 bg-gray-300 mx-1"></div>
+
+          {/* Green Flag, Stop, Reset moved to the left */}
+          <div className="flex items-center gap-2">
+            <button 
+              onClick={playScene}
+              disabled={isRunning || stacks.length === 0}
+              className="hover:scale-110 transition-transform disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Go (Green Flag)"
+            >
+              <img src={getAssetUrl("/UI/go.svg")} alt="Go" className="w-[64px] h-[64px] object-contain" />
+            </button>
+            <button 
+              onClick={stopScene}
+              disabled={!isRunning}
+              className="hover:scale-110 transition-transform disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Stop"
+            >
+              <img src={getAssetUrl("/UI/stop1.svg")} alt="Stop" className="w-[64px] h-[64px] object-contain" />
+            </button>
+            <button 
+              onClick={resetStage}
+              className="hover:scale-110 transition-transform"
+              title="Reset Stage"
+            >
+              <img src={getAssetUrl("/UI/resetAll.svg")} alt="Reset" className="w-[64px] h-[64px] object-contain" />
+            </button>
+          </div>
         </div>
         
+        {/* Center section: 4 Stage Icons directly centered over stage */}
         <div className="flex items-center justify-center gap-4 absolute left-1/2 -translate-x-1/2">
-          <button 
-            onClick={() => setIsBackgroundGalleryOpen(true)}
-            className="hover:scale-110 transition-transform"
-            title="Choose Background"
-          >
-            <img src={getAssetUrl("/UI/scene1.svg")} alt="Background" className="w-[72px] h-[72px] object-contain" />
-          </button>
+          <div className="relative group flex items-center">
+            <button 
+              onClick={() => setIsBackgroundGalleryOpen(true)}
+              className="hover:scale-110 transition-transform"
+              title="Choose Background"
+            >
+              <img src={getAssetUrl("/UI/scene1.svg")} alt="Background" className="w-[68px] h-[68px] object-contain" />
+            </button>
+            {activeScene?.background && (
+              <button
+                onClick={() => {
+                  setEditingBackground({ 
+                    name: 'Scene Background', 
+                    url: activeScene.background || '', 
+                    shapes: activeScene.backgroundShapes 
+                  });
+                  setIsPaintEditorOpen(true);
+                }}
+                className="absolute -top-1 -right-1 w-7 h-7 bg-amber-400 border-2 border-white hover:bg-amber-500 shadow-md rounded-full flex items-center justify-center z-20 transition-all hover:scale-110 cursor-pointer"
+                title="Edit Current Background"
+              >
+                <Pencil className="w-3.5 h-3.5 text-white stroke-[2.5]" />
+              </button>
+            )}
+          </div>
           
           <button 
             onClick={() => setShowGrid(!showGrid)}
@@ -1313,7 +1364,7 @@ export default function App() {
             )}
             title="Show/Hide Grid"
           >
-            <img src={getAssetUrl("/UI/gridOn.svg")} alt="Grid" className="w-[72px] h-[72px] object-contain" />
+            <img src={getAssetUrl("/UI/gridOn.svg")} alt="Grid" className="w-[68px] h-[68px] object-contain" />
           </button>
 
           <button 
@@ -1321,57 +1372,33 @@ export default function App() {
             className="hover:scale-110 transition-transform"
             title="Add Text"
           >
-            <img src={getAssetUrl("/UI/addText.svg")} alt="Text" className="w-[72px] h-[72px] object-contain" />
+            <img src={getAssetUrl("/UI/addText.svg")} alt="Text" className="w-[68px] h-[68px] object-contain" />
           </button>
+
           <button 
             onClick={() => setIsPresentationMode(true)}
             className="hover:scale-110 transition-transform"
             title="Full Screen"
           >
-            <img src={getAssetUrl("/UI/fullOff2.svg")} alt="Full Screen" className="w-[60px] h-[60px] object-contain" />
+            <img src={getAssetUrl("/UI/fullOff2.svg")} alt="Full Screen" className="w-[58px] h-[58px] object-contain" />
           </button>
-
-          <div className="w-px h-10 bg-gray-300 mx-2"></div>
-
-          <button 
-            onClick={resetStage}
-            className="hover:scale-110 transition-transform"
-            title="Reset Stage"
-          >
-            <img src={getAssetUrl("/UI/resetAll.svg")} alt="Reset" className="w-[72px] h-[72px] object-contain" />
-          </button>
-          <button 
-            onClick={stopScene}
-            disabled={!isRunning}
-            className="hover:scale-110 transition-transform disabled:opacity-50 disabled:cursor-not-allowed"
-            title="Stop"
-          >
-            <img src={getAssetUrl("/UI/stop1.svg")} alt="Stop" className="w-[72px] h-[72px] object-contain" />
-          </button>
-          <button 
-            onClick={playScene}
-            disabled={isRunning || stacks.length === 0}
-            className="hover:scale-110 transition-transform disabled:opacity-50 disabled:cursor-not-allowed"
-            title="Go"
-          >
-            <img src={getAssetUrl("/UI/go.svg")} alt="Go" className="w-[72px] h-[72px] object-contain" />
-          </button>
-
-          <div className="w-px h-10 bg-gray-300 mx-2"></div>
-
+        </div>
+        
+        {/* Right section: Save, Load, Contact, Cards, Menu */}
+        <div className="flex items-center justify-end gap-3 shrink-0">
           <button 
             onClick={handleSaveProject}
-            className="w-[72px] h-[72px] flex items-center justify-center hover:scale-110 transition-transform"
+            className="w-[60px] h-[60px] flex items-center justify-center hover:scale-110 transition-transform"
             title="Save Project"
           >
-            <Save className="w-12 h-12 text-orange-400 stroke-[2]" />
+            <Save className="w-10 h-10 text-orange-400 stroke-[2]" />
           </button>
           
           <label 
-            className="w-[72px] h-[72px] flex items-center justify-center hover:scale-110 transition-transform cursor-pointer"
+            className="w-[60px] h-[60px] flex items-center justify-center hover:scale-110 transition-transform cursor-pointer"
             title="Load Project"
           >
-            <FolderOpen className="w-12 h-12 text-green-500 stroke-[2]" />
+            <FolderOpen className="w-10 h-10 text-green-500 stroke-[2]" />
             <input 
               type="file" 
               accept=".sjr" 
@@ -1380,28 +1407,28 @@ export default function App() {
             />
           </label>
 
-          <div className="w-px h-10 bg-gray-300 mx-2"></div>
+          <div className="w-px h-8 bg-gray-300 mx-1"></div>
 
           <button
             onClick={() => setIsContactModalOpen(true)}
-            className="w-[72px] h-[72px] flex items-center justify-center hover:scale-110 transition-transform cursor-pointer"
+            className="w-[60px] h-[60px] flex items-center justify-center hover:scale-110 transition-transform cursor-pointer"
             title="Contact Us"
           >
-            <img src={getAssetUrl('/UI/mail.svg')} alt="Contact Us" className="w-12 h-12 object-contain pointer-events-none" />
+            <img src={getAssetUrl('/UI/mail.svg')} alt="Contact Us" className="w-10 h-10 object-contain pointer-events-none" />
           </button>
 
           <a
             href="https://moshe310.wixsite.com/codejrenglish"
             target="_blank"
             rel="noopener noreferrer"
-            className="w-[72px] h-[72px] flex items-center justify-center hover:scale-110 transition-transform cursor-pointer"
+            className="w-[60px] h-[60px] flex items-center justify-center hover:scale-110 transition-transform cursor-pointer"
             title="Instruction Cards / כרטיסיות הדרכה"
           >
-            <img src={getAssetUrl('/UI/card.svg')} alt="Instruction Cards" className="w-12 h-12 object-contain pointer-events-none" />
+            <img src={getAssetUrl('/UI/card.svg')} alt="Instruction Cards" className="w-10 h-10 object-contain pointer-events-none" />
           </a>
-        </div>
-        
-        <div className="w-48 shrink-0 flex items-center justify-end pr-4">
+
+          <div className="w-px h-8 bg-gray-300 mx-1"></div>
+
           <button
             onClick={() => setIsMenuDrawerOpen(true)}
             className="w-10 h-10 flex items-center justify-center bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white rounded-xl transition-all shadow-sm hover:shadow-md active:scale-95 hover:scale-105 border border-orange-300/40"
@@ -1685,15 +1712,32 @@ export default function App() {
 
       <PaintEditor
         isOpen={isPaintEditorOpen}
+        isBackground={!!editingBackground}
         onClose={() => {
           setIsPaintEditorOpen(false);
           setEditingCharacterId(null);
+          setEditingBackground(null);
         }}
-        initialName={editingCharacterId ? characters.find(c => c.id === editingCharacterId)?.name : undefined}
-        initialShapes={editingCharacterId ? characters.find(c => c.id === editingCharacterId)?.shapes : undefined}
-        initialSpriteUrl={editingCharacterId ? characters.find(c => c.id === editingCharacterId)?.spriteUrl : undefined}
+        initialName={
+          editingBackground
+            ? editingBackground.name
+            : (editingCharacterId ? characters.find(c => c.id === editingCharacterId)?.name : undefined)
+        }
+        initialShapes={
+          editingBackground
+            ? (editingBackground.shapes || activeScene?.backgroundShapes)
+            : (editingCharacterId ? characters.find(c => c.id === editingCharacterId)?.shapes : undefined)
+        }
+        initialSpriteUrl={
+          editingBackground
+            ? editingBackground.url
+            : (editingCharacterId ? characters.find(c => c.id === editingCharacterId)?.spriteUrl : undefined)
+        }
         onSave={(name, dataUrl, shapes) => {
-          if (editingCharacterId) {
+          if (editingBackground) {
+            handleSelectBackground({ name, url: dataUrl, shapes });
+            setEditingBackground(null);
+          } else if (editingCharacterId) {
             // Edit existing character
             setCharacters(prev => prev.map(c => c.id === editingCharacterId ? { ...c, name, spriteUrl: dataUrl, shapes } : c));
             setEditingCharacterId(null);
@@ -1727,6 +1771,16 @@ export default function App() {
         isOpen={isBackgroundGalleryOpen}
         onClose={() => setIsBackgroundGalleryOpen(false)}
         onSelect={handleSelectBackground}
+        onPaintNew={() => {
+          setIsBackgroundGalleryOpen(false);
+          setEditingBackground({ name: 'My Background', url: '' });
+          setIsPaintEditorOpen(true);
+        }}
+        onEditBackground={(bg) => {
+          setIsBackgroundGalleryOpen(false);
+          setEditingBackground(bg);
+          setIsPaintEditorOpen(true);
+        }}
       />
 
       <KidKeypad
