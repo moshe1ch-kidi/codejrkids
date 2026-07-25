@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from "react";
-import { MessageSquarePlus, Send, X, CheckCircle, RefreshCw, Trash2, Mail, User, ShieldCheck, MessageSquare, Lock, KeyRound, LogOut, Settings } from "lucide-react";
+ import React, { useState, useEffect } from "react";
+import { MessageSquarePlus, Send, X, CheckCircle, RefreshCw, Trash2, Mail, User, ShieldCheck, MessageSquare, Lock, KeyRound, LogOut, Settings, Copy, Check } from "lucide-react";
 import { sendContactMessage, fetchContactMessages, deleteContactMessage, ContactMessage } from "../lib/firebase";
 import { getAssetUrl } from "../utils/assets";
 
@@ -32,6 +32,14 @@ export const ContactModal: React.FC<ContactModalProps> = ({ isOpen, onClose }) =
   const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [newPassword, setNewPassword] = useState("");
   const [changePassSuccess, setChangePassSuccess] = useState("");
+
+  const [copiedKey, setCopiedKey] = useState<string | null>(null);
+
+  const handleCopy = (text: string, key: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedKey(key);
+    setTimeout(() => setCopiedKey(null), 2000);
+  };
 
   const handleIconClick = () => {
     const next = iconClicks + 1;
@@ -129,8 +137,8 @@ export const ContactModal: React.FC<ContactModalProps> = ({ isOpen, onClose }) =
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 dir-ltr">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden border border-gray-100 animate-in fade-in zoom-in duration-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 dir-ltr select-text">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden border border-gray-100 animate-in fade-in zoom-in duration-200 select-text">
         
         {/* Header */}
         <div className="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 p-5 text-white flex items-center justify-between">
@@ -426,39 +434,64 @@ export const ContactModal: React.FC<ContactModalProps> = ({ isOpen, onClose }) =
                       <span>No messages submitted yet</span>
                     </div>
                   ) : (
-                    <div className="max-h-80 overflow-y-auto space-y-3 pl-1">
-                      {messagesList.map((msg) => (
-                        <div key={msg.id} className="p-3.5 bg-gray-50 rounded-xl border border-gray-200 hover:border-gray-300 transition-all text-left relative group">
-                          <div className="flex items-start justify-between gap-2 mb-1">
-                            <div>
-                              <span className="font-bold text-gray-900 text-sm">{msg.name}</span>
-                              <span className="text-xs text-gray-500 ml-2">({msg.contact})</span>
-                            </div>
-                            <span className="px-2 py-0.5 bg-blue-100 text-blue-800 text-[10px] font-bold rounded-full">
-                              {msg.subject}
-                            </span>
-                          </div>
-                          
-                          <p className="text-xs text-gray-700 mt-2 bg-white p-2.5 rounded-lg border border-gray-100 whitespace-pre-wrap">
-                            {msg.message}
-                          </p>
+                    <div className="max-h-80 overflow-y-auto space-y-3 pl-1 select-text">
+                      {messagesList.map((msg) => {
+                        const contactKey = `contact-${msg.id}`;
+                        const messageKey = `msg-${msg.id}`;
+                        const isContactCopied = copiedKey === contactKey;
+                        const isMessageCopied = copiedKey === messageKey;
 
-                          <div className="mt-2 flex items-center justify-between text-[10px] text-gray-400">
-                            <span>
-                              {msg.createdAt?.seconds
-                                ? new Date(msg.createdAt.seconds * 1000).toLocaleString("en-US")
-                                : "Just now"}
-                            </span>
-                            <button
-                              onClick={() => handleDelete(msg.id)}
-                              className="text-red-500 hover:text-red-700 p-1 rounded transition-colors cursor-pointer"
-                              title="Delete message"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
+                        return (
+                          <div key={msg.id} className="p-3.5 bg-gray-50 rounded-xl border border-gray-200 hover:border-gray-300 transition-all text-left relative group select-text">
+                            <div className="flex items-start justify-between gap-2 mb-1">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className="font-bold text-gray-900 text-sm select-text">{msg.name}</span>
+                                <span className="text-xs text-indigo-600 font-medium bg-indigo-50 px-2 py-0.5 rounded-md border border-indigo-100 select-text flex items-center gap-1">
+                                  <span>{msg.contact}</span>
+                                  <button
+                                    onClick={() => handleCopy(msg.contact, contactKey)}
+                                    className="p-0.5 hover:bg-indigo-100 rounded text-indigo-500 transition-colors cursor-pointer"
+                                    title="Copy email/contact"
+                                  >
+                                    {isContactCopied ? <Check className="w-3 h-3 text-green-600" /> : <Copy className="w-3 h-3" />}
+                                  </button>
+                                </span>
+                              </div>
+                              <span className="px-2 py-0.5 bg-blue-100 text-blue-800 text-[10px] font-bold rounded-full shrink-0">
+                                {msg.subject}
+                              </span>
+                            </div>
+                            
+                            <div className="mt-2 bg-white p-2.5 rounded-lg border border-gray-100 relative group/msg">
+                              <p className="text-xs text-gray-700 whitespace-pre-wrap select-text pr-6">
+                                {msg.message}
+                              </p>
+                              <button
+                                onClick={() => handleCopy(msg.message, messageKey)}
+                                className="absolute top-2 right-2 p-1 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded text-gray-500 hover:text-gray-700 transition-colors cursor-pointer"
+                                title="Copy message text"
+                              >
+                                {isMessageCopied ? <Check className="w-3 h-3 text-green-600" /> : <Copy className="w-3.5 h-3.5" />}
+                              </button>
+                            </div>
+
+                            <div className="mt-2 flex items-center justify-between text-[10px] text-gray-400">
+                              <span className="select-text">
+                                {msg.createdAt?.seconds
+                                  ? new Date(msg.createdAt.seconds * 1000).toLocaleString("en-US")
+                                  : "Just now"}
+                              </span>
+                              <button
+                                onClick={() => handleDelete(msg.id)}
+                                className="text-red-500 hover:text-red-700 p-1 rounded transition-colors cursor-pointer"
+                                title="Delete message"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   )}
                 </div>
