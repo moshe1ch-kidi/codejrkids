@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { Check, Mic } from 'lucide-react';
-import { getAssetUrl } from '../utils/assets';
+import { getAssetUrl } from './src/utils/assets';
 
 interface RecordModalProps {
   isOpen: boolean;

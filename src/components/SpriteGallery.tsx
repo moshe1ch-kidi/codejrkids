@@ -10,58 +10,82 @@ interface SpriteGalleryProps {
   onPaintNew: () => void;
 }
 
-const ALL_SPRITES = [
-  { id: 'cat1', name: 'Kitten', file: 'cat1.svg' },
-  { id: 'Cat', name: 'Cat', file: 'Cat.svg' },
-  { id: 'Aeroplane', name: 'Aeroplane', file: 'Aeroplane.svg' },
-  { id: 'Apple', name: 'Apple', file: 'Apple.svg' },
-  { id: 'Astronaut', name: 'Astronaut', file: 'Astronaut.svg' },
-  { id: 'Baby', name: 'Baby', file: 'Baby.svg' },
-  { id: 'Ball', name: 'Ball', file: 'Ball.svg' },
-  { id: 'Basketball', name: 'Basketball', file: 'Basketball.svg' },
-  { id: 'Bat', name: 'Bat', file: 'Bat.svg' },
-  { id: 'Bed', name: 'Bed', file: 'Bed.svg' },
-  { id: 'Bike', name: 'Bike 1', file: 'Bike.svg' },
-  { id: 'Bike2', name: 'Bike 2', file: 'Bike2.svg' },
-  { id: 'Bird', name: 'Bird', file: 'Bird.svg' },
-  { id: 'Blue', name: 'Blue Character', file: 'Blue.svg' },
-  { id: 'Boat2', name: 'Boat', file: 'Boat2.svg' },
-  { id: 'Boy', name: 'Boy', file: 'Boy.svg' },
-  { id: 'Boy1', name: 'Boy 1', file: 'Boy1.svg' },
-  { id: 'Boy2', name: 'Boy 2', file: 'Boy2.svg' },
-  { id: 'Boy3', name: 'Boy 3', file: 'Boy3.svg' },
-  { id: 'Bus', name: 'Bus', file: 'Bus.svg' },
-  { id: 'Butterfly', name: 'Butterfly', file: 'Butterfly.svg' },
-  { id: 'Cake', name: 'Cake', file: 'Cake.svg' },
-  { id: 'Camel', name: 'Camel', file: 'Camel.svg' },
-  { id: 'Car', name: 'Car', file: 'Car.svg' },
-  { id: 'Car1', name: 'Car 1', file: 'Car1.svg' },
-  { id: 'Car2', name: 'Car 2', file: 'Car2.svg' },
-  { id: 'Chicken', name: 'Chicken', file: 'Chicken.svg' },
-  { id: 'Child1', name: 'Boy 4', file: 'Child1.svg' },
-  { id: 'Cloud1', name: 'Cloud', file: 'Cloud1.svg' },
-  { id: 'Crab', name: 'Crab', file: 'Crab.svg' },
-  { id: 'Creek', name: 'Creek', file: 'Creek.svg' },
-  { id: 'Dog', name: 'Dog', file: 'Dog.svg' },
-  { id: 'Dragon', name: 'Dragon', file: 'Dragon.svg' },
-  { id: 'Duck', name: 'Duck', file: 'Duck.svg' },
-  { id: 'Elephant', name: 'Elephant', file: 'Elephant.svg' },
-  { id: 'boat_1', name: 'Boat 1', file: 'boat_1.svg' },
-  { id: 'bus_1', name: 'Bus 1', file: 'bus_1.svg' },
-  { id: 'car_2', name: 'Car 2 New', file: 'car_2.svg' },
-  { id: 'cat_1', name: 'Kitten 2', file: 'cat_1.svg' },
-  { id: 'dog_1', name: 'Puppy', file: 'dog_1.svg' },
-  { id: 'elephant_1', name: 'Baby Elephant', file: 'elephant_1.svg' },
-  { id: 'lion_1', name: 'Lion', file: 'lion_1.svg' },
-  { id: 'monkey_1', name: 'Monkey', file: 'monkey_1.svg' },
-  { id: 'pandamain', name: 'Panda', file: 'pandamain.svg' }
+interface SpriteItem {
+  id: string;
+  name: string;
+  file: string;
+  category: string | string[];
+}
+
+const CATEGORIES = [
+  { id: 'all', label: 'All' },
+  { id: 'animals', label: 'Animals' },
+  { id: 'people', label: 'People' },
+  { id: 'fantasy', label: 'Fantasy' },
+  { id: 'food', label: 'Food' },
+  { id: 'things', label: 'Things' },
+  { id: 'transportation', label: 'Transportation' },
+];
+
+const ALL_SPRITES: SpriteItem[] = [
+  { id: 'cat1', name: 'Kitten', file: 'cat1.svg', category: 'animals' },
+  { id: 'Cat', name: 'Cat', file: 'Cat.svg', category: 'animals' },
+  { id: 'Aeroplane', name: 'Aeroplane', file: 'Aeroplane.svg', category: 'transportation' },
+  { id: 'Apple', name: 'Apple', file: 'Apple.svg', category: 'food' },
+  { id: 'Astronaut', name: 'Astronaut', file: 'Astronaut.svg', category: ['people', 'fantasy'] },
+  { id: 'Baby', name: 'Baby', file: 'Baby.svg', category: 'people' },
+  { id: 'Ball', name: 'Ball', file: 'Ball.svg', category: 'things' },
+  { id: 'Basketball', name: 'Basketball', file: 'Basketball.svg', category: 'things' },
+  { id: 'Bat', name: 'Bat', file: 'Bat.svg', category: 'animals' },
+  { id: 'Bed', name: 'Bed', file: 'Bed.svg', category: 'things' },
+  { id: 'Bike', name: 'Bike 1', file: 'Bike.svg', category: 'transportation' },
+  { id: 'Bike2', name: 'Bike 2', file: 'Bike2.svg', category: 'transportation' },
+  { id: 'Bird', name: 'Bird', file: 'Bird.svg', category: 'animals' },
+  { id: 'Blue', name: 'Blue Character', file: 'Blue.svg', category: ['people', 'fantasy'] },
+  { id: 'Boat2', name: 'Boat', file: 'Boat2.svg', category: 'transportation' },
+  { id: 'Boy', name: 'Boy', file: 'Boy.svg', category: 'people' },
+  { id: 'Boy1', name: 'Boy 1', file: 'Boy1.svg', category: 'people' },
+  { id: 'Boy2', name: 'Boy 2', file: 'Boy2.svg', category: 'people' },
+  { id: 'Boy3', name: 'Boy 3', file: 'Boy3.svg', category: 'people' },
+  { id: 'Bus', name: 'Bus', file: 'Bus.svg', category: 'transportation' },
+  { id: 'Butterfly', name: 'Butterfly', file: 'Butterfly.svg', category: 'animals' },
+  { id: 'Cake', name: 'Cake', file: 'Cake.svg', category: 'food' },
+  { id: 'Camel', name: 'Camel', file: 'Camel.svg', category: 'animals' },
+  { id: 'Car', name: 'Car', file: 'Car.svg', category: 'transportation' },
+  { id: 'Car1', name: 'Car 1', file: 'Car1.svg', category: 'transportation' },
+  { id: 'Car2', name: 'Car 2', file: 'Car2.svg', category: 'transportation' },
+  { id: 'Chicken', name: 'Chicken', file: 'Chicken.svg', category: 'animals' },
+  { id: 'Child1', name: 'Boy 4', file: 'Child1.svg', category: 'people' },
+  { id: 'Cloud1', name: 'Cloud', file: 'Cloud1.svg', category: 'things' },
+  { id: 'Crab', name: 'Crab', file: 'Crab.svg', category: 'animals' },
+  { id: 'Creek', name: 'Creek', file: 'Creek.svg', category: 'things' },
+  { id: 'Dog', name: 'Dog', file: 'Dog.svg', category: 'animals' },
+  { id: 'Dragon', name: 'Dragon', file: 'Dragon.svg', category: 'fantasy' },
+  { id: 'Duck', name: 'Duck', file: 'Duck.svg', category: 'animals' },
+  { id: 'Elephant', name: 'Elephant', file: 'Elephant.svg', category: 'animals' },
+  { id: 'boat_1', name: 'Boat 1', file: 'boat_1.svg', category: 'transportation' },
+  { id: 'bus_1', name: 'Bus 1', file: 'bus_1.svg', category: 'transportation' },
+  { id: 'car_2', name: 'Car 2 New', file: 'car_2.svg', category: 'transportation' },
+  { id: 'cat_1', name: 'Kitten 2', file: 'cat_1.svg', category: 'animals' },
+  { id: 'dog_1', name: 'Puppy', file: 'dog_1.svg', category: 'animals' },
+  { id: 'elephant_1', name: 'Baby Elephant', file: 'elephant_1.svg', category: 'animals' },
+  { id: 'lion_1', name: 'Lion', file: 'lion_1.svg', category: 'animals' },
+  { id: 'monkey_1', name: 'Monkey', file: 'monkey_1.svg', category: 'animals' },
+  { id: 'pandamain', name: 'Panda', file: 'pandamain.svg', category: 'animals' }
 ];
 
 export function SpriteGallery({ isOpen, onClose, onSelect, onPaintNew }: SpriteGalleryProps) {
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('all');
 
   const filteredSprites = ALL_SPRITES.filter(sprite => {
-    return sprite.name.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesSearch = sprite.name.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesCategory =
+      selectedCategory === 'all' ||
+      (Array.isArray(sprite.category)
+        ? sprite.category.includes(selectedCategory)
+        : sprite.category === selectedCategory);
+    return matchesSearch && matchesCategory;
   });
 
   if (!isOpen) return null;
@@ -111,6 +135,26 @@ export function SpriteGallery({ isOpen, onClose, onSelect, onPaintNew }: SpriteG
                 className="w-full pl-12 pr-4 py-3 bg-white border-2 border-slate-200 rounded-2xl focus:border-orange-400 focus:outline-none transition-colors text-slate-700 font-medium"
               />
             </div>
+          </div>
+
+          {/* Category filter tabs */}
+          <div className="px-6 py-3 border-b border-slate-100 bg-slate-50/50 flex items-center gap-2 overflow-x-auto no-scrollbar">
+            {CATEGORIES.map((cat) => {
+              const isActive = selectedCategory === cat.id;
+              return (
+                <button
+                  key={cat.id}
+                  onClick={() => setSelectedCategory(cat.id)}
+                  className={`px-4 py-2 rounded-full font-bold text-xs sm:text-sm whitespace-nowrap transition-all ${
+                    isActive
+                      ? 'bg-orange-500 text-white shadow-md shadow-orange-200 scale-105'
+                      : 'bg-white text-slate-600 hover:bg-slate-100 hover:text-slate-800 border border-slate-200'
+                  }`}
+                >
+                  {cat.label}
+                </button>
+              );
+            })}
           </div>
 
           {/* Sprites Grid */}
