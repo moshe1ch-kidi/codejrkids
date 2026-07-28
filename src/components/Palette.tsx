@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+ import React, { useState } from 'react';
 import { motion } from 'motion/react';
+import { Trash2 } from 'lucide-react';
 import { BLOCK_DEFS, BlockType, BlockCategory } from '../blocks';
 import { VisualBlock } from './VisualBlock';
 import { cn } from '../lib/utils';
@@ -8,6 +9,7 @@ import { getAssetUrl } from '../utils/assets';
 interface PaletteProps {
   onDragStart: (e: React.PointerEvent, type: BlockType, times?: number) => void;
   onRecordClick?: () => void;
+  onDeleteRecording?: (id: number) => void;
   recordings?: Record<number, string>;
 }
 
@@ -61,7 +63,7 @@ const getBubbleStyle = (category: string) => {
   }
 };
 
-export function Palette({ onDragStart, onRecordClick, recordings = {} }: PaletteProps) {
+export function Palette({ onDragStart, onRecordClick, onDeleteRecording, recordings = {} }: PaletteProps) {
   const [activeCategory, setActiveCategory] = useState<BlockCategory>('MOTION');
 
   const categories: { 
@@ -181,6 +183,19 @@ export function Palette({ onDragStart, onRecordClick, recordings = {} }: Palette
                         type="PLAY_RECORDED"
                         times={id}
                       />
+                      {onDeleteRecording && (
+                        <button
+                          onPointerDown={(e) => e.stopPropagation()}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onDeleteRecording(id);
+                          }}
+                          className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 hover:bg-red-600 active:scale-95 text-white rounded-full flex items-center justify-center shadow-md opacity-90 group-hover:opacity-100 transition-all z-10 cursor-pointer"
+                          title="Delete recording"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      )}
                     </div>
                   );
                 })}
