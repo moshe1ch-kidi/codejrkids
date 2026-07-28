@@ -2,7 +2,7 @@
 import { 
   Play, Square, RotateCcw, Image as ImageIcon, 
   Settings2, Plus, Flag, Trash2, Rocket, Brush, X, Grid, Pencil, Monitor, Save, FolderOpen,
-  Menu, ExternalLink, Globe, MessageSquarePlus, Mail, BookOpen
+  Menu, ExternalLink, Globe, MessageSquarePlus, Mail, BookOpen, Undo2, Redo2
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { Stage } from './components/Stage';
@@ -306,6 +306,48 @@ export default function App() {
     }));
   };
 
+  // Undo / Redo History for Workspace Blocks
+  const [undoHistory, setUndoHistory] = useState<Stack[][]>([]);
+  const [redoHistory, setRedoHistory] = useState<Stack[][]>([]);
+
+  // Reset history when active character or active scene changes
+  useEffect(() => {
+    setUndoHistory([]);
+    setRedoHistory([]);
+  }, [activeCharacterId, activeSceneId]);
+
+  const saveToUndo = useCallback((prevStacks: Stack[]) => {
+    setUndoHistory(prev => {
+      const cloned = JSON.parse(JSON.stringify(prevStacks));
+      return [...prev.slice(-29), cloned];
+    });
+    setRedoHistory([]);
+  }, []);
+
+  const handleUndo = () => {
+    if (undoHistory.length === 0) return;
+    const previous = undoHistory[undoHistory.length - 1];
+    const newUndo = undoHistory.slice(0, undoHistory.length - 1);
+    const currentCloned = JSON.parse(JSON.stringify(stacks));
+
+    setRedoHistory(r => [...r, currentCloned]);
+    setUndoHistory(newUndo);
+
+    setStacks(previous);
+  };
+
+  const handleRedo = () => {
+    if (redoHistory.length === 0) return;
+    const next = redoHistory[redoHistory.length - 1];
+    const newRedo = redoHistory.slice(0, redoHistory.length - 1);
+    const currentCloned = JSON.parse(JSON.stringify(stacks));
+
+    setUndoHistory(u => [...u, currentCloned]);
+    setRedoHistory(newRedo);
+
+    setStacks(next);
+  };
+
   const shouldStopRef = useRef(false);
   const delayMsRef = useRef(DELAY_MS);
   const autoPlayNextSceneRef = useRef<string | null>(null);
@@ -542,6 +584,13 @@ export default function App() {
         return;
       }
 
+      // Save history for Undo before applying changes
+      if (dragState.source === 'PALETTE') {
+        saveToUndo(stacks);
+      } else if (dragState.source === 'WORKSPACE') {
+        saveToUndo(dragState.originalStacks || stacks);
+      }
+
       if (finalBlocks.length > 0) {
         if (target) {
           setStacks(prev => attachBlock(prev, target.containerId, target.afterId, finalBlocks));
@@ -694,6 +743,7 @@ export default function App() {
   // --- /Drag and Drop State ---
 
   const handleTimesChange = (id: string, times: number) => {
+    saveToUndo(stacks);
     const updateTimes = (items: BlockInstance[]): BlockInstance[] => {
       return items.map(b => {
         if (b.id === id) return { ...b, times };
@@ -705,6 +755,7 @@ export default function App() {
   };
 
   const handleTextChange = (id: string, text: string) => {
+    saveToUndo(stacks);
     const updateText = (items: BlockInstance[]): BlockInstance[] => {
       return items.map(b => {
         if (b.id === id) return { ...b, text };
@@ -720,6 +771,9 @@ export default function App() {
   };
 
   const clearWorkspace = () => {
+    if (stacks.length > 0) {
+      saveToUndo(stacks);
+    }
     setStacks([]);
     resetStage();
   };
@@ -1670,13 +1724,35 @@ export default function App() {
           <div className="flex-1 p-2 md:p-3 flex flex-col gap-1.5 min-h-0 relative">
             <div className="flex justify-between items-center px-3 py-1 border-b border-[#F9C17D]/30 mb-1">
               <h2 className="text-[#8D6E63] font-black uppercase tracking-wider text-[12px]">YOUR CODE</h2>
-              <button 
-                onClick={clearWorkspace}
-                className="text-[#8D6E63] hover:text-red-500 transition-colors flex items-center gap-1.5 text-[12px] font-black uppercase"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-                CLEAR
-              </button>
+              <div className="flex items-center gap-2.5">
+                <button 
+                  onClick={handleUndo}
+                  disabled={undoHistory.length === 0}
+                  className="text-[#8D6E63] hover:text-orange-600 disabled:opacity-30 disabled:hover:text-[#8D6E63] disabled:cursor-not-allowed transition-colors flex items-center gap-1 text-[12px] font-black uppercase cursor-pointer"
+                  title="Undo"
+                >
+                  <Undo2 className="w-3.5 h-3.5" />
+                  UNDO
+                </button>
+                <button 
+                  onClick={handleRedo}
+                  disabled={redoHistory.length === 0}
+                  className="text-[#8D6E63] hover:text-orange-600 disabled:opacity-30 disabled:hover:text-[#8D6E63] disabled:cursor-not-allowed transition-colors flex items-center gap-1 text-[12px] font-black uppercase cursor-pointer"
+                  title="Redo"
+                >
+                  <Redo2 className="w-3.5 h-3.5" />
+                  REDO
+                </button>
+                <div className="w-px h-3.5 bg-[#8D6E63]/30 mx-0.5"></div>
+                <button 
+                  onClick={clearWorkspace}
+                  className="text-[#8D6E63] hover:text-red-500 transition-colors flex items-center gap-1.5 text-[12px] font-black uppercase cursor-pointer"
+                  title="Clear workspace"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  CLEAR
+                </button>
+              </div>
             </div>
             
             <div className="flex-1 relative min-h-0">
