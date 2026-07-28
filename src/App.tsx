@@ -246,6 +246,14 @@ export default function App() {
   const [isGalleryOpen, setIsGalleryOpen] = useState(false);
   const [isTextModalOpen, setIsTextModalOpen] = useState(false);
   const [isPaintEditorOpen, setIsPaintEditorOpen] = useState(false);
+  const handleDeleteRecording = (id: number) => {
+    setRecordings(prev => {
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
+  };
+
   const [isRecordModalOpen, setIsRecordModalOpen] = useState(false);
   const [isContactModalOpen, setIsContactModalOpen] = useState(false);
   const [recordings, setRecordings] = useState<Record<number, string>>({});
@@ -1718,6 +1726,7 @@ export default function App() {
           <Palette 
             onDragStart={handlePaletteDragStart} 
             onRecordClick={() => setIsRecordModalOpen(true)}
+            onDeleteRecording={handleDeleteRecording}
             recordings={recordings}
           />
           
@@ -1898,6 +1907,8 @@ export default function App() {
       <RecordModal
         isOpen={isRecordModalOpen}
         onClose={() => setIsRecordModalOpen(false)}
+        recordings={recordings}
+        onDeleteRecording={handleDeleteRecording}
         onSave={(audioUrl) => {
           const nextId = Object.keys(recordings).length + 1;
           setRecordings(prev => ({ ...prev, [nextId]: audioUrl }));
