@@ -1,4 +1,4 @@
-import { BlockInstance, Stack } from './blocks';
+ import { BlockInstance, Stack, isTriggerBlock } from './blocks';
 import { v4 as uuidv4 } from 'uuid';
 
 export function detachBlock(stacks: Stack[], stackId: string, blockId: string): { newStacks: Stack[], detachedBlocks: BlockInstance[] } {
@@ -31,6 +31,11 @@ export function detachBlock(stacks: Stack[], stackId: string, blockId: string): 
 }
 
 export function attachBlock(stacks: Stack[], targetContainerId: string, insertAfterId: string, blocksToAttach: BlockInstance[]): Stack[] {
+  // Trigger blocks (Start on Flag, Start on Tap, Start on Bump, Receive Message) cannot attach AFTER any block!
+  if (blocksToAttach.length > 0 && isTriggerBlock(blocksToAttach[0].type)) {
+    return stacks;
+  }
+
   if (insertAfterId.startsWith('prepend-')) {
     return stacks.map(stack => {
       if (stack.id === targetContainerId) {
@@ -71,7 +76,7 @@ export function attachBlock(stacks: Stack[], targetContainerId: string, insertAf
     }));
   };
 
-  return stacks.map(stack => {
+  return sanitizeStacks(stacks.map(stack => {
     if (stack.id === targetContainerId) {
       return {
         ...stack,
@@ -79,7 +84,56 @@ export function attachBlock(stacks: Stack[], targetContainerId: string, insertAf
       };
     }
     return stack;
-  });
+  }));
+}
+
+export function sanitizeStacks(stacks: Stack[]): Stack[] {
+  const result: Stack[] = [];
+  
+  for (const stack of stacks) {
+    if (!stack.blocks || stack.blocks.length <= 1) {
+      result.push(stack);
+      continue;
+    }
+    
+    let currentBlocks: BlockInstance[] = [];
+    let currentX = stack.x;
+    let currentY = stack.y;
+    let stackCounter = 0;
+
+    for (let i = 0; i < stack.blocks.length; i++) {
+      const block = stack.blocks[i];
+      if (i > 0 && isTriggerBlock(block.type)) {
+        // Trigger block found at non-head index! Push preceding blocks as a stack
+        if (currentBlocks.length > 0) {
+          result.push({
+            id: stackCounter === 0 ? stack.id : `stack-${Date.now()}-${Math.random()}`,
+            x: currentX,
+            y: currentY,
+            blocks: currentBlocks
+          });
+          stackCounter++;
+        }
+        // Start a new stack for this trigger block
+        currentBlocks = [block];
+        currentX += 100;
+        currentY += 20;
+      } else {
+        currentBlocks.push(block);
+      }
+    }
+    
+    if (currentBlocks.length > 0) {
+      result.push({
+        id: stackCounter === 0 ? stack.id : `stack-${Date.now()}-${Math.random()}`,
+        x: currentX,
+        y: currentY,
+        blocks: currentBlocks
+      });
+    }
+  }
+  
+  return result;
 }
 
 export function cloneBlocks(blocks: BlockInstance[]): BlockInstance[] {
