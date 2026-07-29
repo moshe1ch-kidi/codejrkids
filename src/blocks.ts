@@ -7,6 +7,14 @@
 
 export const isTriggerBlock = (type: BlockType): boolean => TRIGGER_BLOCK_TYPES.includes(type);
 
+export const END_BLOCK_TYPES: BlockType[] = [
+  'END',
+  'REPEAT_FOREVER',
+  'GOTO_PAGE'
+];
+
+export const isEndBlock = (type: BlockType): boolean => END_BLOCK_TYPES.includes(type);
+
 export type BlockCategory = 'EVENTS' | 'MOTION' | 'LOOKS' | 'SOUND' | 'CONTROL' | 'END';
 
 export type BlockType = 
