@@ -18,9 +18,9 @@ import { RecordModal } from './components/RecordModal';
 import { SceneThumbnail } from './components/SceneThumbnail';
 import { ContactModal } from './components/ContactModal';
 import { cn } from './lib/utils';
-import { BlockType, BlockInstance, Stack } from './blocks';
+import { BlockType, BlockInstance, Stack, isTriggerBlock } from './blocks';
 import { DragState } from './dragState';
-import { detachBlock, attachBlock, cloneBlocks } from './workspaceUtils';
+import { detachBlock, attachBlock, cloneBlocks, sanitizeStacks } from './workspaceUtils';
 import { getAssetUrl } from './utils/assets';
 
 const INITIAL_SPRITE_STATE = {
@@ -400,47 +400,53 @@ export default function App() {
         sceneElement.classList.add('ring-4', 'ring-[#E5C470]', 'scale-105');
       }
 
-      const sockets = document.querySelectorAll('.block-socket');
-      let closest: Element | null = null;
-      let minDistance = 80; // increased snap threshold in px
+      const isDraggingTrigger = dragState.source === 'PALETTE' 
+        ? Boolean(dragState.blockType && isTriggerBlock(dragState.blockType))
+        : Boolean(dragState.blocks && dragState.blocks.length > 0 && isTriggerBlock(dragState.blocks[0].type));
 
-      sockets.forEach(socket => {
-        const containerId = (socket as HTMLElement).dataset.containerId;
-        if (containerId === 'preview') return; // Ignore sockets belonging to the dragging preview
+      if (!isDraggingTrigger) {
+        const sockets = document.querySelectorAll('.block-socket');
+        let closest: Element | null = null;
+        let minDistance = 80; // increased snap threshold in px
 
-        const rect = socket.getBoundingClientRect();
-        // Socket center
-        const sx = rect.left + rect.width / 2;
-        const sy = rect.top + rect.height / 2;
-        
-        // Use the connection point of the dragged block for snapping
-        // ScratchJr blocks connect at the left side (peg)
-        const blockLeft = e.clientX - (dragState.offsetX || 0);
-        const blockTop = e.clientY - (dragState.offsetY || 0);
-        
-        const px = blockLeft + 10; // Offset slightly to account for the peg shape
-        const py = blockTop + 32;  // Vertical center of the block (height is 64px)
+        sockets.forEach(socket => {
+          const containerId = (socket as HTMLElement).dataset.containerId;
+          if (containerId === 'preview') return; // Ignore sockets belonging to the dragging preview
 
-        const dx = Math.abs(sx - px);
-        const dy = Math.abs(sy - py);
+          const rect = socket.getBoundingClientRect();
+          // Socket center
+          const sx = rect.left + rect.width / 2;
+          const sy = rect.top + rect.height / 2;
+          
+          // Use the connection point of the dragged block for snapping
+          // ScratchJr blocks connect at the left side (peg)
+          const blockLeft = e.clientX - (dragState.offsetX || 0);
+          const blockTop = e.clientY - (dragState.offsetY || 0);
+          
+          const px = blockLeft + 10; // Offset slightly to account for the peg shape
+          const py = blockTop + 32;  // Vertical center of the block (height is 64px)
 
-        // Snapping only occurs if the block is vertically close to the row (dy < 40px)
-        // and horizontally reasonably close (dx < 80px)
-        if (dy < 40 && dx < 80) {
-          const dist = Math.hypot(dx, dy);
-          if (dist < minDistance) {
-            minDistance = dist;
-            closest = socket;
+          const dx = Math.abs(sx - px);
+          const dy = Math.abs(sy - py);
+
+          // Snapping only occurs if the block is vertically close to the row (dy < 40px)
+          // and horizontally reasonably close (dx < 80px)
+          if (dy < 40 && dx < 80) {
+            const dist = Math.hypot(dx, dy);
+            if (dist < minDistance) {
+              minDistance = dist;
+              closest = socket;
+            }
           }
-        }
-      });
+        });
 
-      if (closest) {
-        (closest as Element).classList.add('bg-yellow-400', 'opacity-50');
-        snapTargetRef.current = {
-          containerId: (closest as HTMLElement).dataset.containerId!,
-          afterId: (closest as HTMLElement).dataset.afterId!
-        };
+        if (closest) {
+          (closest as Element).classList.add('bg-yellow-400', 'opacity-50');
+          snapTargetRef.current = {
+            containerId: (closest as HTMLElement).dataset.containerId!,
+            afterId: (closest as HTMLElement).dataset.afterId!
+          };
+        }
       }
     };
 
