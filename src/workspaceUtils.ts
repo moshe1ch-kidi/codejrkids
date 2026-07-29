@@ -1,4 +1,4 @@
- import { BlockInstance, Stack, isTriggerBlock } from './blocks';
+ import { BlockInstance, Stack, isTriggerBlock, isEndBlock } from './blocks';
 import { v4 as uuidv4 } from 'uuid';
 
 export function detachBlock(stacks: Stack[], stackId: string, blockId: string): { newStacks: Stack[], detachedBlocks: BlockInstance[] } {
@@ -37,7 +37,7 @@ export function attachBlock(stacks: Stack[], targetContainerId: string, insertAf
   }
 
   if (insertAfterId.startsWith('prepend-')) {
-    return stacks.map(stack => {
+    return sanitizeStacks(stacks.map(stack => {
       if (stack.id === targetContainerId) {
         return {
           ...stack,
@@ -45,7 +45,7 @@ export function attachBlock(stacks: Stack[], targetContainerId: string, insertAf
         };
       }
       return stack;
-    });
+    }));
   }
 
   let isInner = false;
@@ -54,6 +54,25 @@ export function attachBlock(stacks: Stack[], targetContainerId: string, insertAf
   if (insertAfterId.startsWith('repeat-inner-')) {
     isInner = true;
     targetId = insertAfterId.replace('repeat-inner-', '');
+  }
+
+  // Disallow attaching after an End block
+  const targetStack = stacks.find(s => s.id === targetContainerId);
+  if (targetStack && !isInner) {
+    const findBlock = (items: BlockInstance[]): BlockInstance | undefined => {
+      for (const b of items) {
+        if (b.id === targetId) return b;
+        if (b.children) {
+          const found = findBlock(b.children);
+          if (found) return found;
+        }
+      }
+      return undefined;
+    };
+    const targetBlock = findBlock(targetStack.blocks);
+    if (targetBlock && isEndBlock(targetBlock.type)) {
+      return stacks;
+    }
   }
 
   const processList = (list: BlockInstance[]): BlockInstance[] => {
@@ -103,6 +122,7 @@ export function sanitizeStacks(stacks: Stack[]): Stack[] {
 
     for (let i = 0; i < stack.blocks.length; i++) {
       const block = stack.blocks[i];
+      
       if (i > 0 && isTriggerBlock(block.type)) {
         // Trigger block found at non-head index! Push preceding blocks as a stack
         if (currentBlocks.length > 0) {
@@ -113,13 +133,28 @@ export function sanitizeStacks(stacks: Stack[]): Stack[] {
             blocks: currentBlocks
           });
           stackCounter++;
+          currentX += 100;
+          currentY += 20;
         }
         // Start a new stack for this trigger block
         currentBlocks = [block];
-        currentX += 100;
-        currentY += 20;
       } else {
         currentBlocks.push(block);
+      }
+
+      // If this block is an End block and there are more blocks coming AFTER it in this stack,
+      // end this stack right here and start a new stack for the remaining blocks!
+      if (isEndBlock(block.type) && i < stack.blocks.length - 1) {
+        result.push({
+          id: stackCounter === 0 ? stack.id : `stack-${Date.now()}-${Math.random()}`,
+          x: currentX,
+          y: currentY,
+          blocks: currentBlocks
+        });
+        stackCounter++;
+        currentX += 100;
+        currentY += 20;
+        currentBlocks = [];
       }
     }
     
