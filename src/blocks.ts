@@ -1,4 +1,13 @@
- export type BlockCategory = 'EVENTS' | 'MOTION' | 'LOOKS' | 'SOUND' | 'CONTROL' | 'END';
+ export const TRIGGER_BLOCK_TYPES: BlockType[] = [
+  'START_FLAG',
+  'START_TOUCH',
+  'START_BUMP',
+  'START_GET_MESSAGE'
+];
+
+export const isTriggerBlock = (type: BlockType): boolean => TRIGGER_BLOCK_TYPES.includes(type);
+
+export type BlockCategory = 'EVENTS' | 'MOTION' | 'LOOKS' | 'SOUND' | 'CONTROL' | 'END';
 
 export type BlockType = 
   | 'START_FLAG'
