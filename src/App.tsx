@@ -373,6 +373,16 @@ export default function App() {
     }
   }, []);
 
+  const playDeleteSound = useCallback(() => {
+    try {
+      const audio = new Audio(getAssetUrl('/sound/whoosh.mp3'));
+      audio.volume = 0.6;
+      audio.play().catch(e => console.log('Failed to play delete sound:', e));
+    } catch (e) {
+      console.log('Audio error:', e);
+    }
+  }, []);
+
   // --- Drag and Drop State ---
   const [dragState, setDragState] = useState<DragState | null>(null);
   const snapTargetRef = useRef<{ containerId: string; afterId: string } | null>(null);
@@ -815,6 +825,7 @@ export default function App() {
 
   const handleDeleteScene = (id: string) => {
     if (scenes.length <= 1) return;
+    playDeleteSound();
     updateScenes(prev => prev.filter(s => s.id !== id));
     if (activeSceneId === id) {
       const remaining = scenes.filter(s => s.id !== id);
@@ -858,6 +869,7 @@ export default function App() {
   const handleDeleteCharacter = (id: string, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
     if (characters.length <= 1) return;
+    playDeleteSound();
     setCharacters(prev => prev.filter(c => c.id !== id));
     setSpriteStates(prev => {
       const next = { ...prev };
