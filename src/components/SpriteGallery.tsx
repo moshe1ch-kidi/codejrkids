@@ -10,60 +10,237 @@ interface SpriteGalleryProps {
   onPaintNew: () => void;
 }
 
-const ALL_SPRITES = [
-  { id: 'cat1', name: 'Kitten', file: 'cat1.svg' },
-  { id: 'Cat', name: 'Cat', file: 'Cat.svg' },
-  { id: 'Aeroplane', name: 'Aeroplane', file: 'Aeroplane.svg' },
-  { id: 'Apple', name: 'Apple', file: 'Apple.svg' },
-  { id: 'Astronaut', name: 'Astronaut', file: 'Astronaut.svg' },
-  { id: 'Baby', name: 'Baby', file: 'Baby.svg' },
-  { id: 'Ball', name: 'Ball', file: 'Ball.svg' },
-  { id: 'Basketball', name: 'Basketball', file: 'Basketball.svg' },
-  { id: 'Bat', name: 'Bat', file: 'Bat.svg' },
-  { id: 'Bed', name: 'Bed', file: 'Bed.svg' },
-  { id: 'Bike', name: 'Bike 1', file: 'Bike.svg' },
-  { id: 'Bike2', name: 'Bike 2', file: 'Bike2.svg' },
-  { id: 'Bird', name: 'Bird', file: 'Bird.svg' },
-  { id: 'Blue', name: 'Blue Character', file: 'Blue.svg' },
-  { id: 'Boat2', name: 'Boat', file: 'Boat2.svg' },
-  { id: 'Boy', name: 'Boy', file: 'Boy.svg' },
-  { id: 'Boy1', name: 'Boy 1', file: 'Boy1.svg' },
-  { id: 'Boy2', name: 'Boy 2', file: 'Boy2.svg' },
-  { id: 'Boy3', name: 'Boy 3', file: 'Boy3.svg' },
-  { id: 'Bus', name: 'Bus', file: 'Bus.svg' },
-  { id: 'Butterfly', name: 'Butterfly', file: 'Butterfly.svg' },
-  { id: 'Cake', name: 'Cake', file: 'Cake.svg' },
-  { id: 'Camel', name: 'Camel', file: 'Camel.svg' },
-  { id: 'Car', name: 'Car', file: 'Car.svg' },
-  { id: 'Car1', name: 'Car 1', file: 'Car1.svg' },
-  { id: 'Car2', name: 'Car 2', file: 'Car2.svg' },
-  { id: 'Chicken', name: 'Chicken', file: 'Chicken.svg' },
-  { id: 'Child1', name: 'Boy 4', file: 'Child1.svg' },
-  { id: 'Cloud1', name: 'Cloud', file: 'Cloud1.svg' },
-  { id: 'Crab', name: 'Crab', file: 'Crab.svg' },
-  { id: 'Creek', name: 'Creek', file: 'Creek.svg' },
-  { id: 'Dog', name: 'Dog', file: 'Dog.svg' },
-  { id: 'Dragon', name: 'Dragon', file: 'Dragon.svg' },
-  { id: 'Duck', name: 'Duck', file: 'Duck.svg' },
-  { id: 'Elephant', name: 'Elephant', file: 'Elephant.svg' },
-  { id: 'Frog', name: 'Frog', file: 'Frog.svg' },
-  { id: 'boat_1', name: 'Boat 1', file: 'boat_1.svg' },
-  { id: 'bus_1', name: 'Bus 1', file: 'bus_1.svg' },
-  { id: 'car_2', name: 'Car 2 New', file: 'car_2.svg' },
-  { id: 'cat_1', name: 'Kitten 2', file: 'cat_1.svg' },
-  { id: 'dog_1', name: 'Puppy', file: 'dog_1.svg' },
-  { id: 'elephant_1', name: 'Baby Elephant', file: 'elephant_1.svg' },
-  { id: 'lion_1', name: 'Lion', file: 'lion_1.svg' },
-  { id: 'monkey_1', name: 'Monkey', file: 'monkey_1.svg' },
-  { id: 'pandamain', name: 'Panda', file: 'pandamain.svg' }
+interface SpriteItem {
+  id: string;
+  name: string;
+  file?: string;
+  url?: string;
+}
+
+const BUILTIN_SPRITES: SpriteItem[] = [
+  { id: "Aeroplane", name: "Aeroplane", file: "Aeroplane.svg" },
+  { id: "Apple", name: "Apple", file: "Apple.svg" },
+  { id: "Astronaut", name: "Astronaut", file: "Astronaut.svg" },
+  { id: "Baby", name: "Baby", file: "Baby.svg" },
+  { id: "Ball", name: "Ball", file: "Ball.svg" },
+  { id: "Bank", name: "Bank", file: "Bank.svg" },
+  { id: "Barn", name: "Barn", file: "Barn.svg" },
+  { id: "Basketball", name: "Basketball", file: "Basketball.svg" },
+  { id: "Bat", name: "Bat", file: "Bat.svg" },
+  { id: "Bed", name: "Bed", file: "Bed.svg" },
+  { id: "Bike", name: "Bike", file: "Bike.svg" },
+  { id: "Bike2", name: "Bike2", file: "Bike2.svg" },
+  { id: "Bird", name: "Bird", file: "Bird.svg" },
+  { id: "Blue", name: "Blue", file: "Blue.svg" },
+  { id: "boat_1", name: "boat_1", file: "boat_1.svg" },
+  { id: "Boat2", name: "Boat2", file: "Boat2.svg" },
+  { id: "Boy", name: "Boy", file: "Boy.svg" },
+  { id: "Boy1", name: "Boy1", file: "Boy1.svg" },
+  { id: "Boy2", name: "Boy2", file: "Boy2.svg" },
+  { id: "Boy3", name: "Boy3", file: "Boy3.svg" },
+  { id: "bus_1", name: "bus_1", file: "bus_1.svg" },
+  { id: "Bus", name: "Bus", file: "Bus.svg" },
+  { id: "Butterfly", name: "Butterfly", file: "Butterfly.svg" },
+  { id: "Cactus", name: "Cactus", file: "Cactus.svg" },
+  { id: "Cake", name: "Cake", file: "Cake.svg" },
+  { id: "Camel", name: "Camel", file: "Camel.svg" },
+  { id: "car_2", name: "car_2", file: "car_2.svg" },
+  { id: "Car", name: "Car", file: "Car.svg" },
+  { id: "Car1", name: "Car1", file: "Car1.svg" },
+  { id: "Car2", name: "Car2", file: "Car2.svg" },
+  { id: "Castle", name: "Castle", file: "Castle.svg" },
+  { id: "cat_1", name: "cat_1", file: "cat_1.svg" },
+  { id: "Cat", name: "Cat", file: "Cat.svg" },
+  { id: "cat1", name: "cat1", file: "cat1.svg" },
+  { id: "Chicken", name: "Chicken", file: "Chicken.svg" },
+  { id: "Child1", name: "Child1", file: "Child1.svg" },
+  { id: "Cloud1", name: "Cloud1", file: "Cloud1.svg" },
+  { id: "Crab", name: "Crab", file: "Crab.svg" },
+  { id: "Creek", name: "Creek", file: "Creek.svg" },
+  { id: "CrescentMoon", name: "CrescentMoon", file: "CrescentMoon.svg" },
+  { id: "Daffodil", name: "Daffodil", file: "Daffodil.svg" },
+  { id: "Daisy1", name: "Daisy1", file: "Daisy1.svg" },
+  { id: "Daisy2", name: "Daisy2", file: "Daisy2.svg" },
+  { id: "Daisy3", name: "Daisy3", file: "Daisy3.svg" },
+  { id: "dog_1", name: "dog_1", file: "dog_1.svg" },
+  { id: "Dog", name: "Dog", file: "Dog.svg" },
+  { id: "Dragon", name: "Dragon", file: "Dragon.svg" },
+  { id: "Duck", name: "Duck", file: "Duck.svg" },
+  { id: "Earth", name: "Earth", file: "Earth.svg" },
+  { id: "elephant_1", name: "elephant_1", file: "elephant_1.svg" },
+  { id: "Elephant", name: "Elephant", file: "Elephant.svg" },
+  { id: "Evergreen", name: "Evergreen", file: "Evergreen.svg" },
+  { id: "Fairy", name: "Fairy", file: "Fairy.svg" },
+  { id: "Farmer", name: "Farmer", file: "Farmer.svg" },
+  { id: "Farmer1", name: "Farmer1", file: "Farmer1.svg" },
+  { id: "Father", name: "Father", file: "Father.svg" },
+  { id: "Fence", name: "Fence", file: "Fence.svg" },
+  { id: "Fish1", name: "Fish1", file: "Fish1.svg" },
+  { id: "Fish2", name: "Fish2", file: "Fish2.svg" },
+  { id: "Flowers", name: "Flowers", file: "Flowers.svg" },
+  { id: "Fly", name: "Fly", file: "Fly.svg" },
+  { id: "Fort", name: "Fort", file: "Fort.svg" },
+  { id: "Frog", name: "Frog", file: "Frog.svg" },
+  { id: "Giraffe", name: "Giraffe", file: "Giraffe.svg" },
+  { id: "Girl", name: "Girl", file: "Girl.svg" },
+  { id: "Girl1", name: "Girl1", file: "Girl1.svg" },
+  { id: "Girl2", name: "Girl2", file: "Girl2.svg" },
+  { id: "Girl3", name: "Girl3", file: "Girl3.svg" },
+  { id: "Grandfather", name: "Grandfather", file: "Grandfather.svg" },
+  { id: "Grandmother", name: "Grandmother", file: "Grandmother.svg" },
+  { id: "Horse", name: "Horse", file: "Horse.svg" },
+  { id: "House", name: "House", file: "House.svg" },
+  { id: "House1", name: "House1", file: "House1.svg" },
+  { id: "House3", name: "House3", file: "House3.svg" },
+  { id: "House4", name: "House4", file: "House4.svg" },
+  { id: "Inuit", name: "Inuit", file: "Inuit.svg" },
+  { id: "lion_1", name: "lion_1", file: "lion_1.svg" },
+  { id: "Lizard", name: "Lizard", file: "Lizard.svg" },
+  { id: "Mailbox", name: "Mailbox", file: "Mailbox.svg" },
+  { id: "monkey_1", name: "monkey_1", file: "monkey_1.svg" },
+  { id: "Monkey", name: "Monkey", file: "Monkey.svg" },
+  { id: "Moon", name: "Moon", file: "Moon.svg" },
+  { id: "Mother", name: "Mother", file: "Mother.svg" },
+  { id: "Mushroom", name: "Mushroom", file: "Mushroom.svg" },
+  { id: "NightTable", name: "NightTable", file: "NightTable.svg" },
+  { id: "pandamain", name: "pandamain", file: "pandamain.svg" },
+  { id: "Peach", name: "Peach", file: "Peach.svg" },
+  { id: "Penguin", name: "Penguin", file: "Penguin.svg" },
+  { id: "Pig", name: "Pig", file: "Pig.svg" },
+  { id: "Planet", name: "Planet", file: "Planet.svg" },
+  { id: "PolarBear", name: "PolarBear", file: "PolarBear.svg" },
+  { id: "Purple", name: "Purple", file: "Purple.svg" },
+  { id: "Rabbit", name: "Rabbit", file: "Rabbit.svg" },
+  { id: "Rancher", name: "Rancher", file: "Rancher.svg" },
+  { id: "Red", name: "Red", file: "Red.svg" },
+  { id: "Rocket", name: "Rocket", file: "Rocket.svg" },
+  { id: "Rowboat", name: "Rowboat", file: "Rowboat.svg" },
+  { id: "SailBoat", name: "SailBoat", file: "SailBoat.svg" },
+  { id: "Scubadiver", name: "Scubadiver", file: "Scubadiver.svg" },
+  { id: "Seahorse", name: "Seahorse", file: "Seahorse.svg" },
+  { id: "ShootingStar", name: "ShootingStar", file: "ShootingStar.svg" },
+  { id: "Shop", name: "Shop", file: "Shop.svg" },
+  { id: "Snake", name: "Snake", file: "Snake.svg" },
+  { id: "Soccerball", name: "Soccerball", file: "Soccerball.svg" },
+  { id: "SoccerNet", name: "SoccerNet", file: "SoccerNet.svg" },
+  { id: "Star", name: "Star", file: "Star.svg" },
+  { id: "Star2", name: "Star2", file: "Star2.svg" },
+  { id: "Star3", name: "Star3", file: "Star3.svg" },
+  { id: "Starfish", name: "Starfish", file: "Starfish.svg" },
+  { id: "Stool", name: "Stool", file: "Stool.svg" },
+  { id: "Sun", name: "Sun", file: "Sun.svg" },
+  { id: "Table", name: "Table", file: "Table.svg" },
+  { id: "Teen2", name: "Teen2", file: "Teen2.svg" },
+  { id: "Teen3", name: "Teen3", file: "Teen3.svg" },
+  { id: "TeenBoy1", name: "TeenBoy1", file: "TeenBoy1.svg" },
+  { id: "TeenBoy2", name: "TeenBoy2", file: "TeenBoy2.svg" },
+  { id: "TeenBoy3", name: "TeenBoy3", file: "TeenBoy3.svg" },
+  { id: "TeenGirl1", name: "TeenGirl1", file: "TeenGirl1.svg" },
+  { id: "TeenGirl2", name: "TeenGirl2", file: "TeenGirl2.svg" },
+  { id: "TeenGirl3", name: "TeenGirl3", file: "TeenGirl3.svg" },
+  { id: "Thundercloud", name: "Thundercloud", file: "Thundercloud.svg" },
+  { id: "tigercat", name: "tigercat", file: "tigercat.svg" },
+  { id: "Tornado", name: "Tornado", file: "Tornado.svg" },
+  { id: "Tree1", name: "Tree1", file: "Tree1.svg" },
+  { id: "Tree2", name: "Tree2", file: "Tree2.svg" },
+  { id: "Tree3", name: "Tree3", file: "Tree3.svg" },
+  { id: "Tree4", name: "Tree4", file: "Tree4.svg" },
+  { id: "Tulip2", name: "Tulip2", file: "Tulip2.svg" },
+  { id: "Weed", name: "Weed", file: "Weed.svg" },
+  { id: "Whale", name: "Whale", file: "Whale.svg" },
+  { id: "Wizard", name: "Wizard", file: "Wizard.svg" },
+  { id: "Zebra", name: "Zebra", file: "Zebra.svg" }
 ];
 
 export function SpriteGallery({ isOpen, onClose, onSelect, onPaintNew }: SpriteGalleryProps) {
   const [searchQuery, setSearchQuery] = useState('');
+  const [spritesList, setSpritesList] = useState<SpriteItem[]>(() => {
+    try {
+      const saved = localStorage.getItem('scratchjr_custom_sprites');
+      if (saved) {
+        const custom = JSON.parse(saved);
+        return [...BUILTIN_SPRITES, ...custom];
+      }
+    } catch (e) {
+      console.error('Error loading custom sprites from localStorage:', e);
+    }
+    return BUILTIN_SPRITES;
+  });
 
-  const filteredSprites = ALL_SPRITES.filter(sprite => {
+  const [notification, setNotification] = useState<string | null>(null);
+
+  const filteredSprites = spritesList.filter(sprite => {
     return sprite.name.toLowerCase().includes(searchQuery.toLowerCase());
   });
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+
+    const existingNames = new Set(spritesList.map(s => s.name.trim().toLowerCase()));
+    let addedCount = 0;
+    let skippedCount = 0;
+    const newItems: SpriteItem[] = [];
+
+    const filePromises = files.map((file: File) => {
+      return new Promise<{ name: string; dataUrl: string; skipped: boolean }>((resolve) => {
+        const rawName = file.name.replace(/\.[^/.]+$/, '').trim();
+        const lowerName = rawName.toLowerCase();
+
+        if (existingNames.has(lowerName)) {
+          skippedCount++;
+          resolve({ name: rawName, dataUrl: '', skipped: true });
+        } else {
+          existingNames.add(lowerName);
+          addedCount++;
+          const reader = new FileReader();
+          reader.onload = (event) => {
+            const dataUrl = event.target?.result as string;
+            resolve({ name: rawName, dataUrl, skipped: false });
+          };
+          reader.readAsDataURL(file);
+        }
+      });
+    });
+
+    Promise.all(filePromises).then(results => {
+      const validUploads = results.filter(r => !r.skipped);
+
+      if (validUploads.length > 0) {
+        const newlyAddedSprites: SpriteItem[] = validUploads.map(u => ({
+          id: `custom-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+          name: u.name,
+          url: u.dataUrl
+        }));
+
+        setSpritesList(prev => {
+          const updated = [...prev, ...newlyAddedSprites];
+          try {
+            const customOnly = updated.filter(s => s.id.startsWith('custom-'));
+            localStorage.setItem('scratchjr_custom_sprites', JSON.stringify(customOnly));
+          } catch (err) {
+            console.error('Error saving to localStorage:', err);
+          }
+          return updated;
+        });
+
+        // Select the first new character automatically
+        onSelect({ name: validUploads[0].name, url: validUploads[0].dataUrl });
+      }
+
+      if (skippedCount > 0 && addedCount > 0) {
+        setNotification(`התווספו ${addedCount} דמויות. ${skippedCount} דמויות דולגו מכיוון ששמן כבר קיים בספרייה!`);
+      } else if (skippedCount > 0 && addedCount === 0) {
+        setNotification(`כל ${skippedCount} הדמויות דולגו מכיוון ששמן כבר קיים בספרייה!`);
+      }
+
+      if (validUploads.length > 0) {
+        onClose();
+      }
+    });
+
+    e.target.value = '';
+  };
 
   if (!isOpen) return null;
 
@@ -122,19 +299,9 @@ export function SpriteGallery({ isOpen, onClose, onSelect, onPaintNew }: SpriteG
                 <input
                   type="file"
                   accept="image/*"
+                  multiple
                   className="hidden"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) {
-                      const reader = new FileReader();
-                      reader.onload = (event) => {
-                        const url = event.target?.result as string;
-                        onSelect({ name: file.name.split('.')[0], url });
-                        onClose();
-                      };
-                      reader.readAsDataURL(file);
-                    }
-                  }}
+                  onChange={handleFileUpload}
                 />
                 <motion.div
                   whileHover={{ scale: 1.05, y: -4 }}
@@ -174,7 +341,7 @@ export function SpriteGallery({ isOpen, onClose, onSelect, onPaintNew }: SpriteG
               </motion.div>
 
               {filteredSprites.map((sprite) => {
-                const spriteUrl = getAssetUrl(`/sprites/${sprite.file}`);
+                const spriteUrl = sprite.url || getAssetUrl(`/sprites/${sprite.file}`);
                 return (
                   <motion.div
                     key={sprite.id}
@@ -200,6 +367,12 @@ export function SpriteGallery({ isOpen, onClose, onSelect, onPaintNew }: SpriteG
                 );
               })}
             </div>
+
+            {notification && (
+              <div className="mt-4 p-3 bg-amber-100 border border-amber-300 rounded-2xl text-amber-900 font-bold text-sm text-center">
+                {notification}
+              </div>
+            )}
 
             {filteredSprites.length === 0 && searchQuery !== '' && (
               <div className="flex flex-col items-center justify-center h-48 text-slate-400 gap-2 mt-4">
