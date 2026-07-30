@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Search, Brush, Upload } from 'lucide-react';
 import { getAssetUrl } from '../utils/assets';
@@ -46,6 +46,7 @@ const ALL_SPRITES = [
   { id: 'Dragon', name: 'Dragon', file: 'Dragon.svg' },
   { id: 'Duck', name: 'Duck', file: 'Duck.svg' },
   { id: 'Elephant', name: 'Elephant', file: 'Elephant.svg' },
+  { id: 'Frog', name: 'Frog', file: 'Frog.svg' },
   { id: 'boat_1', name: 'Boat 1', file: 'boat_1.svg' },
   { id: 'bus_1', name: 'Bus 1', file: 'bus_1.svg' },
   { id: 'car_2', name: 'Car 2 New', file: 'car_2.svg' },
