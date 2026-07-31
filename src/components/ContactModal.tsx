@@ -101,13 +101,19 @@ export const ContactModal: React.FC<ContactModalProps> = ({ isOpen, onClose }) =
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim() || !contact.trim() || !message.trim()) {
-      setErrorMessage("Please fill in all required fields / אנא מלא את כל השדות הדרושים");
+      setErrorMessage("Please fill in all required fields.");
+      return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(contact.trim())) {
+      setErrorMessage("Please enter a valid email address.");
       return;
     }
 
     const words = message.trim().split(/\s+/).filter(Boolean);
     if (words.length < 5) {
-      setErrorMessage(`Please write a full message with at least 5 words (written ${words.length}/5) / אנא כתוב הודעה שלמה עם לפחות 5 מילים`);
+      setErrorMessage(`Please write a full message with at least 5 words (written ${words.length}/5).`);
       return;
     }
 
@@ -246,15 +252,15 @@ export const ContactModal: React.FC<ContactModalProps> = ({ isOpen, onClose }) =
 
                   <div>
                     <label className="block text-xs font-bold text-gray-700 mb-1">
-                      Email or Phone Number <span className="text-red-500">*</span>
+                      Email Address <span className="text-red-500">*</span>
                     </label>
                     <div className="relative">
                       <Mail className="w-4 h-4 text-gray-400 absolute left-3 top-3" />
                       <input
-                        type="text"
+                        type="email"
                         value={contact}
                         onChange={(e) => setContact(e.target.value)}
-                        placeholder="example@mail.com / 555-0199"
+                        placeholder="example@mail.com"
                         className="w-full pl-10 pr-3 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
                         required
                       />
@@ -286,13 +292,13 @@ export const ContactModal: React.FC<ContactModalProps> = ({ isOpen, onClose }) =
                         rows={4}
                         value={message}
                         onChange={(e) => setMessage(e.target.value)}
-                        placeholder="Type your message here (at least 5 words)... / הקלד הודעה בלפחות 5 מילים..."
+                        placeholder="Type your message here (at least 5 words)..."
                         className="w-full p-3 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all resize-none"
                         required
                       ></textarea>
                       <div className="flex justify-between items-center mt-1 text-[11px]">
                         <span className="text-gray-500">
-                          Minimum 5 words required / נדרשות לפחות 5 מילים
+                          Minimum 5 words required
                         </span>
                         <span className={`font-semibold ${message.trim().split(/\s+/).filter(Boolean).length >= 5 ? "text-green-600" : "text-amber-600"}`}>
                           {message.trim().split(/\s+/).filter(Boolean).length} / 5 words
