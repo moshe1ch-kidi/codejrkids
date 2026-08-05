@@ -1,8 +1,8 @@
- import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { 
   Play, Square, RotateCcw, Image as ImageIcon, 
   Settings2, Plus, Flag, Trash2, Rocket, Brush, X, Grid, Pencil, Monitor, Save, FolderOpen,
-  Menu, ExternalLink, Globe, MessageSquarePlus, Mail, BookOpen, Undo2, Redo2
+  Menu, ExternalLink, Globe, MessageSquarePlus, Mail, BookOpen, Undo2, Redo2, Video
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { Stage } from './components/Stage';
@@ -17,6 +17,8 @@ import { TextEditorModal, FontSize } from './components/TextEditorModal';
 import { RecordModal } from './components/RecordModal';
 import { SceneThumbnail } from './components/SceneThumbnail';
 import { ContactModal } from './components/ContactModal';
+import { VideoHelpModal } from './components/VideoHelpModal';
+import { VideoAdminModal } from './components/VideoAdminModal';
 import { cn } from './lib/utils';
 import { BlockType, BlockInstance, Stack, isTriggerBlock } from './blocks';
 import { DragState } from './dragState';
@@ -256,6 +258,40 @@ export default function App() {
 
   const [isRecordModalOpen, setIsRecordModalOpen] = useState(false);
   const [isContactModalOpen, setIsContactModalOpen] = useState(false);
+  const [isVideoHelpOpen, setIsVideoHelpOpen] = useState(false);
+  const [isVideoAdminOpen, setIsVideoAdminOpen] = useState(false);
+  const [refreshVideoTrigger, setRefreshVideoTrigger] = useState(0);
+  const videoClicksRef = useRef<number[]>([]);
+  const videoTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const handleVideoIconClick = () => {
+    const now = Date.now();
+    const recentClicks = [...videoClicksRef.current.filter((t) => now - t < 3000), now];
+    videoClicksRef.current = recentClicks;
+
+    if (recentClicks.length >= 5) {
+      if (videoTimerRef.current) {
+        clearTimeout(videoTimerRef.current);
+        videoTimerRef.current = null;
+      }
+      videoClicksRef.current = [];
+      setIsVideoHelpOpen(false);
+      setIsVideoAdminOpen(true);
+      return;
+    }
+
+    if (!isVideoHelpOpen && !isVideoAdminOpen) {
+      if (videoTimerRef.current) {
+        clearTimeout(videoTimerRef.current);
+      }
+      videoTimerRef.current = setTimeout(() => {
+        if (videoClicksRef.current.length < 5) {
+          setIsVideoHelpOpen(true);
+        }
+        videoTimerRef.current = null;
+      }, 350);
+    }
+  };
   const [recordings, setRecordings] = useState<Record<number, string>>({});
   const [editingCharacterId, setEditingCharacterId] = useState<string | null>(null);
   const [editingBackground, setEditingBackground] = useState<{ name: string; url: string; shapes?: Shape[] } | null>(null);
@@ -1498,8 +1534,21 @@ export default function App() {
           </div>
         </div>
         
-        {/* Right section: Contact, Cards, Menu */}
+        {/* Right section: Video Help, Contact, Cards, Menu */}
         <div className="flex items-center justify-end gap-1.5 shrink-0">
+          <button
+            onClick={handleVideoIconClick}
+            className="w-[56px] h-[56px] flex items-center justify-center hover:scale-110 transition-transform cursor-pointer relative group"
+            title="Video Tutorials & Help (מדריכי וידאו)"
+          >
+            <div className="w-[42px] h-[42px] bg-gradient-to-tr from-amber-500 to-orange-400 hover:from-amber-600 hover:to-orange-500 rounded-2xl flex items-center justify-center shadow-md border-2 border-white transition-all group-hover:shadow-lg">
+              <Video className="w-5 h-5 text-white stroke-[2.5]" />
+            </div>
+            <span className="absolute -bottom-1 -right-0.5 bg-red-500 text-white text-[9px] font-bold px-1 rounded-full border border-white uppercase animate-pulse">
+              NEW
+            </span>
+          </button>
+
           <button
             onClick={() => setIsContactModalOpen(true)}
             className="w-[56px] h-[56px] flex items-center justify-center hover:scale-110 transition-transform cursor-pointer"
@@ -2116,6 +2165,22 @@ export default function App() {
       <ContactModal 
         isOpen={isContactModalOpen} 
         onClose={() => setIsContactModalOpen(false)} 
+      />
+      {/* Video Help Modal */}
+      <VideoHelpModal
+        isOpen={isVideoHelpOpen}
+        onClose={() => setIsVideoHelpOpen(false)}
+        refreshTrigger={refreshVideoTrigger}
+        onOpenAdmin={() => {
+          setIsVideoHelpOpen(false);
+          setIsVideoAdminOpen(true);
+        }}
+      />
+      {/* Video Admin Modal */}
+      <VideoAdminModal
+        isOpen={isVideoAdminOpen}
+        onClose={() => setIsVideoAdminOpen(false)}
+        onVideosUpdated={() => setRefreshVideoTrigger((prev) => prev + 1)}
       />
     </div>
   );
