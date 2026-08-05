@@ -55,3 +55,43 @@ export async function deleteContactMessage(id: string) {
   const docRef = doc(db, "contact_messages", id);
   await deleteDoc(docRef);
 }
+
+// Tutorial Videos Persistence
+export async function saveTutorialVideosToFirestore(videos: any[]) {
+  try {
+    const docRef = doc(db, "app_settings", "tutorial_videos");
+    const { setDoc } = await import("firebase/firestore");
+    await setDoc(docRef, { videos, updatedAt: serverTimestamp() });
+    localStorage.setItem("codejr_tutorial_videos", JSON.stringify(videos));
+  } catch (err) {
+    console.warn("Notice: Storing tutorial videos locally (Firestore offline/restricted):", err);
+    localStorage.setItem("codejr_tutorial_videos", JSON.stringify(videos));
+  }
+}
+
+export async function fetchTutorialVideosFromFirestore(defaultVideos: any[]): Promise<any[]> {
+  try {
+    const docRef = doc(db, "app_settings", "tutorial_videos");
+    const { getDoc } = await import("firebase/firestore");
+    const snapshot = await getDoc(docRef);
+    if (snapshot.exists() && snapshot.data()?.videos) {
+      const videos = snapshot.data().videos;
+      localStorage.setItem("codejr_tutorial_videos", JSON.stringify(videos));
+      return videos;
+    }
+  } catch (err) {
+    console.warn("Notice: Using local tutorial videos (Firestore offline/restricted):", err);
+  }
+
+  // Fallback to localStorage
+  const localData = localStorage.getItem("codejr_tutorial_videos");
+  if (localData) {
+    try {
+      return JSON.parse(localData);
+    } catch {
+      // ignore
+    }
+  }
+
+  return defaultVideos;
+}
