@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+ import React, { useState, useEffect } from "react";
 import { X, Lock, Save, Plus, Trash2, Edit3, Youtube, Check, RefreshCw, AlertCircle, Eye, Clock } from "lucide-react";
 import { TutorialVideo, DEFAULT_TUTORIAL_VIDEOS } from "./VideoHelpModal";
 import { saveTutorialVideosToFirestore, fetchTutorialVideosFromFirestore } from "../lib/firebase";
@@ -103,6 +103,15 @@ export const VideoAdminModal: React.FC<VideoAdminModalProps> = ({ isOpen, onClos
     setIsFormOpen(true);
   };
 
+  const handleYoutubeUrlChange = (val: string) => {
+    setFormYoutubeUrl(val);
+    const extracted = extractYoutubeId(val);
+    // If a valid YouTube ID/URL is entered or changed, automatically uncheck "coming soon"
+    if (extracted && extracted.length >= 5) {
+      setFormComingSoon(false);
+    }
+  };
+
   const handleSaveVideoItem = (e: React.FormEvent) => {
     e.preventDefault();
     const ytId = extractYoutubeId(formYoutubeUrl);
@@ -116,6 +125,10 @@ export const VideoAdminModal: React.FC<VideoAdminModalProps> = ({ isOpen, onClos
       return;
     }
 
+    // Determine coming soon: if the YouTube URL was changed or provided, comingSoon should be false unless explicitly overridden
+    const isUrlChanged = editingVideo ? editingVideo.youtubeId !== ytId : true;
+    const finalComingSoon = isUrlChanged ? false : formComingSoon;
+
     if (editingVideo) {
       // Update existing
       const updated = videos.map((v) =>
@@ -127,7 +140,7 @@ export const VideoAdminModal: React.FC<VideoAdminModalProps> = ({ isOpen, onClos
               descriptionEn: formDescription.trim(),
               category: formCategory,
               duration: formDuration.trim() || "1:30",
-              comingSoon: formComingSoon,
+              comingSoon: finalComingSoon,
             }
           : v
       );
@@ -141,7 +154,7 @@ export const VideoAdminModal: React.FC<VideoAdminModalProps> = ({ isOpen, onClos
         descriptionEn: formDescription.trim(),
         category: formCategory,
         duration: formDuration.trim() || "1:30",
-        comingSoon: formComingSoon,
+        comingSoon: finalComingSoon,
       };
       setVideos([newVideo, ...videos]);
     }
@@ -324,7 +337,7 @@ export const VideoAdminModal: React.FC<VideoAdminModalProps> = ({ isOpen, onClos
                       <input
                         type="text"
                         value={formYoutubeUrl}
-                        onChange={(e) => setFormYoutubeUrl(e.target.value)}
+                        onChange={(e) => handleYoutubeUrlChange(e.target.value)}
                         placeholder="e.g. https://www.youtube.com/watch?v=3YJl715YEeY"
                         className="w-full px-3 py-2 border rounded-xl focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500 outline-none"
                         required
