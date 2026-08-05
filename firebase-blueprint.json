@@ -14,6 +14,15 @@
         "status": { "type": "string", "description": "Status of the message" }
       },
       "required": ["name", "contact", "message", "createdAt"]
+    },
+    "app_settings": {
+      "title": "App Settings",
+      "description": "Application settings such as tutorial videos",
+      "type": "object",
+      "properties": {
+        "videos": { "type": "array", "description": "List of tutorial video objects" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Last update time" }
+      }
     }
   }
 }
