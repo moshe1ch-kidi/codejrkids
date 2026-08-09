@@ -1,4 +1,4 @@
- import React, { useState, useRef, useEffect } from 'react';
+  import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Undo, Redo, Camera, Check, ArrowUpRight, 
@@ -117,16 +117,22 @@ const floodFill = (imgData: ImageData, x: number, y: number, fillColor: { r: num
     a: data[targetIdx + 3]
   };
 
-  if (targetColor.r === fillColor.r && targetColor.g === fillColor.g && targetColor.b === fillColor.b && targetColor.a === 255) {
+  const isTransparentTarget = targetColor.a < 15;
+
+  if (!isTransparentTarget && targetColor.r === fillColor.r && targetColor.g === fillColor.g && targetColor.b === fillColor.b && targetColor.a === 255) {
     return;
   }
 
+  const tolerance = isTransparentTarget ? 20 : 45;
+
   const colorMatch = (idx: number) => {
-    // Basic color tolerance
-    return Math.abs(data[idx] - targetColor.r) < 15 &&
-           Math.abs(data[idx + 1] - targetColor.g) < 15 &&
-           Math.abs(data[idx + 2] - targetColor.b) < 15 &&
-           Math.abs(data[idx + 3] - targetColor.a) < 15;
+    if (isTransparentTarget) {
+      return data[idx + 3] < 20;
+    }
+    return Math.abs(data[idx] - targetColor.r) <= tolerance &&
+           Math.abs(data[idx + 1] - targetColor.g) <= tolerance &&
+           Math.abs(data[idx + 2] - targetColor.b) <= tolerance &&
+           data[idx + 3] >= 15;
   };
 
   while (stack.length > 0) {
@@ -534,8 +540,8 @@ export function PaintEditor({
             img.src = initialSpriteUrl;
             img.onload = () => {
               loadedImages.current[newId] = img;
-              imgWidth = img.width;
-              imgHeight = img.height;
+              imgWidth = img.width || 350;
+              imgHeight = img.height || 350;
               
               if (isBackground) {
                 initImgShape.points = [
@@ -975,14 +981,8 @@ export function PaintEditor({
 
         const newUrl = offCanvas.toDataURL('image/png');
 
-        const existingFillShapeIndex = shapes.findIndex(s =>
-          s.type === 'image' &&
-          s.points.length >= 4 &&
-          s.points[0].x === 0 && s.points[0].y === 0 &&
-          s.points[2].x === 450 && s.points[2].y === 450
-        );
-
-        const fillShapeId = existingFillShapeIndex !== -1 ? shapes[existingFillShapeIndex].id : `fill-bg-${Date.now()}`;
+        const hasImageShapes = shapes.some(s => s.type === 'image');
+        const fillShapeId = `fill-bg-${Date.now()}`;
 
         const newFillShape: Shape = {
           id: fillShapeId,
@@ -1004,8 +1004,9 @@ export function PaintEditor({
         newImg.onload = () => {
           loadedImages.current[fillShapeId] = newImg;
           let updatedShapes: Shape[];
-          if (existingFillShapeIndex !== -1) {
-            updatedShapes = shapes.map((s, idx) => idx === existingFillShapeIndex ? newFillShape : s);
+          if (hasImageShapes) {
+            const nonImageShapes = shapes.filter(s => s.type !== 'image');
+            updatedShapes = [newFillShape, ...nonImageShapes];
           } else {
             updatedShapes = [newFillShape, ...shapes];
           }
