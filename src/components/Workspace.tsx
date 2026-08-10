@@ -1,4 +1,4 @@
-import React from 'react';
+ import React from 'react';
 import { Stack, BLOCK_DEFS } from '../blocks';
 import { WorkspaceBlock } from './WorkspaceBlock';
 
@@ -10,7 +10,8 @@ interface Character {
 
 interface WorkspaceProps {
   stacks: Stack[];
-  activeBlockId: string | null;
+  activeBlockId?: string | null;
+  activeBlockIds?: string[];
   onTimesChange: (id: string, times: number) => void;
   onTextChange?: (id: string, text: string) => void;
   onOpenKeypad?: (
@@ -31,6 +32,7 @@ interface WorkspaceProps {
 export function Workspace({ 
   stacks, 
   activeBlockId, 
+  activeBlockIds,
   onTimesChange, 
   onTextChange, 
   onOpenKeypad,
@@ -72,7 +74,7 @@ export function Workspace({
                   block={block}
                   onDragStart={onDragStart}
                   onBlockClick={onBlockClick}
-                  isActive={activeBlockId === block.id}
+                  isActive={activeBlockId === block.id || (activeBlockIds ? activeBlockIds.includes(block.id) : false)}
                   onTimesChange={onTimesChange}
                   onTextChange={onTextChange}
                   onOpenKeypad={onOpenKeypad}
