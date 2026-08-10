@@ -86,8 +86,8 @@ const StageCharacter = React.memo(function StageCharacter({
   const dx = Math.abs(state.x - prevPosRef.current.x);
   const dy = Math.abs(state.y - prevPosRef.current.y);
   
-  // If the character wraps around (change is larger than 18 grid steps), increment the key counter to force instant remount
-  if (dx > 18 || dy > 18) {
+  // If the character wraps around (large step change on grid), increment the key counter to force instant remount
+  if (dx > 10 || dy > 8) {
     wrapCounterRef.current += 1;
   }
   
