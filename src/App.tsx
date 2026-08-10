@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { 
   Play, Square, RotateCcw, Image as ImageIcon, 
   Settings2, Plus, Flag, Trash2, Rocket, Brush, X, Grid, Pencil, Monitor, Save, FolderOpen,
@@ -244,7 +244,29 @@ export default function App() {
   };
 
   const [isRunning, setIsRunning] = useState(false);
-  const [activeBlockId, setActiveBlockId] = useState<string | null>(null);
+  const [activeBlockIds, setActiveBlockIds] = useState<string[]>([]);
+
+  const addActiveBlockId = (id: string) => {
+    setActiveBlockIds(prev => prev.includes(id) ? prev : [...prev, id]);
+  };
+
+  const removeActiveBlockId = (id: string) => {
+    setActiveBlockIds(prev => prev.filter(item => item !== id));
+  };
+
+  const clearActiveBlockIds = () => {
+    setActiveBlockIds([]);
+  };
+
+  const activeBlockId = activeBlockIds.length > 0 ? activeBlockIds[activeBlockIds.length - 1] : null;
+  const setActiveBlockId = (id: string | null) => {
+    if (!id) {
+      clearActiveBlockIds();
+    } else {
+      addActiveBlockId(id);
+    }
+  };
+
   const [isGalleryOpen, setIsGalleryOpen] = useState(false);
   const [isTextModalOpen, setIsTextModalOpen] = useState(false);
   const [isPaintEditorOpen, setIsPaintEditorOpen] = useState(false);
@@ -975,11 +997,26 @@ export default function App() {
   };
 
   const runBlocks = async (blockList: BlockInstance[], charId: string = activeCharacterId, isForever: boolean = false) => {
-    const endsWithForever = blockList.length > 0 && blockList[blockList.length - 1].type === 'REPEAT_FOREVER';
+    if (!blockList || blockList.length === 0) return;
+
+    const triggerBlockTypes = ['START_FLAG', 'START_TOUCH', 'START_BUMP', 'START_GET_MESSAGE'];
+    let executableBlocks = blockList;
+    const firstBlock = blockList[0];
+
+    if (firstBlock && triggerBlockTypes.includes(firstBlock.type)) {
+      addActiveBlockId(firstBlock.id);
+      await new Promise(r => setTimeout(r, 60));
+      removeActiveBlockId(firstBlock.id);
+      executableBlocks = blockList.slice(1);
+    }
+
+    if (executableBlocks.length === 0) return;
+
+    const endsWithForever = executableBlocks.length > 0 && executableBlocks[executableBlocks.length - 1].type === 'REPEAT_FOREVER';
     
     if (endsWithForever) {
-      const loopBlocks = blockList.slice(0, -1);
-      const foreverBlock = blockList[blockList.length - 1];
+      const loopBlocks = executableBlocks.slice(0, -1);
+      const foreverBlock = executableBlocks[executableBlocks.length - 1];
       
       while (!shouldStopRef.current) {
         for (const block of loopBlocks) {
@@ -988,17 +1025,19 @@ export default function App() {
         }
         if (shouldStopRef.current) break;
         
-        // Highlight the REPEAT_FOREVER block to show loop-back feedback
-        setActiveBlockId(foreverBlock.id);
-        setActiveBlockId(null);
+        if (foreverBlock) {
+          addActiveBlockId(foreverBlock.id);
+          await new Promise(r => setTimeout(r, 20));
+          removeActiveBlockId(foreverBlock.id);
+        }
       }
       return;
     }
 
-    for (const block of blockList) {
+    for (const block of executableBlocks) {
       if (shouldStopRef.current) break;
       
-      setActiveBlockId(block.id);
+      addActiveBlockId(block.id);
       
       // Get the character's specific speed
       const charState = (scenesRef.current.find(s => s.id === activeSceneId)?.spriteStates?.[charId]) || INITIAL_SPRITE_STATE;
@@ -1071,9 +1110,9 @@ export default function App() {
           setSpriteStateForChar(charId, prev => ({ 
             ...prev, 
             rotation: prev.rotation + rotationAmount,
-            lastAnimationDuration: (totalDuration + GAP_COMPENSATION) / 1000 
+            lastAnimationDuration: totalDuration / 1000 
           }));
-          await new Promise(r => setTimeout(r, Math.max(0, totalDuration - GAP_COMPENSATION)));
+          await new Promise(r => setTimeout(r, totalDuration));
           break;
         }
         case 'TURN_LEFT': {
@@ -1083,9 +1122,9 @@ export default function App() {
           setSpriteStateForChar(charId, prev => ({ 
             ...prev, 
             rotation: prev.rotation - rotationAmount,
-            lastAnimationDuration: (totalDuration + GAP_COMPENSATION) / 1000 
+            lastAnimationDuration: totalDuration / 1000 
           }));
-          await new Promise(r => setTimeout(r, Math.max(0, totalDuration - GAP_COMPENSATION)));
+          await new Promise(r => setTimeout(r, totalDuration));
           break;
         }
         case 'HOP': {
@@ -1251,7 +1290,7 @@ export default function App() {
           block.type !== 'GOTO_PAGE') {
         await new Promise(r => setTimeout(r, delayMsRef.current));
       }
-      setActiveBlockId(null);
+      removeActiveBlockId(block.id);
     }
   };
 
@@ -1851,6 +1890,7 @@ export default function App() {
                 workspaceRef={workspaceRef}
                 stacks={stacks} 
                 activeBlockId={activeBlockId}
+                activeBlockIds={activeBlockIds}
                 onTimesChange={handleTimesChange}
                 onTextChange={handleTextChange}
                 onOpenKeypad={handleOpenKeypad}
