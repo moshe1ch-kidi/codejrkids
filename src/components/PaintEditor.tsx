@@ -1,4 +1,4 @@
-  import React, { useState, useRef, useEffect } from 'react';
+ import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Undo, Redo, Camera, Check, ArrowUpRight, 
@@ -172,6 +172,21 @@ function getBrushBoundingBox(points: Point[]) {
     if (p.y < minY) minY = p.y;
     if (p.y > maxY) maxY = p.y;
   });
+  return { minX, maxX, minY, maxY };
+}
+
+function getShapesBoundingBox(shapesList: Shape[]) {
+  if (shapesList.length === 0) return { minX: 0, maxX: 0, minY: 0, maxY: 0 };
+  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+  shapesList.forEach(shape => {
+    shape.points.forEach(p => {
+      if (p.x < minX) minX = p.x;
+      if (p.x > maxX) maxX = p.x;
+      if (p.y < minY) minY = p.y;
+      if (p.y > maxY) maxY = p.y;
+    });
+  });
+  if (minX === Infinity) return { minX: 0, maxX: 0, minY: 0, maxY: 0 };
   return { minX, maxX, minY, maxY };
 }
 
@@ -469,6 +484,10 @@ export function PaintEditor({
   const [dragStartPos, setDragStartPos] = useState<Point>({ x: 0, y: 0 });
   const [draggedShapeStartPoints, setDraggedShapeStartPoints] = useState<Record<string, Point[]>>({});
   const [brushScalingStartBox, setBrushScalingStartBox] = useState<{ minX: number, maxX: number, minY: number, maxY: number } | null>(null);
+
+  const [transformStartBox, setTransformStartBox] = useState<{ minX: number, maxX: number, minY: number, maxY: number } | null>(null);
+  const [transformInitialPointsMap, setTransformInitialPointsMap] = useState<Record<string, Point[]> | null>(null);
+  const [hoveredHandleCursor, setHoveredHandleCursor] = useState<string | null>(null);
 
   const [isRotatingShape, setIsRotatingShape] = useState(false);
   const [rotationStartAngle, setRotationStartAngle] = useState(0);
@@ -824,96 +843,108 @@ export function PaintEditor({
       ctx.restore();
     });
 
-    // Draw circular control points & dashes for selected shapes
+    // Draw Google DRAW style bounding box & handles for selected shapes
     if (drawHandles && activeTool === 'select' && selectedShapeIds.length > 0) {
-      selectedShapeIds.forEach(id => {
-        const selectedShape = shapes.find(s => s.id === id);
-        if (!selectedShape) return;
+      const selectedShapesList = shapes.filter(s => selectedShapeIds.includes(s.id));
+      if (selectedShapesList.length > 0) {
+        const box = getShapesBoundingBox(selectedShapesList);
+        const minX = box.minX;
+        const maxX = box.maxX;
+        const minY = box.minY;
+        const maxY = box.maxY;
+        const w = maxX - minX;
+        const h = maxY - minY;
+        const cx = (minX + maxX) / 2;
+        const cy = (minY + maxY) / 2;
 
-        let handlePoints: Point[] = [];
-        if (selectedShape.type === 'brush') {
-          const box = getBrushBoundingBox(selectedShape.points);
-          handlePoints = [
-            { x: box.minX, y: box.minY },
-            { x: box.maxX, y: box.minY },
-            { x: box.maxX, y: box.maxY },
-            { x: box.minX, y: box.maxY },
-          ];
+        // 1. Draw solid blue bounding box
+        ctx.save();
+        ctx.strokeStyle = '#1a73e8';
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(minX, minY, Math.max(1, w), Math.max(1, h));
+        ctx.restore();
+
+        // Helper to draw pill handle
+        const drawPillHandle = (hx: number, hy: number, pw: number, ph: number) => {
           ctx.save();
-          ctx.strokeStyle = '#29b6f6';
-          ctx.lineWidth = 2;
-          ctx.setLineDash([4, 4]);
-          ctx.strokeRect(box.minX, box.minY, box.maxX - box.minX, box.maxY - box.minY);
-          ctx.restore();
-        } else {
-          handlePoints = selectedShape.points;
-          ctx.save();
-          ctx.strokeStyle = '#29b6f6';
-          ctx.lineWidth = 2;
-          ctx.setLineDash([4, 4]);
           ctx.beginPath();
-          ctx.moveTo(handlePoints[0].x, handlePoints[0].y);
-          for (let i = 1; i < handlePoints.length; i++) {
-            ctx.lineTo(handlePoints[i].x, handlePoints[i].y);
+          if (typeof (ctx as any).roundRect === 'function') {
+            (ctx as any).roundRect(hx - pw / 2, hy - ph / 2, pw, ph, 3.5);
+          } else {
+            ctx.rect(hx - pw / 2, hy - ph / 2, pw, ph);
           }
-          if (selectedShape.type !== 'brush') {
-            ctx.closePath();
-          }
-          ctx.stroke();
-          ctx.restore();
-        }
-
-        // Only draw interaction handles for a single selection or primary selection
-        if (selectedShapeIds.length === 1) {
-          handlePoints.forEach((pt) => {
-            ctx.save();
-            ctx.beginPath();
-            ctx.arc(pt.x, pt.y, 8, 0, Math.PI * 2);
-            ctx.fillStyle = '#ffffff';
-            ctx.fill();
-            ctx.strokeStyle = '#0288d1';
-            ctx.lineWidth = 3;
-            ctx.stroke();
-            ctx.restore();
-          });
-
-          // Draw rotation handle
-          const minX = Math.min(...handlePoints.map(p => p.x));
-          const maxX = Math.max(...handlePoints.map(p => p.x));
-          const minY = Math.min(...handlePoints.map(p => p.y));
-          const rotHandleX = (minX + maxX) / 2;
-          const rotHandleY = minY - 40;
-
-          // Line to handle
-          ctx.save();
-          ctx.strokeStyle = '#0288d1';
-          ctx.lineWidth = 2;
-          ctx.setLineDash([4, 4]);
-          ctx.beginPath();
-          ctx.moveTo(rotHandleX, minY);
-          ctx.lineTo(rotHandleX, rotHandleY);
-          ctx.stroke();
-          ctx.restore();
-
-          // Handle circle
-          ctx.save();
-          ctx.beginPath();
-          ctx.arc(rotHandleX, rotHandleY, 10, 0, Math.PI * 2);
-          ctx.fillStyle = '#0288d1';
+          ctx.fillStyle = '#ffffff';
           ctx.fill();
-          ctx.strokeStyle = '#ffffff';
+          ctx.strokeStyle = '#1a73e8';
           ctx.lineWidth = 2;
-          ctx.stroke();
-          
-          // Add a small rotation icon inside
-          ctx.strokeStyle = '#ffffff';
-          ctx.lineWidth = 2;
-          ctx.beginPath();
-          ctx.arc(rotHandleX, rotHandleY, 5, 0, Math.PI * 1.5);
           ctx.stroke();
           ctx.restore();
-        }
-      });
+        };
+
+        // Helper to draw circle handle
+        const drawCircleHandle = (hx: number, hy: number) => {
+          ctx.save();
+          ctx.beginPath();
+          ctx.arc(hx, hy, 5.5, 0, Math.PI * 2);
+          ctx.fillStyle = '#ffffff';
+          ctx.fill();
+          ctx.strokeStyle = '#1a73e8';
+          ctx.lineWidth = 2;
+          ctx.stroke();
+          ctx.restore();
+        };
+
+        // 2. Draw 4 Corner handles (TL, TR, BR, BL)
+        drawCircleHandle(minX, minY);
+        drawCircleHandle(maxX, minY);
+        drawCircleHandle(maxX, maxY);
+        drawCircleHandle(minX, maxY);
+
+        // 3. Draw 4 Edge handles (TC, RC, BC, LC)
+        drawPillHandle(cx, minY, 16, 7); // Top-Center horizontal pill
+        drawPillHandle(maxX, cy, 7, 16); // Right-Center vertical pill
+        drawPillHandle(cx, maxY, 16, 7); // Bottom-Center horizontal pill
+        drawPillHandle(minX, cy, 7, 16); // Left-Center vertical pill
+
+        // 4. Draw Rotation handle
+        const rotY = minY - 26;
+        ctx.save();
+        ctx.strokeStyle = '#1a73e8';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(cx, minY);
+        ctx.lineTo(cx, rotY);
+        ctx.stroke();
+        ctx.restore();
+
+        // Rotation Circle
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(cx, rotY, 9.5, 0, Math.PI * 2);
+        ctx.fillStyle = '#1a73e8';
+        ctx.fill();
+        ctx.restore();
+
+        // Rotation arrow icon
+        ctx.save();
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 1.8;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.arc(cx, rotY, 4.5, Math.PI * 0.25, Math.PI * 1.65);
+        ctx.stroke();
+
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        const tipX = cx + Math.cos(Math.PI * 1.65) * 4.5;
+        const tipY = rotY + Math.sin(Math.PI * 1.65) * 4.5;
+        ctx.moveTo(tipX - 1, tipY - 3);
+        ctx.lineTo(tipX + 3.5, tipY + 0.5);
+        ctx.lineTo(tipX - 2.5, tipY + 2.5);
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+      }
     }
 
     // Draw marquee selection rectangle
@@ -1102,43 +1133,71 @@ export function PaintEditor({
     }
 
     if (activeTool === 'select') {
-      if (selectedShapeIds.length === 1) {
-        const selectedShape = shapes.find(s => s.id === selectedShapeIds[0]);
-        if (selectedShape) {
-          let handlePoints = selectedShape.points;
-          if (selectedShape.type === 'brush') {
-            const box = getBrushBoundingBox(selectedShape.points);
-            handlePoints = [
-              { x: box.minX, y: box.minY },
-              { x: box.maxX, y: box.minY },
-              { x: box.maxX, y: box.maxY },
-              { x: box.minX, y: box.maxY },
-            ];
-            setBrushScalingStartBox(box);
+      if (selectedShapeIds.length > 0) {
+        const selectedShapesList = shapes.filter(s => selectedShapeIds.includes(s.id));
+        if (selectedShapesList.length > 0) {
+          const box = getShapesBoundingBox(selectedShapesList);
+          const minX = box.minX;
+          const maxX = box.maxX;
+          const minY = box.minY;
+          const maxY = box.maxY;
+          const cx = (minX + maxX) / 2;
+          const cy = (minY + maxY) / 2;
+
+          const handles = [
+            { id: 0, x: minX, y: minY },       // TL
+            { id: 1, x: cx,   y: minY },       // TC
+            { id: 2, x: maxX, y: minY },       // TR
+            { id: 3, x: maxX, y: cy },         // RC
+            { id: 4, x: maxX, y: maxY },       // BR
+            { id: 5, x: cx,   y: maxY },       // BC
+            { id: 6, x: minX, y: maxY },       // BL
+            { id: 7, x: minX, y: cy },         // LC
+            { id: 8, x: cx,   y: minY - 26 },  // ROTATION
+          ];
+
+          let clickedHandleIdx = -1;
+          for (const h of handles) {
+            if (h.id === 8) {
+              if (Math.hypot(x - h.x, y - h.y) <= 12) {
+                clickedHandleIdx = 8;
+                break;
+              }
+            } else if (h.id === 1 || h.id === 5) {
+              if (Math.abs(x - h.x) <= 10 && Math.abs(y - h.y) <= 7) {
+                clickedHandleIdx = h.id;
+                break;
+              }
+            } else if (h.id === 3 || h.id === 7) {
+              if (Math.abs(x - h.x) <= 7 && Math.abs(y - h.y) <= 10) {
+                clickedHandleIdx = h.id;
+                break;
+              }
+            } else {
+              if (Math.hypot(x - h.x, y - h.y) <= 10) {
+                clickedHandleIdx = h.id;
+                break;
+              }
+            }
           }
 
-          const clickedHandleIdx = handlePoints.findIndex(pt => Math.hypot(pt.x - x, pt.y - y) < 14);
           if (clickedHandleIdx !== -1) {
             setIsReshaping(true);
             setSelectedPointIndex(clickedHandleIdx);
+            setTransformStartBox(box);
             setDragStartPos(currentPoint);
-            return;
-          }
 
-          // Check for rotation handle (ScratchJr style: above the shape)
-          const centroid = getCentroid(selectedShape.points);
-          const minX = Math.min(...handlePoints.map(p => p.x));
-          const maxX = Math.max(...handlePoints.map(p => p.x));
-          const minY = Math.min(...handlePoints.map(p => p.y));
-          
-          const rotHandleX = (minX + maxX) / 2;
-          const rotHandleY = minY - 40;
-          
-          if (Math.hypot(rotHandleX - x, rotHandleY - y) < 20) {
-            setIsRotatingShape(true);
-            const startAngle = Math.atan2(y - centroid.y, x - centroid.x);
-            setRotationStartAngle(startAngle);
-            setRotationInitialPoints(selectedShape.points.map(p => ({ ...p })));
+            const initialMap: Record<string, Point[]> = {};
+            selectedShapesList.forEach(s => {
+              initialMap[s.id] = s.points.map(p => ({ ...p }));
+            });
+            setTransformInitialPointsMap(initialMap);
+
+            if (clickedHandleIdx === 8) {
+              setIsRotatingShape(true);
+              const startAngle = Math.atan2(y - cy, x - cx);
+              setRotationStartAngle(startAngle);
+            }
             return;
           }
         }
@@ -1153,7 +1212,6 @@ export function PaintEditor({
         }
         setIsDraggingShape(true);
         setDragStartPos(currentPoint);
-        // Store initial points for all selected shapes
         const initialPointsMap: Record<string, Point[]> = {};
         shapes.forEach(s => {
           if (newSelection.includes(s.id)) {
@@ -1162,7 +1220,6 @@ export function PaintEditor({
         });
         setDraggedShapeStartPoints(initialPointsMap);
       } else {
-        // Start marquee selection
         setIsMarqueeSelecting(true);
         setMarqueeRect({ startX: x, startY: y, currentX: x, currentY: y });
         setSelectedShapeIds([]);
@@ -1266,60 +1323,67 @@ export function PaintEditor({
         return;
       }
 
-      if (isReshaping && selectedShapeIds.length === 1 && selectedPointIndex !== null) {
-        const selectedId = selectedShapeIds[0];
-        setShapes(prev => prev.map(shape => {
-          if (shape.id !== selectedId) return shape;
+      if (isReshaping && selectedPointIndex !== null && transformStartBox && transformInitialPointsMap) {
+        if (selectedPointIndex === 8) {
+          // Rotation
+          const box = transformStartBox;
+          const cx = (box.minX + box.maxX) / 2;
+          const cy = (box.minY + box.maxY) / 2;
+          const currentAngle = Math.atan2(y - cy, x - cx);
+          const deltaAngle = currentAngle - rotationStartAngle;
 
-          if (shape.type === 'brush' && brushScalingStartBox) {
-            const box = brushScalingStartBox;
-            const w = box.maxX - box.minX;
-            const h = box.maxY - box.minY;
-            if (w === 0 || h === 0) return shape;
-
-            let newMinX = box.minX, newMaxX = box.maxX, newMinY = box.minY, newMaxY = box.maxY;
-            if (selectedPointIndex === 0) {
-              newMinX = x; newMinY = y;
-            } else if (selectedPointIndex === 1) {
-              newMaxX = x; newMinY = y;
-            } else if (selectedPointIndex === 2) {
-              newMaxX = x; newMaxY = y;
-            } else if (selectedPointIndex === 3) {
-              newMinX = x; newMaxY = y;
-            }
-
-            const newW = newMaxX - newMinX;
-            const newH = newMaxY - newMinY;
+          setShapes(prev => prev.map(s => {
+            if (!selectedShapeIds.includes(s.id)) return s;
+            const initialPoints = transformInitialPointsMap[s.id];
+            if (!initialPoints) return s;
 
             return {
-              ...shape,
-              points: shape.points.map(p => {
-                const u = (p.x - box.minX) / w;
-                const v = (p.y - box.minY) / h;
-                return { x: newMinX + u * newW, y: newMinY + v * newH };
+              ...s,
+              points: initialPoints.map(p => rotatePoint(p, { x: cx, y: cy }, deltaAngle))
+            };
+          }));
+        } else {
+          // Resize / Stretch handles (0..7)
+          const box = transformStartBox;
+          let newMinX = box.minX;
+          let newMaxX = box.maxX;
+          let newMinY = box.minY;
+          let newMaxY = box.maxY;
+
+          switch (selectedPointIndex) {
+            case 0: newMinX = x; newMinY = y; break; // TL
+            case 1: newMinY = y; break;              // TC
+            case 2: newMaxX = x; newMinY = y; break; // TR
+            case 3: newMaxX = x; break;              // RC
+            case 4: newMaxX = x; newMaxY = y; break; // BR
+            case 5: newMaxY = y; break;              // BC
+            case 6: newMinX = x; newMaxY = y; break; // BL
+            case 7: newMinX = x; break;              // LC
+          }
+
+          const origW = box.maxX - box.minX || 1;
+          const origH = box.maxY - box.minY || 1;
+          const newW = newMaxX - newMinX;
+          const newH = newMaxY - newMinY;
+
+          setShapes(prev => prev.map(s => {
+            if (!selectedShapeIds.includes(s.id)) return s;
+            const initialPoints = transformInitialPointsMap[s.id];
+            if (!initialPoints) return s;
+
+            return {
+              ...s,
+              points: initialPoints.map(p => {
+                const u = (p.x - box.minX) / origW;
+                const v = (p.y - box.minY) / origH;
+                return {
+                  x: newMinX + u * newW,
+                  y: newMinY + v * newH
+                };
               })
             };
-          }
-
-          const updatedPoints = [...shape.points];
-          if (shape.type === 'circle' || shape.type === 'custom') {
-            const cx = (updatedPoints[1].x + updatedPoints[3].x) / 2;
-            const cy = (updatedPoints[0].y + updatedPoints[2].y) / 2;
-            if (selectedPointIndex === 0 || selectedPointIndex === 2) {
-              const ry = Math.abs(y - cy);
-              updatedPoints[0].y = cy - ry;
-              updatedPoints[2].y = cy + ry;
-            } else if (selectedPointIndex === 1 || selectedPointIndex === 3) {
-              const rx = Math.abs(x - cx);
-              updatedPoints[1].x = cx + rx;
-              updatedPoints[3].x = cx - rx;
-            }
-          } else {
-            updatedPoints[selectedPointIndex] = currentPoint;
-          }
-
-          return { ...shape, points: updatedPoints };
-        }));
+          }));
+        }
       } else if (isDraggingShape && selectedShapeIds.length > 0) {
         const dx = x - dragStartPos.x;
         const dy = y - dragStartPos.y;
@@ -1335,20 +1399,46 @@ export function PaintEditor({
             points: initialPoints.map(p => ({ x: p.x + dx, y: p.y + dy }))
           };
         }));
-      } else if (isRotatingShape && selectedShapeIds.length === 1) {
-        const selectedId = selectedShapeIds[0];
-        setShapes(prev => prev.map(shape => {
-          if (shape.id !== selectedId) return shape;
-          const centroid = getCentroid(rotationInitialPoints);
-          const currentAngle = Math.atan2(y - centroid.y, x - centroid.x);
-          const deltaAngle = currentAngle - rotationStartAngle;
-          
-          return {
-            ...shape,
-            points: rotationInitialPoints.map(p => rotatePoint(p, centroid, deltaAngle))
-          };
-        }));
       } else {
+        // Pointer hovering over handles or shape
+        let handleCursor: string | null = null;
+        if (selectedShapeIds.length > 0) {
+          const selectedShapesList = shapes.filter(s => selectedShapeIds.includes(s.id));
+          if (selectedShapesList.length > 0) {
+            const box = getShapesBoundingBox(selectedShapesList);
+            const minX = box.minX, maxX = box.maxX, minY = box.minY, maxY = box.maxY;
+            const cx = (minX + maxX) / 2, cy = (minY + maxY) / 2;
+
+            const handles = [
+              { id: 0, x: minX, y: minY, cursor: 'nwse-resize' },
+              { id: 1, x: cx,   y: minY, cursor: 'ns-resize' },
+              { id: 2, x: maxX, y: minY, cursor: 'nesw-resize' },
+              { id: 3, x: maxX, y: cy,   cursor: 'ew-resize' },
+              { id: 4, x: maxX, y: maxY, cursor: 'nwse-resize' },
+              { id: 5, x: cx,   y: maxY, cursor: 'ns-resize' },
+              { id: 6, x: minX, y: maxY, cursor: 'nesw-resize' },
+              { id: 7, x: minX, y: cy,   cursor: 'ew-resize' },
+              { id: 8, x: cx,   y: minY - 26, cursor: 'grab' },
+            ];
+
+            for (const h of handles) {
+              if (h.id === 8 && Math.hypot(x - h.x, y - h.y) <= 12) {
+                handleCursor = h.cursor;
+                break;
+              } else if ((h.id === 1 || h.id === 5) && Math.abs(x - h.x) <= 10 && Math.abs(y - h.y) <= 7) {
+                handleCursor = h.cursor;
+                break;
+              } else if ((h.id === 3 || h.id === 7) && Math.abs(x - h.x) <= 7 && Math.abs(y - h.y) <= 10) {
+                handleCursor = h.cursor;
+                break;
+              } else if (h.id !== 8 && h.id !== 1 && h.id !== 5 && h.id !== 3 && h.id !== 7 && Math.hypot(x - h.x, y - h.y) <= 10) {
+                handleCursor = h.cursor;
+                break;
+              }
+            }
+          }
+        }
+        setHoveredHandleCursor(handleCursor);
         const hovered = findShapeAtPosition(x, y);
         setIsHoveringShape(!!hovered);
       }
@@ -1432,6 +1522,9 @@ export function PaintEditor({
       setIsRotatingShape(false);
       setSelectedPointIndex(null);
       setBrushScalingStartBox(null);
+      setTransformStartBox(null);
+      setTransformInitialPointsMap(null);
+      setHoveredHandleCursor(null);
       saveStateToHistory(shapes);
     }
   };
@@ -1551,6 +1644,12 @@ export function PaintEditor({
 
   const getCanvasCursorStyle = () => {
     if (activeTool === 'select') {
+      if (isRotatingShape) return 'grabbing';
+      if (isReshaping && selectedPointIndex !== null) {
+        const handleCursors = ['nwse-resize', 'ns-resize', 'nesw-resize', 'ew-resize', 'nwse-resize', 'ns-resize', 'nesw-resize', 'ew-resize', 'grabbing'];
+        return handleCursors[selectedPointIndex] || 'default';
+      }
+      if (hoveredHandleCursor) return hoveredHandleCursor;
       if (isDraggingShape) return 'grabbing';
       if (selectedShapeIds.length > 0 || isHoveringShape) return 'grab';
       return 'default';
