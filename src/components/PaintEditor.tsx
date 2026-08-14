@@ -1064,13 +1064,12 @@ export function PaintEditor({
         newImg.src = newUrl;
         newImg.onload = () => {
           loadedImages.current[fillShapeId] = newImg;
-          let updatedShapes: Shape[];
-          if (hasImageShapes) {
-            const nonImageShapes = shapes.filter(s => s.type !== 'image');
-            updatedShapes = [newFillShape, ...nonImageShapes];
-          } else {
-            updatedShapes = [newFillShape, ...shapes];
-          }
+          // When performing flood fill over the whole canvas (including erased holes),
+          // the resulting image contains all prior shapes and erased cutouts baked in with the new fill.
+          // Therefore, any previous eraser strokes are already baked into the new canvas snapshot.
+          // We remove previous 'eraser' shapes so they don't re-erase the newly filled color!
+          const nonEraserShapes = shapes.filter(s => s.type !== 'eraser' && s.type !== 'image');
+          const updatedShapes: Shape[] = [newFillShape, ...nonEraserShapes];
           saveStateToHistory(updatedShapes);
         };
       }
