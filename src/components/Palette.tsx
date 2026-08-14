@@ -63,8 +63,41 @@ const getBubbleStyle = (category: string) => {
   }
 };
 
+const getTooltipColorClasses = (category: BlockCategory): string => {
+  switch (category) {
+    case 'EVENTS':
+      return 'bg-[#f5a623] border-[#d48806] text-white';
+    case 'MOTION':
+      return 'bg-[#2873c8] border-[#1a5192] text-white';
+    case 'LOOKS':
+      return 'bg-[#8e44ad] border-[#6c3483] text-white';
+    case 'SOUND':
+      return 'bg-[#27ae60] border-[#1e8449] text-white';
+    case 'CONTROL':
+      return 'bg-[#e67e22] border-[#b05d11] text-white';
+    case 'END':
+      return 'bg-[#e74c3c] border-[#c0392b] text-white';
+    default:
+      return 'bg-gray-800 border-gray-900 text-white';
+  }
+};
+
 export function Palette({ onDragStart, onRecordClick, onDeleteRecording, recordings = {} }: PaletteProps) {
   const [activeCategory, setActiveCategory] = useState<BlockCategory>('MOTION');
+  const [hoveredTooltip, setHoveredTooltip] = useState<{ text: string; x: number; top: number } | null>(null);
+
+  const handleMouseEnter = (e: React.MouseEvent<HTMLDivElement>, text: string) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    setHoveredTooltip({
+      text,
+      x: rect.left + rect.width / 2,
+      top: rect.top,
+    });
+  };
+
+  const handleMouseLeave = () => {
+    setHoveredTooltip(null);
+  };
 
   const categories: { 
     name: BlockCategory; 
@@ -120,7 +153,7 @@ export function Palette({ onDragStart, onRecordClick, onDeleteRecording, recordi
   const activeCategoryData = categories.find(c => c.name === activeCategory);
 
   return (
-    <div className="flex w-full border-b border-[#F9C17D]/30 shadow-sm h-[88px] shrink-0 bg-[#FBD5A5]">
+    <div className="flex w-full border-b border-[#F9C17D]/30 shadow-sm h-[88px] shrink-0 bg-[#FBD5A5] relative z-20">
       <div className="flex items-center gap-1.5 px-3 border-r border-[#F9C17D]/30">
         {categories.map(cat => {
           const isActive = activeCategory === cat.name;
@@ -145,10 +178,12 @@ export function Palette({ onDragStart, onRecordClick, onDeleteRecording, recordi
 
       <div 
         className={cn(
-          "flex-1 flex items-center gap-[15px] px-6 overflow-x-auto kid-scrollbar scroll-smooth", 
+          "flex-1 flex items-center gap-[15px] px-6 overflow-x-auto kid-scrollbar scroll-smooth relative", 
           activeCategoryData?.bgColor
         )}
+        onScroll={handleMouseLeave}
         onWheel={(e) => {
+          handleMouseLeave();
           if (e.deltaY !== 0) {
             e.preventDefault();
             // Scroll horizontally in response to vertical wheel
@@ -161,23 +196,30 @@ export function Palette({ onDragStart, onRecordClick, onDeleteRecording, recordi
             return (
               <React.Fragment key="recordings-group">
                 <div
+                  onMouseEnter={(e) => handleMouseEnter(e, 'New Recording')}
+                  onMouseLeave={handleMouseLeave}
                   onPointerDown={(e) => {
+                    handleMouseLeave();
                     e.stopPropagation();
                     onRecordClick?.();
                   }}
-                  className="cursor-pointer flex flex-col items-center justify-center relative shrink-0 group border-[3px] border-dashed border-[#4cc14d] rounded-2xl w-[90px] h-[64px] bg-[#e6f7ec]/50 active:scale-95 transition-transform select-none"
-                  title="New Recording"
+                  className="cursor-pointer flex flex-col items-center justify-center relative shrink-0 border-[3px] border-dashed border-[#4cc14d] rounded-2xl w-[90px] h-[64px] bg-[#e6f7ec]/50 active:scale-95 transition-transform select-none"
                 >
                   <img src={getAssetUrl('/icons/Microphone.svg')} className="w-[44px] h-[44px] opacity-70" alt="Record" />
                 </div>
                 {Object.keys(recordings).map(idStr => {
                   const id = parseInt(idStr);
+                  const label = `${BLOCK_ENGLISH_NAMES['PLAY_RECORDED']} ${id}`;
                   return (
                     <div
                       key={`recording-${id}`}
-                      onPointerDown={(e) => onDragStart(e, 'PLAY_RECORDED', id)}
+                      onMouseEnter={(e) => handleMouseEnter(e, label)}
+                      onMouseLeave={handleMouseLeave}
+                      onPointerDown={(e) => {
+                        handleMouseLeave();
+                        onDragStart(e, 'PLAY_RECORDED', id);
+                      }}
                       className="touch-none cursor-grab hover:scale-105 transition-transform flex flex-col items-center justify-center relative shrink-0 group"
-                      title={`${BLOCK_ENGLISH_NAMES['PLAY_RECORDED']} ${id}`}
                     >
                       <VisualBlock 
                         type="PLAY_RECORDED"
@@ -188,6 +230,7 @@ export function Palette({ onDragStart, onRecordClick, onDeleteRecording, recordi
                           onPointerDown={(e) => e.stopPropagation()}
                           onClick={(e) => {
                             e.stopPropagation();
+                            handleMouseLeave();
                             onDeleteRecording(id);
                           }}
                           className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 hover:bg-red-600 active:scale-95 text-white rounded-full flex items-center justify-center shadow-md opacity-90 group-hover:opacity-100 transition-all z-10 cursor-pointer"
@@ -203,12 +246,18 @@ export function Palette({ onDragStart, onRecordClick, onDeleteRecording, recordi
             );
           }
 
+          const labelText = BLOCK_ENGLISH_NAMES[type as BlockType] || type;
+
           return (
             <div
               key={type}
-              onPointerDown={(e) => onDragStart(e, type as BlockType)}
-              className="touch-none cursor-grab hover:scale-105 transition-transform flex flex-col items-center justify-center relative shrink-0 group"
-              title={BLOCK_ENGLISH_NAMES[type as BlockType] || type}
+              onMouseEnter={(e) => handleMouseEnter(e, labelText)}
+              onMouseLeave={handleMouseLeave}
+              onPointerDown={(e) => {
+                handleMouseLeave();
+                onDragStart(e, type as BlockType);
+              }}
+              className="touch-none cursor-grab hover:scale-105 transition-transform flex flex-col items-center justify-center relative shrink-0"
             >
               <VisualBlock 
                 type={type as BlockType} 
@@ -217,6 +266,22 @@ export function Palette({ onDragStart, onRecordClick, onDeleteRecording, recordi
           );
         })}
       </div>
+
+      {hoveredTooltip && (
+        <div 
+          className={cn(
+            "fixed pointer-events-none z-[9999] whitespace-nowrap text-xs font-extrabold px-2.5 py-1 rounded-md border-2 shadow-2xl transition-all duration-75",
+            getTooltipColorClasses(activeCategory)
+          )}
+          style={{
+            left: `${hoveredTooltip.x}px`,
+            top: `${hoveredTooltip.top - 6}px`,
+            transform: 'translate(-50%, -100%)',
+          }}
+        >
+          {hoveredTooltip.text}
+        </div>
+      )}
     </div>
   );
 }
