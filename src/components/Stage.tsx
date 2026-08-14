@@ -1,6 +1,6 @@
-import React from 'react';
+ import React from 'react';
 import { motion } from 'motion/react';
-import { Rocket, X } from 'lucide-react';
+import { Rocket, X, Copy } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { getAssetUrl } from '../utils/assets';
 
@@ -39,6 +39,7 @@ interface StageProps {
   onCharacterClick?: (charId: string) => void;
   onUpdateCharacterPosition?: (charId: string, x: number, y: number) => void;
   onDeleteCharacter?: (charId: string) => void;
+  onDuplicateCharacter?: (charId: string) => void;
 }
 
 interface StageCharacterProps {
@@ -55,6 +56,7 @@ interface StageCharacterProps {
   onDragEnd: (x: number, y: number) => void;
   onClick?: () => void;
   onDelete?: () => void;
+  onDuplicate?: () => void;
 }
 
 const StageCharacter = React.memo(function StageCharacter({ 
@@ -69,7 +71,8 @@ const StageCharacter = React.memo(function StageCharacter({
   onDragMove, 
   onDragEnd,
   onClick,
-  onDelete
+  onDelete,
+  onDuplicate
 }: StageCharacterProps) {
   const prevPosRef = React.useRef({ x: state.x, y: state.y });
   const wrapCounterRef = React.useRef(0);
@@ -226,21 +229,39 @@ const StageCharacter = React.memo(function StageCharacter({
         isLongPressed ? "cursor-default" : "cursor-grab active:cursor-grabbing"
       )}
     >
-      {/* Delete Button (ScratchJr style X) */}
+      {/* Long Press Action Buttons (Delete & Duplicate) */}
       {isLongPressed && (
-        <button
-          onPointerDown={(e) => {
-            e.stopPropagation();
-          }}
-          onClick={(e) => {
-            e.stopPropagation();
-            onDelete?.();
-            setIsLongPressed(false);
-          }}
-          className="absolute -top-6 -left-6 w-10 h-10 bg-[#E53935] border-4 border-white rounded-full flex items-center justify-center shadow-[0_4px_10px_rgba(0,0,0,0.3)] z-40 animate-in zoom-in duration-200 hover:scale-110 active:scale-95 transition-transform"
-        >
-          <X className="w-6 h-6 text-white stroke-[4]" />
-        </button>
+        <>
+          <button
+            onPointerDown={(e) => {
+              e.stopPropagation();
+            }}
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete?.();
+              setIsLongPressed(false);
+            }}
+            className="absolute -top-6 -left-6 w-10 h-10 bg-[#E53935] border-4 border-white rounded-full flex items-center justify-center shadow-[0_4px_10px_rgba(0,0,0,0.3)] z-40 animate-in zoom-in duration-200 hover:scale-110 active:scale-95 transition-transform"
+            title="Delete Character"
+          >
+            <X className="w-6 h-6 text-white stroke-[4]" />
+          </button>
+
+          <button
+            onPointerDown={(e) => {
+              e.stopPropagation();
+            }}
+            onClick={(e) => {
+              e.stopPropagation();
+              onDuplicate?.();
+              setIsLongPressed(false);
+            }}
+            className="absolute -top-6 -right-6 w-10 h-10 bg-[#0288D1] border-4 border-white rounded-full flex items-center justify-center shadow-[0_4px_10px_rgba(0,0,0,0.3)] z-40 animate-in zoom-in duration-200 hover:scale-110 active:scale-95 transition-transform"
+            title="Duplicate Character (with scripts)"
+          >
+            <Copy className="w-5 h-5 text-white stroke-[3]" />
+          </button>
+        </>
       )}
 
       {/* Speech Bubble */}
@@ -283,7 +304,8 @@ export const Stage = React.memo(function Stage({
   onSelectCharacter,
   onCharacterClick,
   onUpdateCharacterPosition,
-  onDeleteCharacter
+  onDeleteCharacter,
+  onDuplicateCharacter
 }: StageProps) {
   const INITIAL_STATE: SpriteState = {
     x: 11,
@@ -663,6 +685,7 @@ export const Stage = React.memo(function Stage({
                   onCharacterClick?.(char.id);
                 }}
                 onDelete={() => onDeleteCharacter?.(char.id)}
+                onDuplicate={() => onDuplicateCharacter?.(char.id)}
               />
             );
           })}
