@@ -2,7 +2,7 @@
 import { 
   Play, Square, RotateCcw, Image as ImageIcon, 
   Settings2, Plus, Flag, Trash2, Rocket, Brush, X, Grid, Pencil, Monitor, Save, FolderOpen,
-  Menu, ExternalLink, Globe, MessageSquarePlus, Mail, BookOpen, Undo2, Redo2, Video
+  Menu, ExternalLink, Globe, MessageSquarePlus, Mail, BookOpen, Undo2, Redo2, Video, Copy
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { Stage } from './components/Stage';
@@ -948,6 +948,66 @@ export default function App() {
     }
   };
 
+  const handleDuplicateCharacter = (sourceId: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    const sourceChar = characters.find(c => c.id === sourceId);
+    if (!sourceChar) return;
+
+    // Generate unique name e.g. "Cat 2"
+    const baseName = sourceChar.name.replace(/\s+\d+$/, '');
+    let counter = 2;
+    let newName = `${baseName} ${counter}`;
+    while (characters.some(c => c.name === newName)) {
+      counter++;
+      newName = `${baseName} ${counter}`;
+    }
+
+    const newCharId = `char-${Date.now()}`;
+    const newChar = {
+      ...sourceChar,
+      id: newCharId,
+      name: newName,
+    };
+
+    // Duplicate spriteState with a position offset
+    const sourceState = spriteStates[sourceId] || INITIAL_SPRITE_STATE;
+    const newSpriteState = {
+      ...sourceState,
+      x: Math.min(19, (sourceState.x ?? 11) + 2),
+      y: Math.max(1, (sourceState.y ?? 8) - 1),
+      homeX: Math.min(19, (sourceState.homeX ?? sourceState.x ?? 11) + 2),
+      homeY: Math.max(1, (sourceState.homeY ?? sourceState.y ?? 8) - 1),
+    };
+
+    setSpriteStates(prev => ({
+      ...prev,
+      [newCharId]: newSpriteState
+    }));
+
+    // Clone characterStacks across scenes
+    updateScenes(prev => prev.map(s => {
+      const sourceStacks = s.characterStacks?.[sourceId] || [];
+      const duplicatedStacks = sourceStacks.map(stack => ({
+        id: `stack-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        x: stack.x,
+        y: stack.y,
+        blocks: cloneBlocks(stack.blocks)
+      }));
+
+      return {
+        ...s,
+        characterStacks: {
+          ...(s.characterStacks || {}),
+          [newCharId]: duplicatedStacks
+        }
+      };
+    }));
+
+    playConnectSound();
+    setCharacters(prev => [...prev, newChar]);
+    setActiveCharacterId(newCharId);
+  };
+
   const handleUpdateCharacterName = (id: string, newName: string) => {
     setCharacters(prev => prev.map(c => c.id === id ? { ...c, name: newName } : c));
     setKeypadConfig(prev => ({ ...prev, isOpen: false }));
@@ -1683,6 +1743,15 @@ export default function App() {
                           >
                             <Pencil className="w-4 h-4 text-black" />
                           </button>
+                          
+                          <button 
+                            onClick={(e) => handleDuplicateCharacter(char.id, e)}
+                            className="absolute bottom-1 right-1 w-8 h-8 bg-[#0288D1] border-2 border-white hover:bg-[#0277BD] shadow-md rounded-full flex items-center justify-center z-20 transition-all text-white"
+                            title="Duplicate Character (with scripts)"
+                          >
+                            <Copy className="w-4 h-4 text-white stroke-[2.5]" />
+                          </button>
+
                           {characters.length > 1 && (
                             <button 
                               onPointerDown={(e) => handleCharDeletePointerDown(e, char.id)}
@@ -1727,6 +1796,12 @@ export default function App() {
             sceneTitleColor={activeScene?.textColor}
             sceneTitleSize={activeScene?.textSize}
             sceneTitlePosition={activeScene?.textPosition}
+            onDeleteCharacter={(charId) => {
+              if (characters.length > 1) {
+                handleDeleteCharacter(charId);
+              }
+            }}
+            onDuplicateCharacter={(charId) => handleDuplicateCharacter(charId)}
             onTextClick={() => setIsTextModalOpen(true)}
             onUpdateTextPosition={(x, y) => {
               updateScenes(prev => prev.map(s => s.id === activeSceneId ? { ...s, textPosition: { x, y } } : s));
@@ -1748,11 +1823,6 @@ export default function App() {
                   }
                 };
               });
-            }}
-            onDeleteCharacter={(charId) => {
-              if (characters.length > 1) {
-                handleDeleteCharacter(charId);
-              }
             }}
           />
 
