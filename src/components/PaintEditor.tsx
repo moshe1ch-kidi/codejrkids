@@ -1,9 +1,9 @@
- import React, { useState, useRef, useEffect } from 'react';
+  import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Undo, Redo, Camera, Check, ArrowUpRight, 
   RotateCw, Copy, Scissors, PaintBucket,
-  Brush, Circle, Square, Triangle, Shapes, X, Pencil,
+  Brush, Circle, Square, Triangle, Shapes, X, Pencil, Eraser,
   Heart, Sun, Car, Lightbulb
 } from 'lucide-react';
 import { SHAPE_CATEGORIES } from '../lib/shapes';
@@ -15,7 +15,7 @@ export interface Point {
 
 export interface Shape {
   id: string;
-  type: 'brush' | 'circle' | 'rect' | 'triangle' | 'image' | 'custom';
+  type: 'brush' | 'circle' | 'rect' | 'triangle' | 'image' | 'custom' | 'eraser';
   color: string; // Used for stroke
   width: number;
   points: Point[];
@@ -25,7 +25,7 @@ export interface Shape {
   noStroke?: boolean;
 }
 
-type ToolType = 'brush' | 'circle' | 'rect' | 'triangle' | 'select' | 'rotate' | 'stamp' | 'scissors' | 'camera' | 'fill' | 'custom';
+type ToolType = 'brush' | 'circle' | 'rect' | 'triangle' | 'select' | 'rotate' | 'stamp' | 'scissors' | 'camera' | 'fill' | 'custom' | 'eraser';
 
 export interface PaintEditorProps {
   isOpen: boolean;
@@ -730,17 +730,24 @@ export function PaintEditor({
 
       if (shape.type === 'brush') {
         if (shape.points.length > 0) {
-          ctx.beginPath();
-          ctx.moveTo(shape.points[0].x, shape.points[0].y);
-          for (let i = 1; i < shape.points.length; i++) {
-            ctx.lineTo(shape.points[i].x, shape.points[i].y);
-          }
-          if (shape.fillColor && shape.fillColor !== 'transparent') {
-            ctx.fillStyle = shape.fillColor;
+          if (shape.points.length === 1) {
+            ctx.beginPath();
+            ctx.arc(shape.points[0].x, shape.points[0].y, shape.width / 2, 0, Math.PI * 2);
+            ctx.fillStyle = shape.color;
             ctx.fill();
-          }
-          if (!shape.noStroke) {
-            ctx.stroke();
+          } else {
+            ctx.beginPath();
+            ctx.moveTo(shape.points[0].x, shape.points[0].y);
+            for (let i = 1; i < shape.points.length; i++) {
+              ctx.lineTo(shape.points[i].x, shape.points[i].y);
+            }
+            if (shape.fillColor && shape.fillColor !== 'transparent') {
+              ctx.fillStyle = shape.fillColor;
+              ctx.fill();
+            }
+            if (!shape.noStroke) {
+              ctx.stroke();
+            }
           }
         }
       } else if (shape.type === 'rect') {
@@ -838,6 +845,29 @@ export function PaintEditor({
               renderAllShapes(ctx, width, height, drawHandles);
             };
           }
+        }
+      } else if (shape.type === 'eraser') {
+        if (shape.points.length > 0) {
+          ctx.save();
+          ctx.globalCompositeOperation = 'destination-out';
+          ctx.lineWidth = shape.width;
+          ctx.lineCap = 'round';
+          ctx.lineJoin = 'round';
+          ctx.strokeStyle = '#000000';
+          ctx.fillStyle = '#000000';
+          if (shape.points.length === 1) {
+            ctx.beginPath();
+            ctx.arc(shape.points[0].x, shape.points[0].y, shape.width / 2, 0, Math.PI * 2);
+            ctx.fill();
+          } else {
+            ctx.beginPath();
+            ctx.moveTo(shape.points[0].x, shape.points[0].y);
+            for (let i = 1; i < shape.points.length; i++) {
+              ctx.lineTo(shape.points[i].x, shape.points[i].y);
+            }
+            ctx.stroke();
+          }
+          ctx.restore();
         }
       }
       ctx.restore();
@@ -1299,6 +1329,15 @@ export function PaintEditor({
         ],
         fillColor: 'transparent'
       };
+    } else if (activeTool === 'eraser') {
+      newShape = {
+        id: newId,
+        type: 'eraser',
+        color: 'transparent',
+        width: brushWidth * 1.5,
+        points: [currentPoint],
+        fillColor: 'transparent'
+      };
     }
 
     if (newShape) {
@@ -1450,7 +1489,7 @@ export function PaintEditor({
     setShapes(prev => prev.map(shape => {
       if (!selectedShapeIds.includes(shape.id)) return shape;
 
-      if (shape.type === 'brush') {
+      if (shape.type === 'brush' || shape.type === 'eraser') {
         return { ...shape, points: [...shape.points, currentPoint] };
       }
 
@@ -1525,6 +1564,9 @@ export function PaintEditor({
       setTransformStartBox(null);
       setTransformInitialPointsMap(null);
       setHoveredHandleCursor(null);
+      if (activeTool === 'eraser') {
+        setSelectedShapeIds([]);
+      }
       saveStateToHistory(shapes);
     }
   };
@@ -1669,6 +1711,15 @@ export function PaintEditor({
     if (activeTool === 'scissors') {
       return `url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="%23ef4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><line x1="20" y1="4" x2="8.12" y2="15.88"/><line x1="14.47" y1="14.48" x2="20" y2="20"/><line x1="8.12" y1="8.12" x2="12" y2="12"/></svg>') 12 12, pointer`;
     }
+    if (activeTool === 'eraser') {
+      const size = Math.max(16, Math.min(48, Math.round(brushWidth * 1.5)));
+      const r = (size / 2) - 2;
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
+        <circle cx="${size/2}" cy="${size/2}" r="${r}" fill="rgba(255,255,255,0.75)" stroke="%23334155" stroke-width="2"/>
+        <circle cx="${size/2}" cy="${size/2}" r="1.5" fill="%23334155"/>
+      </svg>`;
+      return `url('data:image/svg+xml;utf8,${encodeURIComponent(svg)}') ${size/2} ${size/2}, crosshair`;
+    }
     return 'crosshair';
   };
 
@@ -1745,19 +1796,19 @@ export function PaintEditor({
           <div className="flex-1 flex min-h-0 relative p-4 gap-4 items-stretch">
             
             {/* Draw Tools Panel */}
-            <div className="w-20 sm:w-24 shrink-0 flex flex-col items-center justify-between py-2">
-              <div className="flex flex-col gap-3.5 w-full items-center">
+            <div className="w-16 sm:w-20 shrink-0 flex flex-col items-center justify-between py-1 overflow-y-auto no-scrollbar">
+              <div className="flex flex-col gap-1.5 sm:gap-2 w-full items-center">
                 <button
                   onClick={() => {
                     setActiveTool('brush');
                     setColorTarget('stroke');
                   }}
-                  className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all ${
+                  className={`w-11 h-11 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center transition-all ${
                     activeTool === 'brush' ? 'bg-amber-100 scale-105 border-2 border-amber-400' : 'hover:bg-slate-200/50'
                   }`}
                   title="Brush"
                 >
-                  <Brush className="w-7 h-7 text-slate-700 stroke-[2.5]" />
+                  <Brush className="w-5 h-5 sm:w-6 sm:h-6 text-slate-700 stroke-[2.5]" />
                 </button>
 
                 <button
@@ -1765,12 +1816,12 @@ export function PaintEditor({
                     setActiveTool('circle');
                     setColorTarget('stroke');
                   }}
-                  className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all ${
+                  className={`w-11 h-11 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center transition-all ${
                     activeTool === 'circle' ? 'bg-amber-100 scale-105 border-2 border-amber-400' : 'hover:bg-slate-200/50'
                   }`}
                   title="Circle"
                 >
-                  <Circle className="w-7 h-7 text-slate-700 stroke-[2.5]" />
+                  <Circle className="w-5 h-5 sm:w-6 sm:h-6 text-slate-700 stroke-[2.5]" />
                 </button>
 
                 <button
@@ -1778,12 +1829,12 @@ export function PaintEditor({
                     setActiveTool('rect');
                     setColorTarget('stroke');
                   }}
-                  className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all ${
+                  className={`w-11 h-11 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center transition-all ${
                     activeTool === 'rect' ? 'bg-amber-100 scale-105 border-2 border-amber-400' : 'hover:bg-slate-200/50'
                   }`}
                   title="Rectangle"
                 >
-                  <Square className="w-7 h-7 text-slate-700 stroke-[2.5]" />
+                  <Square className="w-5 h-5 sm:w-6 sm:h-6 text-slate-700 stroke-[2.5]" />
                 </button>
 
                 <button
@@ -1791,31 +1842,45 @@ export function PaintEditor({
                     setActiveTool('triangle');
                     setColorTarget('stroke');
                   }}
-                  className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all ${
+                  className={`w-11 h-11 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center transition-all ${
                     activeTool === 'triangle' ? 'bg-amber-100 scale-105 border-2 border-amber-400' : 'hover:bg-slate-200/50'
                   }`}
                   title="Triangle"
                 >
-                  <Triangle className="w-7 h-7 text-slate-700 stroke-[2.5]" />
+                  <Triangle className="w-5 h-5 sm:w-6 sm:h-6 text-slate-700 stroke-[2.5]" />
+                </button>
+
+                <button
+                  onClick={() => {
+                    setActiveTool('eraser');
+                    setSelectedShapeIds([]);
+                  }}
+                  className={`w-11 h-11 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center transition-all ${
+                    activeTool === 'eraser' ? 'bg-amber-100 scale-105 border-2 border-amber-400' : 'hover:bg-slate-200/50'
+                  }`}
+                  title="Eraser"
+                >
+                  <Eraser className="w-5 h-5 sm:w-6 sm:h-6 text-slate-700 stroke-[2.5]" />
                 </button>
               </div>
 
               {/* Stroke width selectors */}
-              <div className="flex flex-col gap-3 w-full items-center pt-4 border-t border-[#e2dac6]">
+              <div className="flex flex-col gap-1.5 sm:gap-2 w-full items-center pt-2 sm:pt-3 border-t border-[#e2dac6]">
                 {[4, 8, 14, 22].map((width) => {
                   const isActive = brushWidth === width;
                   return (
                     <button
                       key={width}
                       onClick={() => handleBrushWidthSelect(width)}
-                      className="w-14 h-8 relative flex items-center justify-center transition-all"
+                      className="w-12 h-6 sm:w-14 sm:h-7 relative flex items-center justify-center transition-all hover:scale-105"
+                      title={`Width ${width}px`}
                     >
                       {isActive && (
                         <svg className="absolute inset-0 w-full h-full text-amber-500 fill-none" viewBox="0 0 60 30">
                           <ellipse cx="30" cy="15" rx="27" ry="12" stroke="currentColor" strokeWidth="2.5" strokeDasharray="3 3" />
                         </svg>
                       )}
-                      <div className="bg-slate-800 rounded-full" style={{ width: '32px', height: `${Math.max(2, width * 0.7)}px` }} />
+                      <div className="bg-slate-800 rounded-full" style={{ width: '28px', height: `${Math.max(2.5, width * 0.55)}px` }} />
                     </button>
                   );
                 })}
