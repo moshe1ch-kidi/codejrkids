@@ -1,4 +1,4 @@
- import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { 
   Play, Square, RotateCcw, Image as ImageIcon, 
   Settings2, Plus, Flag, Trash2, Rocket, Brush, X, Grid, Pencil, Monitor, Save, FolderOpen,
@@ -24,6 +24,7 @@ import { BlockType, BlockInstance, Stack, isTriggerBlock } from './blocks';
 import { DragState } from './dragState';
 import { detachBlock, attachBlock, cloneBlocks, sanitizeStacks } from './workspaceUtils';
 import { getAssetUrl } from './utils/assets';
+import { playSoundEffect } from './utils/soundEffects';
 
 const INITIAL_SPRITE_STATE = {
   x: 11,
@@ -615,6 +616,8 @@ export default function App() {
           newBlock.times = 2;
         } else if (['START_GET_MESSAGE', 'SEND_MESSAGE'].includes(dragState.blockType)) {
           newBlock.text = 'orange';
+        } else if (dragState.blockType === 'POP') {
+          newBlock.text = 'pop';
         }
         finalBlocks = [newBlock];
       } else if (dragState.source === 'WORKSPACE' && dragState.blocks) {
@@ -1242,25 +1245,9 @@ export default function App() {
           setSpriteStateForChar(charId, prev => ({ ...prev, visible: true }));
           break;
         case 'POP': {
-          try {
-            const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
-            const osc = ctx.createOscillator();
-            const gain = ctx.createGain();
-            osc.connect(gain);
-            gain.connect(ctx.destination);
-            
-            osc.type = 'sine';
-            osc.frequency.setValueAtTime(400, ctx.currentTime);
-            osc.frequency.exponentialRampToValueAtTime(1000, ctx.currentTime + 0.15);
-            
-            gain.gain.setValueAtTime(0.5, ctx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.15);
-            
-            osc.start();
-            osc.stop(ctx.currentTime + 0.15);
-          } catch (err) {
-            console.log('Audio error:', err);
-          }
+          const soundEffectId = block.text || 'pop';
+          playSoundEffect(soundEffectId);
+          await new Promise(r => setTimeout(r, 220));
           break;
         }
         case 'PLAY_RECORDED': {
