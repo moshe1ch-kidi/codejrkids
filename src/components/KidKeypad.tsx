@@ -1,10 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Delete, Check, Rocket } from 'lucide-react';
+import { 
+  Delete, Check, Rocket, Sparkles, Activity, Zap, Bell, 
+  Wand2, ChevronsUp, Megaphone, Disc, Smile, Flame 
+} from 'lucide-react';
 import { getAssetUrl } from '../utils/assets';
 import { SceneThumbnail } from './SceneThumbnail';
+import { SOUND_EFFECTS, playSoundEffect } from '../utils/soundEffects';
 
-export type KeypadMode = 'number' | 'text' | 'speed' | 'character' | 'message_color' | 'scene';
+export type KeypadMode = 'number' | 'text' | 'speed' | 'character' | 'message_color' | 'scene' | 'sound_effect';
 
 interface KidKeypadProps {
   isOpen: boolean;
@@ -31,6 +35,7 @@ const PRESET_PHRASES = [
 export function KidKeypad({ isOpen, mode, initialValue, anchorRect, onClose, onConfirm, characters, activeCharacterId, scenes = [] }: KidKeypadProps) {
   const [value, setValue] = useState(initialValue);
   const [coords, setCoords] = useState({ top: 0, left: 0, arrowLeft: 0, placement: 'bottom', isReady: false });
+  const [hoveredSound, setHoveredSound] = useState<{ id: string; name: string; x: number; y: number } | null>(null);
 
   // Sync state value when opened
   useEffect(() => {
@@ -40,6 +45,7 @@ export function KidKeypad({ isOpen, mode, initialValue, anchorRect, onClose, onC
       } else {
         setValue(initialValue);
       }
+      setHoveredSound(null);
     }
   }, [isOpen, initialValue, mode]);
 
@@ -48,8 +54,8 @@ export function KidKeypad({ isOpen, mode, initialValue, anchorRect, onClose, onC
     if (isOpen) {
       const updatePosition = () => {
         // Set fixed mini-dimensions depending on the active input mode
-        const keypadWidth = mode === 'number' ? 150 : mode === 'speed' ? 196 : mode === 'character' ? 220 : mode === 'message_color' ? 280 : mode === 'scene' ? 320 : 210;
-        const keypadHeight = mode === 'number' ? 220 : mode === 'speed' ? 76 : mode === 'character' ? 200 : mode === 'message_color' ? 200 : mode === 'scene' ? 240 : 240;
+        const keypadWidth = mode === 'number' ? 150 : mode === 'speed' ? 196 : mode === 'character' ? 220 : mode === 'message_color' ? 280 : mode === 'scene' ? 320 : mode === 'sound_effect' ? 300 : 210;
+        const keypadHeight = mode === 'number' ? 220 : mode === 'speed' ? 76 : mode === 'character' ? 200 : mode === 'message_color' ? 200 : mode === 'scene' ? 240 : mode === 'sound_effect' ? 160 : 240;
 
         if (anchorRect) {
           // Center the popover with the clicked bubble
@@ -90,6 +96,22 @@ export function KidKeypad({ isOpen, mode, initialValue, anchorRect, onClose, onC
   }, [isOpen, anchorRect, mode]);
 
   if (!isOpen) return null;
+
+  const renderSoundIcon = (iconName: string, className?: string) => {
+    switch (iconName) {
+      case 'Sparkles': return <Sparkles className={className} />;
+      case 'Activity': return <Activity className={className} />;
+      case 'Zap': return <Zap className={className} />;
+      case 'Bell': return <Bell className={className} />;
+      case 'Wand2': return <Wand2 className={className} />;
+      case 'ChevronsUp': return <ChevronsUp className={className} />;
+      case 'Megaphone': return <Megaphone className={className} />;
+      case 'Disc': return <Disc className={className} />;
+      case 'Smile': return <Smile className={className} />;
+      case 'Flame': return <Flame className={className} />;
+      default: return <Sparkles className={className} />;
+    }
+  };
 
   const handleNumberClick = (num: string) => {
     if (value === '0') {
@@ -153,14 +175,16 @@ export function KidKeypad({ isOpen, mode, initialValue, anchorRect, onClose, onC
               position: 'absolute', 
               top: coords.top, 
               left: coords.left,
-              width: mode === 'number' ? 150 : mode === 'speed' ? 196 : mode === 'character' ? 'auto' : mode === 'message_color' ? 280 : mode === 'scene' ? 320 : 210
+              width: mode === 'number' ? 150 : mode === 'speed' ? 196 : mode === 'character' ? 'auto' : mode === 'message_color' ? 280 : mode === 'scene' ? 320 : mode === 'sound_effect' ? 300 : 210
             }}
             className={`pointer-events-auto shadow-2xl z-50 overflow-hidden select-none ${
               mode === 'speed'
                 ? "bg-[#ff9900] border-2 border-[#e68a00] p-2 rounded-2xl flex gap-1.5"
-                : mode === 'character' || mode === 'message_color' || mode === 'scene'
-                  ? "bg-[#eef2f6] rounded-[24px] border-[4px] border-[#ffc600] p-3 flex flex-col gap-2 shadow-[0_10px_25px_-5px_rgba(0,0,0,0.15),0_8px_16px_-6px_rgba(0,0,0,0.15)]"
-                  : "bg-white rounded-2xl border-2 border-slate-200/90 p-2.5 flex flex-col gap-2"
+                : mode === 'sound_effect'
+                  ? "bg-[#f0fdf4] rounded-[24px] border-[4px] border-[#4cc14d] p-3 flex flex-col gap-2 shadow-[0_10px_25px_-5px_rgba(0,0,0,0.15),0_8px_16px_-6px_rgba(0,0,0,0.15)]"
+                  : mode === 'character' || mode === 'message_color' || mode === 'scene'
+                    ? "bg-[#eef2f6] rounded-[24px] border-[4px] border-[#ffc600] p-3 flex flex-col gap-2 shadow-[0_10px_25px_-5px_rgba(0,0,0,0.15),0_8px_16px_-6px_rgba(0,0,0,0.15)]"
+                    : "bg-white rounded-2xl border-2 border-slate-200/90 p-2.5 flex flex-col gap-2"
             }`}
           >
             {/* Triangular bubble arrow pointing at the center of the bubble */}
@@ -169,18 +193,22 @@ export function KidKeypad({ isOpen, mode, initialValue, anchorRect, onClose, onC
                 className={`absolute -top-2 w-0 h-0 border-l-[7px] border-l-transparent border-r-[7px] border-r-transparent border-b-[8px] ${
                   mode === 'speed' 
                     ? 'border-b-[#e68a00]' 
-                    : (mode === 'character' || mode === 'message_color' || mode === 'scene')
-                      ? 'border-b-[#ffc600]'
-                      : 'border-b-slate-200'
+                    : mode === 'sound_effect'
+                      ? 'border-b-[#4cc14d]'
+                      : (mode === 'character' || mode === 'message_color' || mode === 'scene')
+                        ? 'border-b-[#ffc600]'
+                        : 'border-b-slate-200'
                 }`} 
                 style={{ left: coords.arrowLeft - 7 }}
               >
                 <div className={`absolute top-[1.5px] -left-[6px] w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-b-[7px] ${
                   mode === 'speed' 
                     ? 'border-b-[#ff9900]' 
-                    : (mode === 'character' || mode === 'message_color' || mode === 'scene')
-                      ? 'border-b-[#eef2f6]'
-                      : 'border-b-white'
+                    : mode === 'sound_effect'
+                      ? 'border-b-[#f0fdf4]'
+                      : (mode === 'character' || mode === 'message_color' || mode === 'scene')
+                        ? 'border-b-[#eef2f6]'
+                        : 'border-b-white'
                 }`} />
               </div>
             )}
@@ -189,23 +217,96 @@ export function KidKeypad({ isOpen, mode, initialValue, anchorRect, onClose, onC
                 className={`absolute -bottom-2 w-0 h-0 border-l-[7px] border-l-transparent border-r-[7px] border-r-transparent border-t-[8px] ${
                   mode === 'speed' 
                     ? 'border-t-[#e68a00]' 
-                    : (mode === 'character' || mode === 'message_color' || mode === 'scene')
-                      ? 'border-t-[#ffc600]'
-                      : 'border-t-slate-200'
+                    : mode === 'sound_effect'
+                      ? 'border-t-[#4cc14d]'
+                      : (mode === 'character' || mode === 'message_color' || mode === 'scene')
+                        ? 'border-t-[#ffc600]'
+                        : 'border-t-slate-200'
                 }`} 
                 style={{ left: coords.arrowLeft - 7 }}
               >
                 <div className={`absolute bottom-[1.5px] -left-[6px] w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[7px] ${
                   mode === 'speed' 
                     ? 'border-t-[#ff9900]' 
-                    : (mode === 'character' || mode === 'message_color' || mode === 'scene')
-                      ? 'border-t-[#eef2f6]'
-                      : 'border-t-white'
+                    : mode === 'sound_effect'
+                      ? 'border-t-[#f0fdf4]'
+                      : (mode === 'character' || mode === 'message_color' || mode === 'scene')
+                        ? 'border-t-[#eef2f6]'
+                        : 'border-t-white'
                 }`} />
               </div>
             )}
 
-            {mode === 'character' ? (
+            {mode === 'sound_effect' ? (
+              <div className="flex flex-col gap-2 w-full relative">
+                <div className="flex items-center justify-between px-1">
+                  <span className="text-[11px] font-black text-emerald-900 uppercase tracking-wider">
+                    Sound Effects
+                  </span>
+                  <span className="text-[10px] font-bold text-emerald-600">
+                    10 Sounds
+                  </span>
+                </div>
+
+                {/* 5x2 matrix of 10 sound effects */}
+                <div className="grid grid-cols-5 gap-2 p-1.5 bg-emerald-100/60 rounded-2xl border border-emerald-300 shadow-inner">
+                  {SOUND_EFFECTS.map((sound) => {
+                    const isSelected = (value || 'pop') === sound.id;
+                    return (
+                      <div key={sound.id} className="relative flex items-center justify-center">
+                        <motion.button
+                          whileHover={{ scale: 1.15 }}
+                          whileTap={{ scale: 0.9 }}
+                          onMouseEnter={(e) => {
+                            const rect = e.currentTarget.getBoundingClientRect();
+                            setHoveredSound({
+                              id: sound.id,
+                              name: sound.name,
+                              x: rect.left + rect.width / 2,
+                              y: rect.top
+                            });
+                          }}
+                          onMouseLeave={() => setHoveredSound(null)}
+                          onClick={() => {
+                            playSoundEffect(sound.id);
+                            setValue(sound.id);
+                            onConfirm(sound.id);
+                            setHoveredSound(null);
+                            onClose();
+                          }}
+                          className={`w-[46px] h-[46px] rounded-xl flex flex-col items-center justify-center transition-all cursor-pointer border-2 relative ${
+                            isSelected
+                              ? 'bg-emerald-500 text-white border-emerald-700 shadow-lg ring-2 ring-emerald-400 scale-105'
+                              : `${sound.bgColor} ${sound.borderColor} shadow-sm hover:shadow-md`
+                          }`}
+                          title={sound.name}
+                        >
+                          {renderSoundIcon(
+                            sound.iconName, 
+                            `w-6 h-6 stroke-[2.5] ${isSelected ? 'text-white' : sound.textColor}`
+                          )}
+                        </motion.button>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Floating Hover Tooltip positioned right above the hovered sound button */}
+                {hoveredSound && (
+                  <div 
+                    className="fixed pointer-events-none z-[999999] whitespace-nowrap text-[12px] font-black px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-700 text-white shadow-2xl flex items-center gap-1 animate-in fade-in zoom-in-95 duration-100"
+                    style={{
+                      left: `${hoveredSound.x}px`,
+                      top: `${hoveredSound.y - 8}px`,
+                      transform: 'translate(-50%, -100%)',
+                    }}
+                  >
+                    <span>{hoveredSound.name}</span>
+                    <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-slate-900 border-r border-b border-slate-700 rotate-45" />
+                  </div>
+                )}
+              </div>
+            ) : mode === 'character' ? (
               <div className="flex flex-col gap-1 w-full min-w-[200px]">
                 {/* Scrollable list of cards - horizontal scrolling tray */}
                 <div className="flex flex-wrap gap-2.5 p-1 max-w-[280px] justify-center">

@@ -1,4 +1,4 @@
- import React from 'react';
+import React from 'react';
 import { Stack, BLOCK_DEFS } from '../blocks';
 import { WorkspaceBlock } from './WorkspaceBlock';
 
@@ -15,7 +15,7 @@ interface WorkspaceProps {
   onTimesChange: (id: string, times: number) => void;
   onTextChange?: (id: string, text: string) => void;
   onOpenKeypad?: (
-    mode: 'number' | 'text' | 'speed' | 'character' | 'message_color' | 'scene',
+    mode: 'number' | 'text' | 'speed' | 'character' | 'message_color' | 'scene' | 'sound_effect',
     title: string,
     initialValue: string,
     onConfirm: (val: string) => void,

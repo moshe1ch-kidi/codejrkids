@@ -3,6 +3,7 @@ import { BlockInstance, BlockType, BLOCK_DEFS } from '../blocks';
 import { VisualBlock } from './VisualBlock';
 import { cn } from '../lib/utils';
 import { getAssetUrl } from '../utils/assets';
+import { SOUND_EFFECTS } from '../utils/soundEffects';
 
 interface Character {
   id: string;
@@ -19,7 +20,7 @@ interface WorkspaceBlockProps {
   onTimesChange: (id: string, times: number) => void;
   onTextChange?: (id: string, text: string) => void;
   onOpenKeypad?: (
-    mode: 'number' | 'text' | 'speed' | 'character' | 'message_color',
+    mode: 'number' | 'text' | 'speed' | 'character' | 'message_color' | 'scene' | 'sound_effect',
     title: string,
     initialValue: string,
     onConfirm: (val: string) => void,
@@ -159,6 +160,7 @@ export const WorkspaceBlock: React.FC<WorkspaceBlockProps> = ({
   const hasCharacterParam = block.type === 'START_BUMP' && (characters?.length || 0) > 1;
   const hasMessageParam = ['START_GET_MESSAGE', 'SEND_MESSAGE'].includes(block.type);
   const hasSceneParam = block.type === 'GOTO_PAGE';
+  const hasSoundParam = block.type === 'POP';
 
   return (
     <div 
@@ -192,7 +194,7 @@ export const WorkspaceBlock: React.FC<WorkspaceBlockProps> = ({
           />
         
         {/* Parameter Bubble at the Bottom Center of the block */}
-        {(hasNumericParam || hasTextParam || hasSpeedParam || hasCharacterParam || hasMessageParam || hasSceneParam) && (
+        {(hasNumericParam || hasTextParam || hasSpeedParam || hasCharacterParam || hasMessageParam || hasSceneParam || hasSoundParam) && (
           <div 
             className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 z-30 flex justify-center"
             onPointerDown={(e) => e.stopPropagation()}
@@ -372,6 +374,30 @@ export const WorkspaceBlock: React.FC<WorkspaceBlockProps> = ({
                     <path d="M0,0 L10,0 L5,6 Z" />
                   </svg>
                 </div>
+              </div>
+            )}
+
+            {hasSoundParam && (
+              <div 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  const currentSound = block.text || 'pop';
+                  const rect = e.currentTarget.getBoundingClientRect();
+                  if (onOpenKeypad) {
+                    onOpenKeypad('sound_effect', 'Select Sound Effect', currentSound, (val) => {
+                      onTextChange?.(block.id, val);
+                    }, rect);
+                  }
+                }}
+                className="px-2 py-0.5 min-w-[36px] max-w-[84px] bg-white rounded-full shadow-md border-2 border-emerald-400 hover:border-emerald-500 hover:scale-110 active:scale-95 transition-all cursor-pointer pointer-events-auto select-none flex items-center justify-center gap-1"
+                title={SOUND_EFFECTS.find(s => s.id === (block.text || 'pop'))?.name || 'Pop'}
+              >
+                <span className="text-[10px] font-black text-emerald-800 uppercase tracking-tight truncate">
+                  {SOUND_EFFECTS.find(s => s.id === (block.text || 'pop'))?.name || 'Pop'}
+                </span>
+                <svg className="w-1.5 h-1.5 text-emerald-600 fill-current shrink-0" viewBox="0 0 10 6">
+                  <path d="M0,0 L10,0 L5,6 Z" />
+                </svg>
               </div>
             )}
           </div>
