@@ -262,10 +262,10 @@ const StageCharacter = React.memo(function StageCharacter({
         </>
       )}
 
-      {/* Speech Bubble - always upright, blue background, white text, +70% larger font */}
+      {/* Speech Bubble - always upright, blue background, white text, auto wrap for long lines */}
       {state.sayText && (
         <div 
-          className="absolute bottom-[105%] left-1/2 -translate-x-1/2 bg-[#2563EB] text-white text-[18px] sm:text-[20px] font-black py-2.5 px-4 sm:px-5 rounded-2xl sm:rounded-3xl shadow-xl border-2 border-blue-400 whitespace-nowrap animate-bounce z-30 tracking-wide after:content-[''] after:absolute after:top-full after:left-1/2 after:-translate-x-1/2 after:border-[9px] after:border-transparent after:border-t-[#2563EB]"
+          className="absolute bottom-[105%] left-1/2 -translate-x-1/2 bg-[#2563EB] text-white text-[16px] sm:text-[18px] md:text-[20px] leading-snug font-black py-2 px-3.5 sm:py-2.5 sm:px-5 rounded-2xl sm:rounded-3xl shadow-xl border-2 border-blue-400 w-max max-w-[240px] sm:max-w-[300px] md:max-w-[360px] text-center whitespace-pre-wrap break-words animate-bounce z-30 tracking-wide after:content-[''] after:absolute after:top-full after:left-1/2 after:-translate-x-1/2 after:border-[9px] after:border-transparent after:border-t-[#2563EB]"
           dir="auto"
         >
           {state.sayText}
