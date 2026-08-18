@@ -201,9 +201,7 @@ const StageCharacter = React.memo(function StageCharacter({
   const currentStyles = {
     left: `${leftPercent}%`,
     top: `${topPercent}%`,
-    rotate: isLongPressed ? [state.rotation - 4, state.rotation + 4, state.rotation - 4] : state.rotation,
-    scaleX: (state as any).flipX ? -state.scale : state.scale,
-    scaleY: state.scale,
+    rotate: isLongPressed ? [-4, 4, -4] : 0,
     opacity: state.visible ? 1 : 0
   };
 
@@ -264,25 +262,39 @@ const StageCharacter = React.memo(function StageCharacter({
         </>
       )}
 
-      {/* Speech Bubble */}
+      {/* Speech Bubble - always upright, blue background, white text, +70% larger font */}
       {state.sayText && (
         <div 
-          className="absolute bottom-[110%] left-1/2 -translate-x-1/2 bg-white text-slate-800 text-[10px] sm:text-xs font-black py-1.5 px-3 rounded-2xl shadow-lg border border-slate-100 whitespace-nowrap animate-bounce z-30 after:content-[''] after:absolute after:top-full after:left-1/2 after:-translate-x-1/2 after:border-[6px] after:border-transparent after:border-t-white"
+          className="absolute bottom-[105%] left-1/2 -translate-x-1/2 bg-[#2563EB] text-white text-[18px] sm:text-[20px] font-black py-2.5 px-4 sm:px-5 rounded-2xl sm:rounded-3xl shadow-xl border-2 border-blue-400 whitespace-nowrap animate-bounce z-30 tracking-wide after:content-[''] after:absolute after:top-full after:left-1/2 after:-translate-x-1/2 after:border-[9px] after:border-transparent after:border-t-[#2563EB]"
           dir="auto"
         >
           {state.sayText}
         </div>
       )}
 
-      {char.spriteUrl ? (
-        <img 
-          src={getAssetUrl(char.spriteUrl)} 
-          alt={char.name} 
-          className="w-full h-full object-contain pointer-events-none select-none drop-shadow-md" 
-        />
-      ) : (
-        <Rocket className="w-2/3 h-2/3 text-sky-500 fill-sky-200" />
-      )}
+      {/* Character Sprite Graphic with Flip, Scale, and Rotation */}
+      <motion.div
+        className="w-full h-full flex items-center justify-center pointer-events-none"
+        animate={{
+          rotate: state.rotation,
+          scaleX: (state as any).flipX ? -state.scale : state.scale,
+          scaleY: state.scale,
+        }}
+        transition={{
+          duration: animationDuration,
+          default: { duration: animationDuration }
+        }}
+      >
+        {char.spriteUrl ? (
+          <img 
+            src={getAssetUrl(char.spriteUrl)} 
+            alt={char.name} 
+            className="w-full h-full object-contain pointer-events-none select-none drop-shadow-md" 
+          />
+        ) : (
+          <Rocket className="w-2/3 h-2/3 text-sky-500 fill-sky-200" />
+        )}
+      </motion.div>
     </motion.div>
   );
 });
