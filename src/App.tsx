@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { 
   Play, Square, RotateCcw, Image as ImageIcon, 
   Settings2, Plus, Flag, Trash2, Rocket, Brush, X, Grid, Pencil, Monitor, Save, FolderOpen,
@@ -454,19 +454,24 @@ export default function App() {
 
       // Find snap target
       document.querySelectorAll('.block-socket').forEach(el => el.classList.remove('bg-yellow-400', 'opacity-50'));
-      document.querySelectorAll('.character-drop-target').forEach(el => el.classList.remove('ring-4', 'ring-[#E5C470]', 'scale-105'));
-      document.querySelectorAll('.scene-drop-target').forEach(el => el.classList.remove('ring-4', 'ring-[#E5C470]', 'scale-105'));
+      document.querySelectorAll('.character-drop-target').forEach(el => el.classList.remove('ring-4', 'ring-green-500', 'ring-[#E5C470]', 'scale-105', 'shadow-xl'));
+      document.querySelectorAll('.scene-drop-target').forEach(el => el.classList.remove('ring-4', 'ring-green-500', 'ring-[#E5C470]', 'scale-105', 'shadow-2xl', 'brightness-105'));
       snapTargetRef.current = null;
 
       const elementAtPoint = document.elementFromPoint(e.clientX, e.clientY);
       const characterElement = elementAtPoint?.closest('.character-drop-target');
-      if (characterElement && characterElement.getAttribute('data-character-id') !== activeCharacterId && dragState.source !== 'CHARACTER') {
-        characterElement.classList.add('ring-4', 'ring-[#E5C470]', 'scale-105');
+      if (characterElement) {
+        const charId = characterElement.getAttribute('data-character-id');
+        if (dragState.source === 'CHARACTER' && charId !== dragState.characterId) {
+          characterElement.classList.add('ring-4', 'ring-green-500', 'scale-105', 'shadow-xl');
+        } else if (dragState.source !== 'CHARACTER' && charId !== activeCharacterId) {
+          characterElement.classList.add('ring-4', 'ring-[#E5C470]', 'scale-105');
+        }
       }
 
       const sceneElement = elementAtPoint?.closest('.scene-drop-target');
       if (sceneElement && sceneElement.getAttribute('data-scene-id') !== activeSceneId && dragState.source === 'CHARACTER') {
-        sceneElement.classList.add('ring-4', 'ring-[#E5C470]', 'scale-105');
+        sceneElement.classList.add('ring-4', 'ring-green-500', 'scale-105', 'shadow-2xl', 'brightness-105');
       }
 
       const isDraggingTrigger = dragState.source === 'PALETTE' 
@@ -523,8 +528,8 @@ export default function App() {
       if (!dragState?.isDragging) return;
 
       document.querySelectorAll('.block-socket').forEach(el => el.classList.remove('bg-yellow-400', 'opacity-50'));
-      document.querySelectorAll('.character-drop-target').forEach(el => el.classList.remove('ring-4', 'ring-[#E5C470]', 'scale-105'));
-      document.querySelectorAll('.scene-drop-target').forEach(el => el.classList.remove('ring-4', 'ring-[#E5C470]', 'scale-105'));
+      document.querySelectorAll('.character-drop-target').forEach(el => el.classList.remove('ring-4', 'ring-green-500', 'ring-[#E5C470]', 'scale-105', 'shadow-xl'));
+      document.querySelectorAll('.scene-drop-target').forEach(el => el.classList.remove('ring-4', 'ring-green-500', 'ring-[#E5C470]', 'scale-105', 'shadow-2xl', 'brightness-105'));
       
       const target = snapTargetRef.current;
       const workspaceRect = workspaceRef.current?.getBoundingClientRect();
@@ -548,21 +553,26 @@ export default function App() {
         }
 
         if (targetSceneId && targetSceneId !== activeSceneId) {
-          // SCRATCH JR STYLE COPY: Character with its code to another scene
+          // SCRATCH JR STYLE COPY: Character with its code and sprite state to another scene
           const charToCopy = characters.find(c => c.id === dragState.characterId);
           if (charToCopy) {
             const newCharId = `char-${Date.now()}`;
             const newChar = { ...charToCopy, id: newCharId };
             
-            // Clone all stacks for this character from current scene
+            // Get up-to-date stacks for this character from current scene
             const characterStacks = activeScene?.characterStacks || {};
-            const charStacksToCopy = characterStacks[dragState.characterId!] || [];
+            const rawStacksToCopy = dragState.characterId === activeCharacterId 
+              ? stacks 
+              : (characterStacks[dragState.characterId!] || []);
             
-            const clonedStacks = charStacksToCopy.map(s => ({
+            const clonedStacks = rawStacksToCopy.map(s => ({
               ...s,
-              id: `stack-${Date.now()}-${Math.random()}`,
+              id: `stack-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
               blocks: cloneBlocks(s.blocks)
             }));
+
+            // Clone sprite position and parameters
+            const charStateToCopy = activeScene?.spriteStates?.[dragState.characterId!] || INITIAL_SPRITE_STATE;
 
             updateScenes(prev => prev.map(s => {
               if (s.id === targetSceneId) {
@@ -571,14 +581,55 @@ export default function App() {
                   ...(s.characterStacks || {}),
                   [newCharId]: clonedStacks
                 };
+                const updatedSpriteStates = {
+                  ...(s.spriteStates || {}),
+                  [newCharId]: { ...charStateToCopy }
+                };
                 return {
                   ...s,
                   characters: updatedCharacters,
-                  characterStacks: updatedStacks
+                  characterStacks: updatedStacks,
+                  spriteStates: updatedSpriteStates
                 };
               }
               return s;
             }));
+
+            playConnectSound();
+          }
+        } else if (targetCharId && targetCharId !== dragState.characterId) {
+          // SCRATCH JR STYLE COPY: Drag character over another character in the same scene to copy its scripts
+          const characterStacks = activeScene?.characterStacks || {};
+          const rawStacksToCopy = dragState.characterId === activeCharacterId 
+            ? stacks 
+            : (characterStacks[dragState.characterId!] || []);
+          
+          if (rawStacksToCopy.length > 0) {
+            const clonedStacks = rawStacksToCopy.map(s => ({
+              ...s,
+              id: `stack-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+              blocks: cloneBlocks(s.blocks)
+            }));
+
+            updateScenes(prev => prev.map(s => {
+              if (s.id === activeSceneId) {
+                const charStacks = s.characterStacks || {};
+                return {
+                  ...s,
+                  characterStacks: {
+                    ...charStacks,
+                    [targetCharId]: [...(charStacks[targetCharId] || []), ...clonedStacks]
+                  }
+                };
+              }
+              return s;
+            }));
+
+            if (targetCharId === activeCharacterId) {
+              setStacks(prev => [...prev, ...clonedStacks]);
+            }
+
+            playConnectSound();
           }
         }
         
@@ -1695,7 +1746,7 @@ export default function App() {
                       onClick={() => setActiveCharacterId(char.id)}
                       data-character-id={char.id}
                       className={cn(
-                        "w-full h-24 rounded-3xl flex flex-col items-center justify-center relative transition-all duration-200 border-4 cursor-pointer character-drop-target",
+                        "w-full h-24 rounded-3xl flex flex-col items-center justify-center relative transition-all duration-200 border-4 cursor-pointer character-drop-target touch-none",
                         isActive 
                           ? "bg-[#FDDE90] border-[#F57C00] shadow-lg scale-105 z-10" 
                           : "bg-white/40 border-transparent hover:bg-white/60"
