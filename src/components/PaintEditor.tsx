@@ -4,7 +4,7 @@ import {
   Undo, Redo, Camera, Check, ArrowUpRight, 
   RotateCw, Copy, Scissors, PaintBucket,
   Brush, Circle, Square, Triangle, Shapes, X, Pencil, Eraser,
-  Heart, Sun, Car, Lightbulb
+  Heart, Sun, Car, Lightbulb, Sparkles
 } from 'lucide-react';
 import { SHAPE_CATEGORIES } from '../lib/shapes';
 
@@ -1996,6 +1996,7 @@ export function PaintEditor({
                           const isSelected = selectedCategoryTab === cat.id;
                           const categoryIcons: Record<string, React.ReactNode> = {
                             geometry: <Shapes className="w-5 h-5 text-purple-500 shrink-0" />,
+                            animals: <Sparkles className="w-5 h-5 text-emerald-500 fill-emerald-400 shrink-0" />,
                             symbols: <Heart className="w-5 h-5 text-rose-500 fill-rose-500 shrink-0" />,
                             nature: <Sun className="w-5 h-5 text-amber-500 fill-amber-400 shrink-0" />,
                             vehicles: <Car className="w-5 h-5 text-sky-500 shrink-0" />,
