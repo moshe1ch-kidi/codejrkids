@@ -1436,22 +1436,13 @@ export default function App() {
   };
 
   const playScene = () => {
-    resetStage();
     
     const activeScene = scenes.find(s => s.id === activeSceneId) || scenes[0];
     const characterStacks = activeScene.characterStacks || {};
     
     characters.forEach(char => {
       const charStacks = characterStacks[char.id] || [];
-      const startStacks = charStacks.filter(s => s.blocks[0]?.type === 'START_FLAG');
-      
-      const stacksToRun = startStacks.length > 0 
-        ? startStacks 
-        : charStacks.filter(s => 
-            s.blocks[0]?.type !== 'START_TOUCH' && 
-            s.blocks[0]?.type !== 'START_BUMP' &&
-            s.blocks[0]?.type !== 'START_GET_MESSAGE'
-          );
+      const stacksToRun = charStacks.filter(s => s.blocks[0]?.type === 'START_FLAG');
       
       stacksToRun.forEach(s => {
         runTracked(s.blocks, char.id);
