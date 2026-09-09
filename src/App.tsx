@@ -13,7 +13,7 @@ import { SpriteGallery } from './components/SpriteGallery';
 import { BackgroundGallery } from './components/BackgroundGallery';
 import { PaintEditor, Shape } from './components/PaintEditor';
 import { KidKeypad, KeypadMode } from './components/KidKeypad';
-import { TextEditorModal, FontSize } from './components/TextEditorModal';
+import { TextEditorModal, FontSize, SceneText } from './components/TextEditorModal';
 import { RecordModal } from './components/RecordModal';
 import { SceneThumbnail } from './components/SceneThumbnail';
 import { ContactModal } from './components/ContactModal';
@@ -51,6 +51,7 @@ export default function App() {
     stacks: Stack[]; 
     background?: string; 
     backgroundShapes?: Shape[];
+    texts?: SceneText[];
     text?: string; 
     textColor?: string; 
     textSize?: FontSize; 
@@ -69,6 +70,7 @@ export default function App() {
       },
       stacks: [], 
       background: '', 
+      texts: [],
       text: '', 
       textColor: '#000000', 
       textSize: 'medium', 
@@ -109,6 +111,16 @@ export default function App() {
   const characters = activeScene?.characters || [];
   const spriteStates = activeScene?.spriteStates || {};
   const spriteState = spriteStates[activeCharacterId] || INITIAL_SPRITE_STATE;
+  const currentSceneTexts: SceneText[] = (activeScene?.texts && activeScene.texts.length > 0)
+    ? activeScene.texts
+    : (activeScene?.text ? [{
+        id: 'legacy-scene-title',
+        text: activeScene.text,
+        color: activeScene.textColor || '#000000',
+        size: activeScene.textSize || 'medium',
+        x: activeScene.textPosition?.x ?? 10.5,
+        y: activeScene.textPosition?.y ?? 13
+      }] : []);
 
   const updateScenes = (updater: React.SetStateAction<{ 
     id: string; 
@@ -117,6 +129,8 @@ export default function App() {
     characterStacks?: Record<string, Stack[]>;
     stacks: Stack[]; 
     background?: string; 
+    backgroundShapes?: Shape[];
+    texts?: SceneText[];
     text?: string; 
     textColor?: string; 
     textSize?: FontSize; 
@@ -270,6 +284,119 @@ export default function App() {
 
   const [isGalleryOpen, setIsGalleryOpen] = useState(false);
   const [isTextModalOpen, setIsTextModalOpen] = useState(false);
+  const [editingTextId, setEditingTextId] = useState<string | null>(null);
+
+  const handleSaveTextModal = (text: string, color: string, size: FontSize) => {
+    const trimmed = text.trim();
+    if (!trimmed) {
+      if (editingTextId) {
+        handleDeleteText(editingTextId);
+      }
+      setIsTextModalOpen(false);
+      setEditingTextId(null);
+      return;
+    }
+
+    updateScenes(prev => prev.map(s => {
+      if (s.id !== activeSceneId) return s;
+      const currentTexts = s.texts ? [...s.texts] : (s.text ? [{
+        id: 'legacy-scene-title',
+        text: s.text,
+        color: s.textColor || '#000000',
+        size: s.textSize || 'medium',
+        x: s.textPosition?.x ?? 10.5,
+        y: s.textPosition?.y ?? 13
+      }] : []);
+
+      if (editingTextId) {
+        const nextTexts = currentTexts.map(t => 
+          t.id === editingTextId ? { ...t, text: trimmed, color, size } : t
+        );
+        return {
+          ...s,
+          texts: nextTexts,
+          text: nextTexts[0]?.text || '',
+          textColor: nextTexts[0]?.color,
+          textSize: nextTexts[0]?.size,
+          textPosition: nextTexts[0] ? { x: nextTexts[0].x, y: nextTexts[0].y } : s.textPosition
+        };
+      } else {
+        const count = currentTexts.length;
+        const newTextObj: SceneText = {
+          id: `text-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+          text: trimmed,
+          color,
+          size,
+          x: 10.5,
+          y: Math.max(2, 13 - (count * 2.2))
+        };
+        const nextTexts = [...currentTexts, newTextObj];
+        return {
+          ...s,
+          texts: nextTexts,
+          text: nextTexts[0]?.text || '',
+          textColor: nextTexts[0]?.color,
+          textSize: nextTexts[0]?.size,
+          textPosition: nextTexts[0] ? { x: nextTexts[0].x, y: nextTexts[0].y } : s.textPosition
+        };
+      }
+    }));
+
+    setIsTextModalOpen(false);
+    setEditingTextId(null);
+  };
+
+  const handleDeleteText = (textId: string) => {
+    updateScenes(prev => prev.map(s => {
+      if (s.id !== activeSceneId) return s;
+      const currentTexts = s.texts ? [...s.texts] : (s.text ? [{
+        id: 'legacy-scene-title',
+        text: s.text,
+        color: s.textColor || '#000000',
+        size: s.textSize || 'medium',
+        x: s.textPosition?.x ?? 10.5,
+        y: s.textPosition?.y ?? 13
+      }] : []);
+      const nextTexts = currentTexts.filter(t => t.id !== textId);
+      return {
+        ...s,
+        texts: nextTexts,
+        text: nextTexts[0]?.text || '',
+        textColor: nextTexts[0]?.color || '#000000',
+        textSize: nextTexts[0]?.size || 'medium',
+        textPosition: nextTexts[0] ? { x: nextTexts[0].x, y: nextTexts[0].y } : undefined
+      };
+    }));
+    if (editingTextId === textId) {
+      setEditingTextId(null);
+      setIsTextModalOpen(false);
+    }
+  };
+
+  const handleUpdateSceneTextPosition = (textId: string, x: number, y: number) => {
+    updateScenes(prev => prev.map(s => {
+      if (s.id !== activeSceneId) return s;
+      const currentTexts = s.texts ? [...s.texts] : (s.text ? [{
+        id: 'legacy-scene-title',
+        text: s.text,
+        color: s.textColor || '#000000',
+        size: s.textSize || 'medium',
+        x: s.textPosition?.x ?? 10.5,
+        y: s.textPosition?.y ?? 13
+      }] : []);
+      const nextTexts = currentTexts.map(t => t.id === textId ? { ...t, x, y } : t);
+      return {
+        ...s,
+        texts: nextTexts,
+        textPosition: nextTexts[0] ? { x: nextTexts[0].x, y: nextTexts[0].y } : s.textPosition
+      };
+    }));
+  };
+
+  const handleEditText = (textId: string) => {
+    setEditingTextId(textId);
+    setIsTextModalOpen(true);
+  };
   const [isPaintEditorOpen, setIsPaintEditorOpen] = useState(false);
   const handleDeleteRecording = (id: number) => {
     setRecordings(prev => {
@@ -878,7 +1005,8 @@ export default function App() {
         [defaultCharId]: []
       },
       stacks: [], 
-      background: '' 
+      background: '',
+      texts: []
     }]);
     setActiveSceneId(newSceneId);
     setActiveCharacterId(defaultCharId);
@@ -1420,7 +1548,24 @@ export default function App() {
         const projectData = JSON.parse(text);
         
         if (projectData.format === "scratchjr-web") {
-          updateScenes(projectData.scenes || []);
+          const loadedScenes = (projectData.scenes || []).map((s: any) => {
+            let sceneTexts = s.texts;
+            if (!sceneTexts && s.text) {
+              sceneTexts = [{
+                id: 'legacy-scene-title',
+                text: s.text,
+                color: s.textColor || '#000000',
+                size: s.textSize || 'medium',
+                x: s.textPosition?.x ?? 10.5,
+                y: s.textPosition?.y ?? 13
+              }];
+            }
+            return {
+              ...s,
+              texts: sceneTexts || []
+            };
+          });
+          updateScenes(loadedScenes);
           setActiveSceneId(projectData.activeSceneId || 'scene-1');
           setActiveCharacterId(projectData.activeCharacterId || 'char-1');
         } else {
@@ -1519,8 +1664,11 @@ export default function App() {
 
           {/* Add Text */}
           <button 
-            onClick={() => setIsTextModalOpen(true)}
-            className="w-[56px] h-[56px] flex items-center justify-center hover:scale-110 transition-transform"
+            onClick={() => {
+              setEditingTextId(null);
+              setIsTextModalOpen(true);
+            }}
+            className="w-[56px] h-[56px] flex items-center justify-center hover:scale-110 transition-transform cursor-pointer"
             title="Add Text"
           >
             <img src={getAssetUrl("/UI/addText.svg")} alt="Text" className="w-full h-full object-contain" />
@@ -1775,6 +1923,7 @@ export default function App() {
             spriteStates={spriteStates} 
             showGrid={showGrid}
             background={activeScene?.background}
+            texts={currentSceneTexts}
             sceneTitle={activeScene?.text}
             sceneTitleColor={activeScene?.textColor}
             sceneTitleSize={activeScene?.textSize}
@@ -1785,9 +1934,21 @@ export default function App() {
               }
             }}
             onDuplicateCharacter={(charId) => handleDuplicateCharacter(charId)}
-            onTextClick={() => setIsTextModalOpen(true)}
+            onTextClick={() => {
+              if (currentSceneTexts.length > 0) {
+                handleEditText(currentSceneTexts[0].id);
+              } else {
+                setEditingTextId(null);
+                setIsTextModalOpen(true);
+              }
+            }}
+            onEditText={handleEditText}
+            onDeleteText={handleDeleteText}
+            onUpdateSceneTextPosition={handleUpdateSceneTextPosition}
             onUpdateTextPosition={(x, y) => {
-              updateScenes(prev => prev.map(s => s.id === activeSceneId ? { ...s, textPosition: { x, y } } : s));
+              if (currentSceneTexts.length > 0) {
+                handleUpdateSceneTextPosition(currentSceneTexts[0].id, x, y);
+              }
             }}
             onSelectCharacter={(charId) => setActiveCharacterId(charId)}
             onCharacterClick={(charId) => handleCharacterClick(charId)}
@@ -2054,14 +2215,15 @@ export default function App() {
 
       <TextEditorModal
         isOpen={isTextModalOpen}
-        initialValue={activeScene?.text || ''}
-        initialColor={activeScene?.textColor || '#000000'}
-        initialSize={activeScene?.textSize || 'medium'}
-        onClose={() => setIsTextModalOpen(false)}
-        onSave={(newText, newColor, newSize) => {
-          updateScenes(prev => prev.map(s => s.id === activeSceneId ? { ...s, text: newText, textColor: newColor, textSize: newSize } : s));
+        initialValue={editingTextId ? (currentSceneTexts.find(t => t.id === editingTextId)?.text || '') : ''}
+        initialColor={editingTextId ? (currentSceneTexts.find(t => t.id === editingTextId)?.color || '#000000') : '#000000'}
+        initialSize={editingTextId ? (currentSceneTexts.find(t => t.id === editingTextId)?.size || 'medium') : 'medium'}
+        onClose={() => {
           setIsTextModalOpen(false);
+          setEditingTextId(null);
         }}
+        onSave={handleSaveTextModal}
+        onDelete={editingTextId ? () => handleDeleteText(editingTextId) : undefined}
       />
 
       <RecordModal
@@ -2139,6 +2301,7 @@ export default function App() {
               spriteStates={spriteStates} 
               showGrid={false}
               background={activeScene?.background}
+              texts={currentSceneTexts}
               sceneTitle={activeScene?.text}
               sceneTitleColor={activeScene?.textColor}
               sceneTitleSize={activeScene?.textSize}
