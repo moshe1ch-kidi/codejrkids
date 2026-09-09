@@ -1,8 +1,9 @@
- import React from 'react';
+import React from 'react';
 import { motion } from 'motion/react';
 import { Rocket, X, Copy } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { getAssetUrl } from '../utils/assets';
+import { SceneText, FontSize } from './TextEditorModal';
 
 interface Character {
   id: string;
@@ -21,20 +22,24 @@ interface SpriteState {
   speedDelay?: number;
 }
 
-interface StageProps {
+export interface StageProps {
   characters: Character[];
   activeCharacterId: string;
   activeSceneId?: string;
   spriteStates: Record<string, SpriteState>;
   showGrid?: boolean;
   background?: string;
+  texts?: SceneText[];
   sceneTitle?: string;
   sceneTitleColor?: string;
-  sceneTitleSize?: 'small' | 'medium' | 'large' | 'xlarge';
+  sceneTitleSize?: FontSize;
   sceneTitlePosition?: { x: number, y: number };
   disableDragging?: boolean;
   onTextClick?: () => void;
+  onEditText?: (textId: string) => void;
+  onDeleteText?: (textId: string) => void;
   onUpdateTextPosition?: (x: number, y: number) => void;
+  onUpdateSceneTextPosition?: (textId: string, x: number, y: number) => void;
   onSelectCharacter?: (charId: string) => void;
   onCharacterClick?: (charId: string) => void;
   onUpdateCharacterPosition?: (charId: string, x: number, y: number) => void;
@@ -299,6 +304,154 @@ const StageCharacter = React.memo(function StageCharacter({
   );
 });
 
+interface StageTextProps {
+  item: SceneText;
+  activeSceneId?: string;
+  disableDragging?: boolean;
+  onUpdatePosition?: (x: number, y: number) => void;
+  onEdit?: () => void;
+  onDelete?: () => void;
+}
+
+const StageText = React.memo(function StageText({
+  item,
+  activeSceneId,
+  disableDragging = false,
+  onUpdatePosition,
+  onEdit,
+  onDelete
+}: StageTextProps) {
+  const [isDragging, setIsDragging] = React.useState(false);
+  const [isLongPressing, setIsLongPressing] = React.useState(false);
+  const longPressTimerRef = React.useRef<NodeJS.Timeout | null>(null);
+
+  const leftPercent = (item.x - 0.5) * 5;
+  const topPercent = 100 - (item.y - 0.5) * (100 / 15);
+
+  const handlePointerDown = (e: React.PointerEvent) => {
+    if (e.button !== 0) return;
+    if (disableDragging) return;
+
+    e.preventDefault();
+    setIsDragging(true);
+    setIsLongPressing(false);
+
+    const target = e.currentTarget as HTMLElement;
+    target.setPointerCapture(e.pointerId);
+
+    const stageEl = document.getElementById('scratch-stage');
+    if (!stageEl) return;
+
+    const rect = stageEl.getBoundingClientRect();
+    const cellW = rect.width / 20;
+    const cellH = rect.height / 15;
+
+    const startX = item.x;
+    const startY = item.y;
+    const startClientX = e.clientX;
+    const startClientY = e.clientY;
+
+    // Start 600ms long press timer for editing
+    longPressTimerRef.current = setTimeout(() => {
+      setIsLongPressing(true);
+      setIsDragging(false);
+      try {
+        target.releasePointerCapture(e.pointerId);
+      } catch (err) {}
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('pointerup', handlePointerUp);
+      onEdit?.();
+    }, 600);
+
+    const handlePointerMove = (moveEvent: PointerEvent) => {
+      const deltaPxX = moveEvent.clientX - startClientX;
+      const deltaPxY = moveEvent.clientY - startClientY;
+
+      if (Math.abs(deltaPxX) > 4 || Math.abs(deltaPxY) > 4) {
+        if (longPressTimerRef.current) {
+          clearTimeout(longPressTimerRef.current);
+          longPressTimerRef.current = null;
+        }
+      }
+
+      const deltaGridX = deltaPxX / cellW;
+      const deltaGridY = -deltaPxY / cellH;
+
+      let nextX = startX + deltaGridX;
+      let nextY = startY + deltaGridY;
+
+      nextX = Math.max(0.5, Math.min(20.5, nextX));
+      nextY = Math.max(0.5, Math.min(15.5, nextY));
+
+      onUpdatePosition?.(nextX, nextY);
+    };
+
+    const handlePointerUp = (upEvent: PointerEvent) => {
+      if (longPressTimerRef.current) {
+        clearTimeout(longPressTimerRef.current);
+        longPressTimerRef.current = null;
+      }
+      setIsDragging(false);
+      setIsLongPressing(false);
+      try {
+        target.releasePointerCapture(upEvent.pointerId);
+      } catch (err) {}
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('pointerup', handlePointerUp);
+    };
+
+    window.addEventListener('pointermove', handlePointerMove);
+    window.addEventListener('pointerup', handlePointerUp);
+  };
+
+  return (
+    <motion.div
+      key={`scene-text-${item.id}-${activeSceneId || 'default'}`}
+      className={cn(
+        "absolute z-40 text-center pointer-events-auto -translate-x-1/2 -translate-y-1/2 touch-none select-none",
+        disableDragging ? "cursor-default" : "cursor-grab active:cursor-grabbing",
+        isLongPressing && "scale-110 drop-shadow-[0_0_12px_rgba(255,255,255,0.8)]"
+      )}
+      initial={{
+        left: `${leftPercent}%`,
+        top: `${topPercent}%`
+      }}
+      animate={{
+        left: `${leftPercent}%`,
+        top: `${topPercent}%`,
+        scale: isLongPressing ? 1.08 : 1
+      }}
+      transition={isDragging ? { duration: 0 } : { type: "spring", stiffness: 150, damping: 20 }}
+      onPointerDown={handlePointerDown}
+      onDoubleClick={() => {
+        if (!disableDragging) {
+          onEdit?.();
+        }
+      }}
+    >
+      <h2
+        dir="auto"
+        className={cn(
+          "font-black leading-tight whitespace-pre-wrap px-2 py-1",
+          item.size === 'small' ? 'text-3xl md:text-4xl' : 
+          item.size === 'large' ? 'text-6xl md:text-7xl' : 
+          item.size === 'xlarge' ? 'text-7xl md:text-8xl' : 
+          'text-4xl md:text-5xl'
+        )}
+        style={{
+          color: item.color || '#000000',
+          ...(item.color === '#ffffff' ? {
+            WebkitTextStroke: '2px #3c78b5',
+            textShadow: '2px 2px 0 #3c78b5, -1px -1px 0 #3c78b5, 1px -1px 0 #3c78b5, -1px 1px 0 #3c78b5, 1px 1px 0 #3c78b5'
+          } : {})
+        }}
+      >
+        {item.text}
+      </h2>
+    </motion.div>
+  );
+});
+
 export const Stage = React.memo(function Stage({ 
   characters, 
   activeCharacterId, 
@@ -306,13 +459,17 @@ export const Stage = React.memo(function Stage({
   spriteStates, 
   showGrid = false,
   background,
+  texts,
   sceneTitle,
   sceneTitleColor,
   sceneTitleSize = 'medium',
   sceneTitlePosition = { x: 10.5, y: 13 },
   disableDragging = false,
   onTextClick,
+  onEditText,
+  onDeleteText,
   onUpdateTextPosition,
+  onUpdateSceneTextPosition,
   onSelectCharacter,
   onCharacterClick,
   onUpdateCharacterPosition,
@@ -330,7 +487,23 @@ export const Stage = React.memo(function Stage({
   };
 
   const [draggingCharId, setDraggingCharId] = React.useState<string | null>(null);
-  const [isTextDragging, setIsTextDragging] = React.useState(false);
+
+  const renderedTexts: SceneText[] = React.useMemo(() => {
+    if (texts && texts.length > 0) {
+      return texts;
+    }
+    if (sceneTitle && sceneTitle.trim()) {
+      return [{
+        id: 'legacy-scene-title',
+        text: sceneTitle,
+        color: sceneTitleColor || '#000000',
+        size: sceneTitleSize,
+        x: sceneTitlePosition?.x ?? 10.5,
+        y: sceneTitlePosition?.y ?? 13
+      }];
+    }
+    return [];
+  }, [texts, sceneTitle, sceneTitleColor, sceneTitleSize, sceneTitlePosition]);
 
   const activeState = spriteStates[activeCharacterId] || INITIAL_STATE;
   const activeX = Math.round(activeState.x);
@@ -465,97 +638,32 @@ export const Stage = React.memo(function Stage({
           </>
         )}
 
-        {/* Scene Title */}
-        {sceneTitle && (
-          <motion.div 
-            key={`scene-title-${activeSceneId || 'default'}`}
-            className={cn(
-              "absolute z-40 text-center pointer-events-auto -translate-x-1/2 -translate-y-1/2 touch-none",
-              disableDragging ? "cursor-pointer" : "cursor-grab active:cursor-grabbing"
-            )}
-            initial={{
-              left: `${(sceneTitlePosition.x - 0.5) * 5}%`,
-              top: `${100 - (sceneTitlePosition.y - 0.5) * (100 / 15)}%`
-            }}
-            animate={{
-              left: `${(sceneTitlePosition.x - 0.5) * 5}%`,
-              top: `${100 - (sceneTitlePosition.y - 0.5) * (100 / 15)}%`
-            }}
-            transition={isTextDragging ? { duration: 0 } : { type: "spring", stiffness: 150, damping: 20 }}
-            onPointerDown={(e) => {
-              if (e.button !== 0) return;
-              if (disableDragging) {
-                onTextClick?.();
-                return;
+        {/* Scene Texts */}
+        {renderedTexts.map((textItem) => (
+          <StageText
+            key={`stage-text-${textItem.id}-${activeSceneId || 'default'}`}
+            item={textItem}
+            activeSceneId={activeSceneId}
+            disableDragging={disableDragging}
+            onUpdatePosition={(x, y) => {
+              if (onUpdateSceneTextPosition) {
+                onUpdateSceneTextPosition(textItem.id, x, y);
+              } else if (onUpdateTextPosition) {
+                onUpdateTextPosition(x, y);
               }
-              e.preventDefault();
-              setIsTextDragging(true);
-              const target = e.currentTarget as HTMLElement;
-              target.setPointerCapture(e.pointerId);
-              
-              const stageEl = document.getElementById('scratch-stage');
-              if (!stageEl) return;
-              
-              const rect = stageEl.getBoundingClientRect();
-              const cellW = rect.width / 20;
-              const cellH = rect.height / 15;
-              
-              const startX = sceneTitlePosition.x;
-              const startY = sceneTitlePosition.y;
-              const startClientX = e.clientX;
-              const startClientY = e.clientY;
-              let hasMoved = false;
-              
-              const handlePointerMove = (moveEvent: PointerEvent) => {
-                const deltaPxX = moveEvent.clientX - startClientX;
-                const deltaPxY = moveEvent.clientY - startClientY;
-                
-                if (Math.abs(deltaPxX) > 3 || Math.abs(deltaPxY) > 3) hasMoved = true;
-                
-                const deltaGridX = deltaPxX / cellW;
-                const deltaGridY = -deltaPxY / cellH;
-                
-                let nextX = startX + deltaGridX;
-                let nextY = startY + deltaGridY;
-                
-                nextX = Math.max(0.5, Math.min(20.5, nextX));
-                nextY = Math.max(0.5, Math.min(15.5, nextY));
-                
-                onUpdateTextPosition?.(nextX, nextY);
-              };
-              
-              const handlePointerUp = (upEvent: PointerEvent) => {
-                setIsTextDragging(false);
-                target.releasePointerCapture(upEvent.pointerId);
-                window.removeEventListener('pointermove', handlePointerMove);
-                window.removeEventListener('pointerup', handlePointerUp);
-                if (!hasMoved) {
-                  onTextClick?.();
-                }
-              };
-              
-              window.addEventListener('pointermove', handlePointerMove);
-              window.addEventListener('pointerup', handlePointerUp);
             }}
-          >
-            <h2 
-              className={cn(
-                "font-black text-white",
-                sceneTitleSize === 'small' ? 'text-3xl md:text-4xl' : 
-                sceneTitleSize === 'large' ? 'text-6xl md:text-7xl' : 
-                sceneTitleSize === 'xlarge' ? 'text-7xl md:text-8xl' : 
-                'text-4xl md:text-5xl'
-              )}
-              style={{ 
-                color: sceneTitleColor || '#ffffff',
-                WebkitTextStroke: '2px #3c78b5', 
-                textShadow: '2px 2px 0 #3c78b5, -1px -1px 0 #3c78b5, 1px -1px 0 #3c78b5, -1px 1px 0 #3c78b5, 1px 1px 0 #3c78b5' 
-              }}
-            >
-              {sceneTitle}
-            </h2>
-          </motion.div>
-        )}
+            onEdit={() => {
+              if (onEditText) {
+                onEditText(textItem.id);
+              } else if (onTextClick) {
+                onTextClick();
+              }
+            }}
+            onDelete={() => {
+              onDeleteText?.(textItem.id);
+            }}
+          />
+        ))}
         
         {/* Grid and labels overlay */}
         {showGrid && (
