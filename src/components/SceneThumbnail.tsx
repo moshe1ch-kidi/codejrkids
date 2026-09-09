@@ -6,6 +6,10 @@ interface Scene {
   background?: string;
   characters?: { id: string; name: string; spriteUrl: string; }[];
   spriteStates?: Record<string, { x: number; y: number; scale: number; flipX?: boolean; visible: boolean; }>;
+  texts?: { id: string; text: string; color: string; x: number; y: number; }[];
+  text?: string;
+  textColor?: string;
+  textPosition?: { x: number; y: number };
 }
 
 interface SceneThumbnailProps {
@@ -69,6 +73,31 @@ export function SceneThumbnail({ scene, sceneNumber, className, size = 'small' }
                 }}
                 alt="" 
               />
+            </div>
+          );
+        })}
+
+        {((scene?.texts && scene.texts.length > 0)
+          ? scene.texts
+          : (scene?.text ? [{ id: 'legacy', text: scene.text, color: scene.textColor || '#000000', x: scene.textPosition?.x ?? 10.5, y: scene.textPosition?.y ?? 13 }] : [])
+        ).map((t) => {
+          const leftPercent = (t.x - 0.5) * 5;
+          const topPercent = 100 - (t.y - 0.5) * (100 / 15);
+          return (
+            <div
+              key={t.id}
+              className="absolute font-black truncate max-w-[85%] select-none pointer-events-none"
+              dir="auto"
+              style={{
+                left: `${leftPercent}%`,
+                top: `${topPercent}%`,
+                transform: 'translate(-50%, -50%)',
+                fontSize: isSmall ? '6px' : '9px',
+                color: t.color || '#000000',
+                textShadow: t.color === '#ffffff' ? '0.5px 0.5px 0 #3c78b5, -0.5px -0.5px 0 #3c78b5' : undefined
+              }}
+            >
+              {t.text}
             </div>
           );
         })}
