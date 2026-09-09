@@ -1,7 +1,17 @@
-import React, { useState, useEffect } from 'react';
+ import React, { useState, useEffect } from 'react';
+import { Trash2 } from 'lucide-react';
 import { cn } from '../lib/utils';
 
 export type FontSize = 'small' | 'medium' | 'large' | 'xlarge';
+
+export interface SceneText {
+  id: string;
+  text: string;
+  color: string;
+  size: FontSize;
+  x: number;
+  y: number;
+}
 
 interface TextEditorModalProps {
   isOpen: boolean;
@@ -10,11 +20,12 @@ interface TextEditorModalProps {
   initialSize?: FontSize;
   onClose: () => void;
   onSave: (text: string, color: string, size: FontSize) => void;
+  onDelete?: () => void;
 }
 
 const COLORS = [
-  '#ffffff', // White
   '#000000', // Black
+  '#ffffff', // White
   '#ff4d4d', // Red
   '#ff9933', // Orange
   '#ffcc00', // Yellow
@@ -23,7 +34,7 @@ const COLORS = [
   '#cc33ff', // Purple
 ];
 
-export function TextEditorModal({ isOpen, initialValue, initialColor = '#ffffff', initialSize = 'medium', onClose, onSave }: TextEditorModalProps) {
+export function TextEditorModal({ isOpen, initialValue, initialColor = '#000000', initialSize = 'medium', onClose, onSave, onDelete }: TextEditorModalProps) {
   const [text, setText] = useState(initialValue);
   const [color, setColor] = useState(initialColor);
   const [size, setSize] = useState<FontSize>(initialSize);
@@ -54,6 +65,7 @@ export function TextEditorModal({ isOpen, initialValue, initialColor = '#ffffff'
         <div className="flex-1 mt-8">
           <input
             type="text"
+            dir="auto"
             value={text}
             onChange={(e) => setText(e.target.value)}
             onKeyDown={(e) => {
@@ -126,12 +138,29 @@ export function TextEditorModal({ isOpen, initialValue, initialColor = '#ffffff'
                 </button>
              </div>
           </div>
-          <button
-            onClick={() => onSave(text, color, size)}
-            className="w-16 h-16 bg-white rounded-full flex items-center justify-center border-4 border-[#37698e] shadow-lg hover:scale-105 transition-transform"
-          >
-            <span className="text-3xl text-[#4a89b4] font-black">✓</span>
-          </button>
+          <div className="flex items-center gap-3">
+            {onDelete && (
+              <button
+                type="button"
+                onClick={() => {
+                  onDelete();
+                  onClose();
+                }}
+                className="w-16 h-16 bg-[#E53935] hover:bg-[#C62828] rounded-full flex items-center justify-center border-4 border-[#B71C1C] shadow-lg hover:scale-105 active:scale-95 transition-transform text-white cursor-pointer"
+                title="Delete Text"
+              >
+                <Trash2 className="w-8 h-8 text-white stroke-[2.5]" />
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => onSave(text, color, size)}
+              className="w-16 h-16 bg-white rounded-full flex items-center justify-center border-4 border-[#37698e] shadow-lg hover:scale-105 active:scale-95 transition-transform cursor-pointer"
+              title="Save Text"
+            >
+              <span className="text-3xl text-[#4a89b4] font-black">✓</span>
+            </button>
+          </div>
         </div>
       </div>
     </div>
