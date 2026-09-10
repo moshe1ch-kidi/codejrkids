@@ -1607,15 +1607,9 @@ export default function App() {
     const activeScene = scenes.find(s => s.id === activeSceneId) || scenes[0];
     const characterStacks = activeScene.characterStacks || {};
     
-    // 1. Get the stacks of the character that was clicked (for START_TOUCH)
+    // Get the stacks of the character that was clicked (for START_TOUCH)
     const clickedCharStacks = characterStacks[charId] || [];
     const touchStacks = clickedCharStacks.filter(s => s.blocks[0]?.type === 'START_TOUCH');
-    
-    // 2. Also handle START_BUMP:
-    characters.forEach(c => {
-      if (c.id === charId) return;
-      triggerBumpEvents(charId, c.id);
-    });
 
     touchStacks.forEach(s => {
       runTracked(s.blocks, charId);
