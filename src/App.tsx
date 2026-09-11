@@ -1,4 +1,4 @@
- import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { 
   Play, Square, RotateCcw, Image as ImageIcon, 
   Settings2, Plus, Flag, Trash2, Rocket, Brush, X, Grid, Pencil, Monitor, Save, FolderOpen,
@@ -144,9 +144,19 @@ export default function App() {
     setScenes(next);
   };
 
+  const shouldStopRef = useRef(false);
+  const stoppedCharactersRef = useRef<Set<string>>(new Set());
+  const isCharStopped = (charId: string) => shouldStopRef.current || stoppedCharactersRef.current.has(charId);
+  const delayMsRef = useRef(DELAY_MS);
+  const autoPlayNextSceneRef = useRef<string | null>(null);
+  const workspaceRef = useRef<HTMLDivElement>(null);
+  const activeRunsCountRef = useRef(0);
+  const runningStacksRef = useRef<Set<string>>(new Set());
+
   const resetStage = () => {
     console.log('Resetting stage...');
     shouldStopRef.current = true;
+    stoppedCharactersRef.current.clear();
     setIsRunning(false);
     setActiveBlockId(null);
     activeRunsCountRef.current = 0;
@@ -541,13 +551,6 @@ export default function App() {
 
     setStacks(next);
   };
-
-  const shouldStopRef = useRef(false);
-  const delayMsRef = useRef(DELAY_MS);
-  const autoPlayNextSceneRef = useRef<string | null>(null);
-  const workspaceRef = useRef<HTMLDivElement>(null);
-  const activeRunsCountRef = useRef(0);
-  const runningStacksRef = useRef<Set<string>>(new Set());
 
   const playConnectSound = useCallback(() => {
     try {
@@ -1188,7 +1191,7 @@ export default function App() {
   };
 
   const runBlocks = async (blockList: BlockInstance[], charId: string = activeCharacterId, isForever: boolean = false) => {
-    if (!blockList || blockList.length === 0) return;
+    if (!blockList || blockList.length === 0 || isCharStopped(charId)) return;
 
     const triggerBlockTypes = ['START_FLAG', 'START_TOUCH', 'START_BUMP', 'START_GET_MESSAGE'];
     let executableBlocks = blockList;
@@ -1201,7 +1204,7 @@ export default function App() {
       executableBlocks = blockList.slice(1);
     }
 
-    if (executableBlocks.length === 0) return;
+    if (executableBlocks.length === 0 || isCharStopped(charId)) return;
 
     const endsWithForever = executableBlocks.length > 0 && executableBlocks[executableBlocks.length - 1].type === 'REPEAT_FOREVER';
     
@@ -1209,12 +1212,12 @@ export default function App() {
       const loopBlocks = executableBlocks.slice(0, -1);
       const foreverBlock = executableBlocks[executableBlocks.length - 1];
       
-      while (!shouldStopRef.current) {
+      while (!isCharStopped(charId)) {
         for (const block of loopBlocks) {
-          if (shouldStopRef.current) break;
+          if (isCharStopped(charId)) break;
           await runBlocks([block], charId, true);
         }
-        if (shouldStopRef.current) break;
+        if (isCharStopped(charId)) break;
         
         if (foreverBlock) {
           addActiveBlockId(foreverBlock.id);
@@ -1226,7 +1229,7 @@ export default function App() {
     }
 
     for (const block of executableBlocks) {
-      if (shouldStopRef.current) break;
+      if (isCharStopped(charId)) break;
       
       addActiveBlockId(block.id);
       
@@ -1239,7 +1242,7 @@ export default function App() {
         case 'MOVE_RIGHT': {
           const steps = block.times !== undefined ? block.times : 1;
           for (let i = 0; i < steps; i++) {
-            if (shouldStopRef.current) break;
+            if (isCharStopped(charId)) break;
             setSpriteStateForChar(charId, prev => ({ 
               ...prev, 
               x: prev.x + 1,
@@ -1254,7 +1257,7 @@ export default function App() {
         case 'MOVE_LEFT': {
           const steps = block.times !== undefined ? block.times : 1;
           for (let i = 0; i < steps; i++) {
-            if (shouldStopRef.current) break;
+            if (isCharStopped(charId)) break;
             setSpriteStateForChar(charId, prev => ({ 
               ...prev, 
               x: prev.x - 1,
@@ -1269,7 +1272,7 @@ export default function App() {
         case 'MOVE_UP': {
           const steps = block.times !== undefined ? block.times : 1;
           for (let i = 0; i < steps; i++) {
-            if (shouldStopRef.current) break;
+            if (isCharStopped(charId)) break;
             setSpriteStateForChar(charId, prev => ({ 
               ...prev, 
               y: prev.y + 1,
@@ -1283,7 +1286,7 @@ export default function App() {
         case 'MOVE_DOWN': {
           const steps = block.times !== undefined ? block.times : 1;
           for (let i = 0; i < steps; i++) {
-            if (shouldStopRef.current) break;
+            if (isCharStopped(charId)) break;
             setSpriteStateForChar(charId, prev => ({ 
               ...prev, 
               y: prev.y - 1,
@@ -1400,7 +1403,13 @@ export default function App() {
         }
         case 'WAIT': {
           const tenths = block.times !== undefined ? block.times : 10;
-          await new Promise(r => setTimeout(r, tenths * 100));
+          const totalWait = tenths * 100;
+          const waitStep = 50;
+          let waited = 0;
+          while (waited < totalWait && !isCharStopped(charId)) {
+            await new Promise(r => setTimeout(r, Math.min(waitStep, totalWait - waited)));
+            waited += waitStep;
+          }
           break;
         }
         case 'SET_SPEED': {
@@ -1419,14 +1428,15 @@ export default function App() {
         case 'REPEAT':
           if (block.children && block.children.length > 0) {
             for (let i = 0; i < (block.times || 4); i++) {
-              if (shouldStopRef.current) break;
+              if (isCharStopped(charId)) break;
               await runBlocks(block.children, charId, isForever);
+              if (isCharStopped(charId)) break;
             }
           }
           break;
         case 'REPEAT_FOREVER':
           if (block.children) {
-            while (!shouldStopRef.current) {
+            while (!isCharStopped(charId)) {
               if (block.children.length > 0) {
                 await runBlocks(block.children, charId, true);
               } else {
@@ -1436,8 +1446,10 @@ export default function App() {
           }
           break;
         case 'STOP':
-          shouldStopRef.current = true;
-          break;
+          stoppedCharactersRef.current.add(charId);
+          await new Promise(r => setTimeout(r, delayMsRef.current));
+          removeActiveBlockId(block.id);
+          return;
         case 'SEND_MESSAGE': {
           const color = block.text || 'orange';
           broadcastMessage(color);
@@ -1452,6 +1464,7 @@ export default function App() {
           if (targetScene) {
             autoPlayNextSceneRef.current = targetScene.id;
             shouldStopRef.current = true;
+            stoppedCharactersRef.current.clear();
             setActiveSceneId(targetScene.id);
           }
           break;
@@ -1482,7 +1495,9 @@ export default function App() {
 
     if (activeRunsCountRef.current === 0) {
       shouldStopRef.current = false;
+      stoppedCharactersRef.current.clear();
     }
+    stoppedCharactersRef.current.delete(charId);
     activeRunsCountRef.current++;
     runningStacksRef.current.add(stackId);
     setIsRunning(true);
@@ -1581,7 +1596,8 @@ export default function App() {
   };
 
   const playScene = () => {
-    
+    shouldStopRef.current = false;
+    stoppedCharactersRef.current.clear();
     const activeScene = scenes.find(s => s.id === activeSceneId) || scenes[0];
     const characterStacks = activeScene.characterStacks || {};
     
@@ -1597,6 +1613,7 @@ export default function App() {
 
   const stopScene = () => {
     shouldStopRef.current = true;
+    stoppedCharactersRef.current.clear();
     setIsRunning(false);
     setActiveBlockId(null);
     activeRunsCountRef.current = 0;
