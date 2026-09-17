@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+ import React, { useState, useEffect } from "react";
 import { 
   BarChart3, Users, Globe, Play, Save, RefreshCw, 
   Trash2, Calendar, AlertTriangle, CheckCircle2, Clock, MapPin, Compass
@@ -28,7 +28,14 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = () => {
     try {
       const result = await fetchAnalyticsData();
       setData(result);
-      setLastRefreshedTime(new Date().toLocaleTimeString("he-IL", { hour: "2-digit", minute: "2-digit", second: "2-digit" }));
+      setLastRefreshedTime(
+        new Date().toLocaleTimeString("he-IL", {
+          timeZone: "Asia/Jerusalem",
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit"
+        }) + " (שעון ירושלים)"
+      );
     } catch (err) {
       console.error("Failed to load analytics data:", err);
     } finally {
@@ -443,8 +450,8 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = () => {
           </div>
 
           {/* Privacy & Information Note */}
-          <div className="p-2.5 bg-gray-50 rounded-lg border border-gray-200 text-[11px] text-gray-500 flex items-center justify-between">
-            <span>🔒 Internal metric tracking: No personal data, IPs, or cookies are stored.</span>
+          <div className="p-2.5 bg-gray-50 rounded-lg border border-gray-200 text-[11px] text-gray-500 flex items-center justify-between flex-wrap gap-2">
+            <span>🔒 Internal metric tracking • היממה מתאפסת ב-00:00 (שעון ירושלים)</span>
             <span className="text-emerald-600 font-semibold flex items-center gap-1">
               <span className="w-2 h-2 rounded-full bg-emerald-500" />
               Live Firestore
