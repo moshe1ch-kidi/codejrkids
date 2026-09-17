@@ -1,11 +1,13 @@
  import React, { useState, useEffect } from "react";
 import { 
   BarChart3, Users, Globe, Play, Save, RefreshCw, 
-  Trash2, Calendar, AlertTriangle, CheckCircle2, Clock, MapPin, Compass
+  Trash2, Calendar, AlertTriangle, CheckCircle2, Clock, MapPin, Compass, Zap
 } from "lucide-react";
 import { 
   fetchAnalyticsData, 
   resetAnalyticsData, 
+  subscribeToAnalyticsSummary,
+  subscribeToTodayStats,
   AnalyticsDashboardData,
   getTodayDateString 
 } from "../lib/analytics";
@@ -23,19 +25,23 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = () => {
   const [lastRefreshedTime, setLastRefreshedTime] = useState<string>("");
   const [locationViewTab, setLocationViewTab] = useState<"cities" | "countries">("cities");
 
+  const updateTimestamp = () => {
+    setLastRefreshedTime(
+      new Date().toLocaleTimeString("he-IL", {
+        timeZone: "Asia/Jerusalem",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit"
+      }) + " (שעון ירושלים)"
+    );
+  };
+
   const loadData = async () => {
     setLoading(true);
     try {
       const result = await fetchAnalyticsData();
       setData(result);
-      setLastRefreshedTime(
-        new Date().toLocaleTimeString("he-IL", {
-          timeZone: "Asia/Jerusalem",
-          hour: "2-digit",
-          minute: "2-digit",
-          second: "2-digit"
-        }) + " (שעון ירושלים)"
-      );
+      updateTimestamp();
     } catch (err) {
       console.error("Failed to load analytics data:", err);
     } finally {
@@ -44,7 +50,42 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = () => {
   };
 
   useEffect(() => {
+    // Initial fetch
     loadData();
+
+    // Set up real-time listener for summary changes
+    const unsubSummary = subscribeToAnalyticsSummary((liveSummary) => {
+      setData((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          summary: liveSummary
+        };
+      });
+      updateTimestamp();
+    });
+
+    // Set up real-time listener for today's daily stats
+    const unsubToday = subscribeToTodayStats((liveTodayStats) => {
+      setData((prev) => {
+        if (!prev) return prev;
+        const todayStr = getTodayDateString(0);
+        const updatedRecentDays = prev.recentDays.map((d) =>
+          d.date === todayStr ? liveTodayStats : d
+        );
+        return {
+          ...prev,
+          todayStats: liveTodayStats,
+          recentDays: updatedRecentDays
+        };
+      });
+      updateTimestamp();
+    });
+
+    return () => {
+      unsubSummary();
+      unsubToday();
+    };
   }, []);
 
   const handleReset = async () => {
@@ -104,8 +145,14 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = () => {
             <BarChart3 className="w-4 h-4" />
           </div>
           <div>
-            <h3 className="text-sm font-bold text-gray-900 leading-tight">Site Analytics & Engagement</h3>
-            <p className="text-[11px] text-gray-500 flex items-center gap-1">
+            <div className="flex items-center gap-2">
+              <h3 className="text-sm font-bold text-gray-900 leading-tight">Site Analytics & Engagement</h3>
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 animate-pulse">
+                <Zap className="w-2.5 h-2.5" />
+                <span>Live Real-Time</span>
+              </span>
+            </div>
+            <p className="text-[11px] text-gray-500 flex items-center gap-1 mt-0.5">
               <Clock className="w-3 h-3 text-gray-400" />
               <span>Last updated: {lastRefreshedTime || "Loading..."}</span>
             </p>
@@ -201,7 +248,7 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = () => {
                 {data.summary.totalVisits.toLocaleString()}
               </div>
               <div className="text-[10px] text-blue-600/80 mt-0.5 flex items-center gap-1">
-                <span>All-time visits</span>
+                <span>All-time visits & reloads</span>
               </div>
             </div>
 
@@ -215,7 +262,7 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = () => {
                 {data.todayStats.visits.toLocaleString()}
               </div>
               <div className="text-[10px] text-emerald-600/80 mt-0.5">
-                <span>Unique visits today</span>
+                <span>Visits today (שעון ירושלים)</span>
               </div>
             </div>
 
@@ -453,8 +500,8 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = () => {
           <div className="p-2.5 bg-gray-50 rounded-lg border border-gray-200 text-[11px] text-gray-500 flex items-center justify-between flex-wrap gap-2">
             <span>🔒 Internal metric tracking • היממה מתאפסת ב-00:00 (שעון ירושלים)</span>
             <span className="text-emerald-600 font-semibold flex items-center gap-1">
-              <span className="w-2 h-2 rounded-full bg-emerald-500" />
-              Live Firestore
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              Live Real-Time Sync
             </span>
           </div>
         </div>
