@@ -25,6 +25,7 @@ import { DragState } from './dragState';
 import { detachBlock, attachBlock, cloneBlocks, sanitizeStacks } from './workspaceUtils';
 import { getAssetUrl } from './utils/assets';
 import { playSoundEffect } from './utils/soundEffects';
+import { trackPageVisit, trackGreenFlagRun, trackProjectSave } from './lib/analytics';
 
 const INITIAL_SPRITE_STATE = {
   x: 11,
@@ -81,6 +82,10 @@ export default function App() {
   useEffect(() => {
     scenesRef.current = scenes;
   }, [scenes]);
+
+  useEffect(() => {
+    trackPageVisit();
+  }, []);
   const [activeSceneId, setActiveSceneId] = useState('scene-1');
   const [isBackgroundGalleryOpen, setIsBackgroundGalleryOpen] = useState(false);
   const [isPresentationMode, setIsPresentationMode] = useState(false);
@@ -1533,6 +1538,7 @@ export default function App() {
   };
 
   const handleSaveProject = () => {
+    trackProjectSave();
     const projectData = {
       format: "scratchjr-web",
       version: 1,
@@ -1596,6 +1602,7 @@ export default function App() {
   };
 
   const playScene = () => {
+    trackGreenFlagRun();
     shouldStopRef.current = false;
     stoppedCharactersRef.current.clear();
     const activeScene = scenes.find(s => s.id === activeSceneId) || scenes[0];
