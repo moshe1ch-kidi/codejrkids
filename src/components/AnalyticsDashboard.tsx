@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { 
   BarChart3, Users, Globe, Play, Save, RefreshCw, 
-  Trash2, Calendar, TrendingUp, AlertTriangle, CheckCircle2, Clock
+  Trash2, Calendar, AlertTriangle, CheckCircle2, Clock, MapPin, Compass
 } from "lucide-react";
 import { 
   fetchAnalyticsData, 
@@ -21,6 +21,7 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = () => {
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [resetSuccessMessage, setResetSuccessMessage] = useState("");
   const [lastRefreshedTime, setLastRefreshedTime] = useState<string>("");
+  const [locationViewTab, setLocationViewTab] = useState<"cities" | "countries">("cities");
 
   const loadData = async () => {
     setLoading(true);
@@ -44,7 +45,7 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = () => {
     try {
       await resetAnalyticsData();
       setShowResetConfirm(false);
-      setResetSuccessMessage("Counters have been reset successfully.");
+      setResetSuccessMessage("Counters and location statistics have been reset successfully.");
       setTimeout(() => setResetSuccessMessage(""), 4000);
       await loadData();
     } catch (err) {
@@ -74,6 +75,16 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = () => {
 
   const maxVisitsInRecentDays = Math.max(
     ...(data?.recentDays.map((d) => d.visits) || [1]),
+    1
+  );
+
+  const maxCityVisits = Math.max(
+    ...(data?.topCities.map((c) => c.visits) || [1]),
+    1
+  );
+
+  const maxCountryVisits = Math.max(
+    ...(data?.topCountries.map((c) => c.visits) || [1]),
     1
   );
 
@@ -132,9 +143,9 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = () => {
           <div className="flex items-start gap-2">
             <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
             <div className="text-xs text-amber-900">
-              <p className="font-bold">Reset Analytics Counters?</p>
+              <p className="font-bold">Reset Analytics & Location Counters?</p>
               <p className="text-[11px] text-amber-800 mt-0.5">
-                Are you sure you want to reset all site visit and action counters to 0? This action cannot be reversed.
+                Are you sure you want to reset all site visits, code runs, and geographic city statistics to 0? This action cannot be reversed.
               </p>
             </div>
           </div>
@@ -244,6 +255,141 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = () => {
             </div>
           </div>
 
+          {/* User Geographic Locations (Cities & Countries) */}
+          <div className="bg-white rounded-xl p-3.5 border border-gray-200 shadow-xs">
+            <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+              <div className="flex items-center gap-1.5">
+                <div className="w-6 h-6 rounded-md bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                  <MapPin className="w-3.5 h-3.5" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold text-gray-800">User Geographic Origins</h4>
+                  <p className="text-[10px] text-gray-400">Anonymous IP-based city detection</p>
+                </div>
+              </div>
+
+              {/* View Switcher: Cities vs Countries */}
+              <div className="flex items-center p-0.5 bg-gray-100 rounded-lg text-[11px]">
+                <button
+                  type="button"
+                  onClick={() => setLocationViewTab("cities")}
+                  className={`px-2.5 py-1 font-medium rounded-md transition-all cursor-pointer ${
+                    locationViewTab === "cities"
+                      ? "bg-white text-emerald-700 shadow-xs font-bold"
+                      : "text-gray-600 hover:text-gray-900"
+                  }`}
+                >
+                  Top Cities ({data.topCities.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setLocationViewTab("countries")}
+                  className={`px-2.5 py-1 font-medium rounded-md transition-all cursor-pointer ${
+                    locationViewTab === "countries"
+                      ? "bg-white text-emerald-700 shadow-xs font-bold"
+                      : "text-gray-600 hover:text-gray-900"
+                  }`}
+                >
+                  Countries ({data.topCountries.length})
+                </button>
+              </div>
+            </div>
+
+            {/* Cities View */}
+            {locationViewTab === "cities" && (
+              <div>
+                {data.topCities.length === 0 ? (
+                  <div className="py-6 text-center text-gray-400 text-xs bg-gray-50/50 rounded-lg border border-dashed border-gray-200">
+                    <Compass className="w-6 h-6 mx-auto mb-1.5 opacity-40 text-emerald-500" />
+                    <span>No city records yet. New visitor visits will register their city here.</span>
+                  </div>
+                ) : (
+                  <div className="space-y-1.5 max-h-56 overflow-y-auto pr-1">
+                    {data.topCities.map((item, index) => {
+                      const percentage = Math.min(100, Math.round((item.visits / maxCityVisits) * 100));
+                      return (
+                        <div
+                          key={`${item.city}-${item.country}-${index}`}
+                          className="p-2 rounded-lg bg-gray-50/80 hover:bg-gray-100/80 border border-gray-100 flex items-center justify-between gap-3 text-xs transition-colors"
+                        >
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className="w-5 text-[10px] font-bold text-gray-400 shrink-0 text-center">
+                              #{index + 1}
+                            </span>
+                            <div className="truncate">
+                              <span className="font-bold text-gray-900">{item.city}</span>
+                              {item.country && (
+                                <span className="text-[10px] text-gray-400 ml-1.5 font-normal">
+                                  ({item.country})
+                                </span>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-3 shrink-0">
+                            {/* Proportional visual bar */}
+                            <div className="w-20 sm:w-28 h-2 bg-gray-200/80 rounded-full overflow-hidden hidden sm:block">
+                              <div
+                                className="h-full bg-emerald-500 rounded-full"
+                                style={{ width: `${Math.max(percentage, 8)}%` }}
+                              />
+                            </div>
+                            <span className="font-bold text-emerald-700 text-xs min-w-12 text-right">
+                              {item.visits} <span className="text-[10px] font-normal text-gray-400">visits</span>
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Countries View */}
+            {locationViewTab === "countries" && (
+              <div>
+                {data.topCountries.length === 0 ? (
+                  <div className="py-6 text-center text-gray-400 text-xs bg-gray-50/50 rounded-lg border border-dashed border-gray-200">
+                    <Globe className="w-6 h-6 mx-auto mb-1.5 opacity-40 text-blue-500" />
+                    <span>No country records yet.</span>
+                  </div>
+                ) : (
+                  <div className="space-y-1.5 max-h-56 overflow-y-auto pr-1">
+                    {data.topCountries.map((item, index) => {
+                      const percentage = Math.min(100, Math.round((item.visits / maxCountryVisits) * 100));
+                      return (
+                        <div
+                          key={`${item.country}-${index}`}
+                          className="p-2 rounded-lg bg-gray-50/80 hover:bg-gray-100/80 border border-gray-100 flex items-center justify-between gap-3 text-xs transition-colors"
+                        >
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className="w-5 text-[10px] font-bold text-gray-400 shrink-0 text-center">
+                              #{index + 1}
+                            </span>
+                            <span className="font-bold text-gray-900 truncate">{item.country}</span>
+                          </div>
+
+                          <div className="flex items-center gap-3 shrink-0">
+                            <div className="w-20 sm:w-28 h-2 bg-gray-200/80 rounded-full overflow-hidden hidden sm:block">
+                              <div
+                                className="h-full bg-blue-500 rounded-full"
+                                style={{ width: `${Math.max(percentage, 8)}%` }}
+                              />
+                            </div>
+                            <span className="font-bold text-blue-700 text-xs min-w-12 text-right">
+                              {item.visits} <span className="text-[10px] font-normal text-gray-400">visits</span>
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
           {/* 7-Days Activity Breakdown */}
           <div className="bg-gray-50/90 rounded-xl p-3.5 border border-gray-200">
             <div className="flex items-center justify-between mb-2.5">
@@ -298,7 +444,7 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = () => {
 
           {/* Privacy & Information Note */}
           <div className="p-2.5 bg-gray-50 rounded-lg border border-gray-200 text-[11px] text-gray-500 flex items-center justify-between">
-            <span>🔒 Internal metric tracking: No personal data or cookies are stored.</span>
+            <span>🔒 Internal metric tracking: No personal data, IPs, or cookies are stored.</span>
             <span className="text-emerald-600 font-semibold flex items-center gap-1">
               <span className="w-2 h-2 rounded-full bg-emerald-500" />
               Live Firestore
