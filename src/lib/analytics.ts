@@ -1,4 +1,4 @@
-import { doc, getDoc, setDoc, increment, serverTimestamp } from "firebase/firestore";
+ import { doc, getDoc, setDoc, increment, serverTimestamp } from "firebase/firestore";
 import { db } from "./firebase";
 
 export interface AnalyticsSummary {
@@ -38,15 +38,37 @@ export interface AnalyticsDashboardData {
   topCountries: CountryStats[];
 }
 
+/**
+ * Returns date string YYYY-MM-DD strictly based on Asia/Jerusalem time zone.
+ * If offsetDays > 0, returns the date corresponding to N days before today in Jerusalem time.
+ */
 export function getTodayDateString(offsetDays = 0): string {
-  const d = new Date();
-  if (offsetDays !== 0) {
-    d.setDate(d.getDate() - offsetDays);
+  const now = new Date();
+  
+  const formatter = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Jerusalem",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit"
+  });
+
+  if (offsetDays === 0) {
+    return formatter.format(now);
   }
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
+
+  const parts = formatter.formatToParts(now);
+  const year = parseInt(parts.find(p => p.type === "year")?.value || "1970", 10);
+  const month = parseInt(parts.find(p => p.type === "month")?.value || "1", 10);
+  const day = parseInt(parts.find(p => p.type === "day")?.value || "1", 10);
+
+  const d = new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
+  d.setUTCDate(d.getUTCDate() - offsetDays);
+
+  const targetYear = d.getUTCFullYear();
+  const targetMonth = String(d.getUTCMonth() + 1).padStart(2, "0");
+  const targetDay = String(d.getUTCDate()).padStart(2, "0");
+
+  return `${targetYear}-${targetMonth}-${targetDay}`;
 }
 
 /**
