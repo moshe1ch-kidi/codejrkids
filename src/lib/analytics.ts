@@ -118,23 +118,23 @@ async function detectUserLocation(): Promise<{ city: string; country: string } |
   return null;
 }
 
+// In-memory guard to prevent double-counting on React 18 StrictMode duplicate mounts,
+// while guaranteeing that every actual page reload / F5 creates a new JS context and counts immediately.
+let hasTrackedThisPageLoad = false;
+
 /**
  * Tracks a page visit / view.
- * Includes a 5-second debounce cooldown to prevent double-counting on rapid mounts,
- * while allowing intentional page reloads (F5) to be accurately counted.
+ * Guarantees that every page load / reload (F5) is accurately counted in Firestore.
  * Identifies unique devices via localStorage.
  */
-export async function trackPageVisit(): Promise<void> {
+export async function trackPageVisit(force = false): Promise<void> {
   try {
-    // 1. Debounce check: Prevent rapid multi-mounts or spam refreshes within 5 seconds
-    const lastVisitTs = sessionStorage.getItem("codejr_last_visit_ts");
-    const now = Date.now();
-    if (lastVisitTs && now - parseInt(lastVisitTs, 10) < 5000) {
+    if (hasTrackedThisPageLoad && !force) {
       return;
     }
-    sessionStorage.setItem("codejr_last_visit_ts", String(now));
+    hasTrackedThisPageLoad = true;
 
-    // 2. Unique device check
+    // Unique device check
     let isNewUnique = false;
     let deviceId = localStorage.getItem("codejr_device_id");
     if (!deviceId) {
@@ -488,3 +488,46 @@ export async function resetAnalyticsData(): Promise<void> {
     })
   ]);
 }
+
+/**
+ * Calibrates or sets custom base analytics counts (Admin only),
+ * allowing alignment with existing Google Analytics baseline numbers.
+ */
+export async function calibrateAnalyticsData(params: {
+  totalVisits?: number;
+  uniqueVisitors?: number;
+  todayVisits?: number;
+  totalRuns?: number;
+  totalSaves?: number;
+}): Promise<void> {
+  const summaryRef = doc(db, "site_analytics", "summary");
+  const today = getTodayDateString(0);
+  const dailyRef = doc(db, "site_analytics", `daily_${today}`);
+
+  const summaryUpdates: Record<string, any> = {
+    updatedAt: serverTimestamp()
+  };
+  if (params.totalVisits !== undefined) summaryUpdates.totalVisits = Number(params.totalVisits);
+  if (params.uniqueVisitors !== undefined) summaryUpdates.uniqueVisitors = Number(params.uniqueVisitors);
+  if (params.totalRuns !== undefined) summaryUpdates.totalRuns = Number(params.totalRuns);
+  if (params.totalSaves !== undefined) summaryUpdates.totalSaves = Number(params.totalSaves);
+
+  const promises: Promise<any>[] = [setDoc(summaryRef, summaryUpdates, { merge: true })];
+
+  if (params.todayVisits !== undefined) {
+    promises.push(
+      setDoc(
+        dailyRef,
+        {
+          date: today,
+          visits: Number(params.todayVisits),
+          updatedAt: serverTimestamp()
+        },
+        { merge: true }
+      )
+    );
+  }
+
+  await Promise.all(promises);
+}
+
