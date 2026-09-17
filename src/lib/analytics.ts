@@ -1,4 +1,4 @@
- import { doc, getDoc, setDoc, increment, serverTimestamp } from "firebase/firestore";
+import { doc, getDoc, setDoc, increment, serverTimestamp, onSnapshot } from "firebase/firestore";
 import { db } from "./firebase";
 
 export interface AnalyticsSummary {
@@ -45,24 +45,26 @@ export interface AnalyticsDashboardData {
 export function getTodayDateString(offsetDays = 0): string {
   const now = new Date();
   
-  const formatter = new Intl.DateTimeFormat("en-CA", {
+  const formatter = new Intl.DateTimeFormat("en-US", {
     timeZone: "Asia/Jerusalem",
     year: "numeric",
     month: "2-digit",
     day: "2-digit"
   });
 
-  if (offsetDays === 0) {
-    return formatter.format(now);
-  }
-
   const parts = formatter.formatToParts(now);
-  const year = parseInt(parts.find(p => p.type === "year")?.value || "1970", 10);
-  const month = parseInt(parts.find(p => p.type === "month")?.value || "1", 10);
-  const day = parseInt(parts.find(p => p.type === "day")?.value || "1", 10);
+  const yearStr = (parts.find(p => p.type === "year")?.value || "1970").replace(/\D/g, "");
+  const monthStr = (parts.find(p => p.type === "month")?.value || "01").replace(/\D/g, "");
+  const dayStr = (parts.find(p => p.type === "day")?.value || "01").replace(/\D/g, "");
+
+  const year = parseInt(yearStr, 10);
+  const month = parseInt(monthStr, 10);
+  const day = parseInt(dayStr, 10);
 
   const d = new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
-  d.setUTCDate(d.getUTCDate() - offsetDays);
+  if (offsetDays !== 0) {
+    d.setUTCDate(d.getUTCDate() - offsetDays);
+  }
 
   const targetYear = d.getUTCFullYear();
   const targetMonth = String(d.getUTCMonth() + 1).padStart(2, "0");
@@ -117,18 +119,20 @@ async function detectUserLocation(): Promise<{ city: string; country: string } |
 }
 
 /**
- * Tracks a page visit. Uses sessionStorage to prevent count inflation on page refreshes.
+ * Tracks a page visit / view.
+ * Includes a 5-second debounce cooldown to prevent double-counting on rapid mounts,
+ * while allowing intentional page reloads (F5) to be accurately counted.
  * Identifies unique devices via localStorage.
- * Asynchronously detects and logs city/country to cities_summary.
  */
 export async function trackPageVisit(): Promise<void> {
   try {
-    // 1. Session check: Ensure 1 count per browser session
-    const isRecordedInSession = sessionStorage.getItem("codejr_session_recorded");
-    if (isRecordedInSession) {
+    // 1. Debounce check: Prevent rapid multi-mounts or spam refreshes within 5 seconds
+    const lastVisitTs = sessionStorage.getItem("codejr_last_visit_ts");
+    const now = Date.now();
+    if (lastVisitTs && now - parseInt(lastVisitTs, 10) < 5000) {
       return;
     }
-    sessionStorage.setItem("codejr_session_recorded", "true");
+    sessionStorage.setItem("codejr_last_visit_ts", String(now));
 
     // 2. Unique device check
     let isNewUnique = false;
@@ -139,7 +143,7 @@ export async function trackPageVisit(): Promise<void> {
       isNewUnique = true;
     }
 
-    const today = getTodayDateString();
+    const today = getTodayDateString(0);
     const summaryRef = doc(db, "site_analytics", "summary");
     const dailyRef = doc(db, "site_analytics", `daily_${today}`);
 
@@ -153,18 +157,22 @@ export async function trackPageVisit(): Promise<void> {
       summaryPayload.uniqueVisitors = increment(1);
     }
 
-    await Promise.allSettled([
-      setDoc(summaryRef, summaryPayload, { merge: true }),
-      setDoc(
-        dailyRef,
-        {
-          date: today,
-          visits: increment(1),
-          updatedAt: serverTimestamp()
-        },
-        { merge: true }
-      )
-    ]);
+    try {
+      await Promise.all([
+        setDoc(summaryRef, summaryPayload, { merge: true }),
+        setDoc(
+          dailyRef,
+          {
+            date: today,
+            visits: increment(1),
+            updatedAt: serverTimestamp()
+          },
+          { merge: true }
+        )
+      ]);
+    } catch (writeErr) {
+      console.error("Firestore analytics write error:", writeErr);
+    }
 
     // 3. Location detection (in background, non-blocking)
     detectUserLocation().then(async (loc) => {
@@ -205,17 +213,17 @@ let lastRunTrackedTime = 0;
  */
 export async function trackGreenFlagRun(): Promise<void> {
   const now = Date.now();
-  if (now - lastRunTrackedTime < 3500) {
+  if (now - lastRunTrackedTime < 3000) {
     return;
   }
   lastRunTrackedTime = now;
 
   try {
-    const today = getTodayDateString();
+    const today = getTodayDateString(0);
     const summaryRef = doc(db, "site_analytics", "summary");
     const dailyRef = doc(db, "site_analytics", `daily_${today}`);
 
-    await Promise.allSettled([
+    await Promise.all([
       setDoc(
         summaryRef,
         {
@@ -244,11 +252,11 @@ export async function trackGreenFlagRun(): Promise<void> {
  */
 export async function trackProjectSave(): Promise<void> {
   try {
-    const today = getTodayDateString();
+    const today = getTodayDateString(0);
     const summaryRef = doc(db, "site_analytics", "summary");
     const dailyRef = doc(db, "site_analytics", `daily_${today}`);
 
-    await Promise.allSettled([
+    await Promise.all([
       setDoc(
         summaryRef,
         {
@@ -403,13 +411,67 @@ export async function fetchAnalyticsData(): Promise<AnalyticsDashboardData> {
 }
 
 /**
+ * Subscribes to real-time summary changes in Firestore.
+ * Updates immediately whenever a visit, run, or save occurs.
+ */
+export function subscribeToAnalyticsSummary(callback: (summary: AnalyticsSummary) => void) {
+  const summaryRef = doc(db, "site_analytics", "summary");
+  return onSnapshot(
+    summaryRef,
+    (snap) => {
+      if (snap.exists()) {
+        const data = snap.data();
+        callback({
+          totalVisits: Number(data.totalVisits || 0),
+          uniqueVisitors: Number(data.uniqueVisitors || 0),
+          totalRuns: Number(data.totalRuns || 0),
+          totalSaves: Number(data.totalSaves || 0),
+          lastVisitAt: data.lastVisitAt,
+          updatedAt: data.updatedAt,
+          resetAt: data.resetAt
+        });
+      }
+    },
+    (err) => {
+      console.warn("Real-time analytics subscription error:", err);
+    }
+  );
+}
+
+/**
+ * Subscribes to real-time changes for today's daily stats.
+ */
+export function subscribeToTodayStats(callback: (todayStats: DailyStats) => void) {
+  const todayStr = getTodayDateString(0);
+  const todayRef = doc(db, "site_analytics", `daily_${todayStr}`);
+  return onSnapshot(
+    todayRef,
+    (snap) => {
+      if (snap.exists()) {
+        const data = snap.data();
+        callback({
+          date: todayStr,
+          visits: Number(data.visits || 0),
+          runs: Number(data.runs || 0),
+          saves: Number(data.saves || 0),
+          updatedAt: data.updatedAt
+        });
+      }
+    },
+    (err) => {
+      console.warn("Real-time today stats subscription error:", err);
+    }
+  );
+}
+
+/**
  * Resets summary & cities counters (Admin only).
  */
 export async function resetAnalyticsData(): Promise<void> {
   const summaryRef = doc(db, "site_analytics", "summary");
   const citiesRef = doc(db, "site_analytics", "cities_summary");
 
-  await Promise.allSettled([
+  await Promise.all([
     setDoc(summaryRef, {
       totalVisits: 0,
       uniqueVisitors: 0,
