@@ -37,6 +37,8 @@
         "runs": { "type": "number", "description": "Daily code runs" },
         "saves": { "type": "number", "description": "Daily project saves" },
         "date": { "type": "string", "description": "Date identifier YYYY-MM-DD" },
+        "cities": { "type": "object", "description": "Map of city names to visitor counts" },
+        "countries": { "type": "object", "description": "Map of country names to visitor counts" },
         "updatedAt": { "type": "string", "format": "date-time", "description": "Last update timestamp" }
       }
     }
