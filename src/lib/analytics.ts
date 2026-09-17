@@ -19,10 +19,23 @@ export interface DailyStats {
   updatedAt?: any;
 }
 
+export interface GeoLocationStats {
+  city: string;
+  country: string;
+  visits: number;
+}
+
+export interface CountryStats {
+  country: string;
+  visits: number;
+}
+
 export interface AnalyticsDashboardData {
   summary: AnalyticsSummary;
   todayStats: DailyStats;
   recentDays: DailyStats[];
+  topCities: GeoLocationStats[];
+  topCountries: CountryStats[];
 }
 
 export function getTodayDateString(offsetDays = 0): string {
@@ -37,8 +50,54 @@ export function getTodayDateString(offsetDays = 0): string {
 }
 
 /**
+ * Attempts to detect visitor's approximate city & country using free, privacy-friendly IP geolocation.
+ * Timeout set to 3.5 seconds; does not ask for GPS permission.
+ */
+async function detectUserLocation(): Promise<{ city: string; country: string } | null> {
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 3500);
+
+    // Primary: ipwho.is (HTTPS, CORS-enabled, reliable)
+    const response = await fetch("https://ipwho.is/", { signal: controller.signal });
+    clearTimeout(timeout);
+
+    if (response.ok) {
+      const data = await response.json();
+      if (data && data.success !== false && data.city) {
+        return {
+          city: String(data.city).trim(),
+          country: String(data.country || "Unknown").trim()
+        };
+      }
+    }
+  } catch {
+    // Secondary fallback: ipapi.co
+    try {
+      const controller2 = new AbortController();
+      const timeout2 = setTimeout(() => controller2.abort(), 3500);
+      const res2 = await fetch("https://ipapi.co/json/", { signal: controller2.signal });
+      clearTimeout(timeout2);
+      if (res2.ok) {
+        const d2 = await res2.json();
+        if (d2 && d2.city) {
+          return {
+            city: String(d2.city).trim(),
+            country: String(d2.country_name || "Unknown").trim()
+          };
+        }
+      }
+    } catch {
+      // ignore
+    }
+  }
+  return null;
+}
+
+/**
  * Tracks a page visit. Uses sessionStorage to prevent count inflation on page refreshes.
  * Identifies unique devices via localStorage.
+ * Asynchronously detects and logs city/country to cities_summary.
  */
 export async function trackPageVisit(): Promise<void> {
   try {
@@ -84,6 +143,34 @@ export async function trackPageVisit(): Promise<void> {
         { merge: true }
       )
     ]);
+
+    // 3. Location detection (in background, non-blocking)
+    detectUserLocation().then(async (loc) => {
+      if (loc && loc.city) {
+        try {
+          const citiesRef = doc(db, "site_analytics", "cities_summary");
+          const cleanCity = loc.city.replace(/[.#$/[\]]/g, "_").trim();
+          const cleanCountry = loc.country.replace(/[.#$/[\]]/g, "_").trim();
+          const combinedKey = `${cleanCity}, ${cleanCountry}`;
+
+          await setDoc(
+            citiesRef,
+            {
+              cities: {
+                [combinedKey]: increment(1)
+              },
+              countries: {
+                [cleanCountry]: increment(1)
+              },
+              updatedAt: serverTimestamp()
+            },
+            { merge: true }
+          );
+        } catch (locErr) {
+          console.warn("Notice: Location analytics update skipped:", locErr);
+        }
+      }
+    }).catch(() => {});
   } catch (err) {
     console.warn("Notice: Internal analytics page visit skipped:", err);
   }
@@ -168,6 +255,7 @@ export async function trackProjectSave(): Promise<void> {
  * - Summary totals
  * - Today's metrics
  * - Breakdown of the last 7 days
+ * - Top Cities & Top Countries
  */
 export async function fetchAnalyticsData(): Promise<AnalyticsDashboardData> {
   const defaultSummary: AnalyticsSummary = {
@@ -245,24 +333,74 @@ export async function fetchAnalyticsData(): Promise<AnalyticsDashboardData> {
     saves: 0
   };
 
+  // Fetch cities & countries
+  let topCities: GeoLocationStats[] = [];
+  let topCountries: CountryStats[] = [];
+
+  try {
+    const citiesRef = doc(db, "site_analytics", "cities_summary");
+    const citiesSnap = await getDoc(citiesRef);
+    if (citiesSnap.exists()) {
+      const data = citiesSnap.data();
+      const rawCities = (data.cities || {}) as Record<string, number>;
+      const rawCountries = (data.countries || {}) as Record<string, number>;
+
+      topCities = Object.entries(rawCities)
+        .map(([key, count]) => {
+          const parts = key.split(", ");
+          return {
+            city: parts[0] || key,
+            country: parts[1] || "",
+            visits: Number(count || 0)
+          };
+        })
+        .filter((c) => c.visits > 0)
+        .sort((a, b) => b.visits - a.visits)
+        .slice(0, 15);
+
+      topCountries = Object.entries(rawCountries)
+        .map(([country, count]) => ({
+          country,
+          visits: Number(count || 0)
+        }))
+        .filter((c) => c.visits > 0)
+        .sort((a, b) => b.visits - a.visits)
+        .slice(0, 10);
+    }
+  } catch (err) {
+    console.warn("Error fetching cities analytics:", err);
+  }
+
   return {
     summary,
     todayStats,
-    recentDays
+    recentDays,
+    topCities,
+    topCountries
   };
 }
 
 /**
- * Resets summary counters (Admin only).
+ * Resets summary & cities counters (Admin only).
  */
 export async function resetAnalyticsData(): Promise<void> {
   const summaryRef = doc(db, "site_analytics", "summary");
-  await setDoc(summaryRef, {
-    totalVisits: 0,
-    uniqueVisitors: 0,
-    totalRuns: 0,
-    totalSaves: 0,
-    resetAt: serverTimestamp(),
-    updatedAt: serverTimestamp()
-  });
+  const citiesRef = doc(db, "site_analytics", "cities_summary");
+
+  await Promise.allSettled([
+    setDoc(summaryRef, {
+      totalVisits: 0,
+      uniqueVisitors: 0,
+      totalRuns: 0,
+      totalSaves: 0,
+      resetAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    }),
+    setDoc(citiesRef, {
+      cities: {},
+      countries: {},
+      resetAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    })
+  ]);
 }
