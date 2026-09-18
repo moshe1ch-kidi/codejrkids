@@ -1,4 +1,4 @@
- import { doc, getDoc, setDoc, increment, serverTimestamp, onSnapshot } from "firebase/firestore";
+import { doc, getDoc, setDoc, increment, serverTimestamp, onSnapshot } from "firebase/firestore";
 import { db, getFirestoreQuotaExceeded, setFirestoreQuotaExceeded, isQuotaExceededError } from "./firebase";
 
 export interface AnalyticsSummary {
@@ -362,6 +362,32 @@ export async function fetchAnalyticsData(): Promise<AnalyticsDashboardData> {
   };
 
   const todayStr = getTodayDateString(0);
+  const CACHE_KEY = "codejr_analytics_dashboard_cache";
+
+  // If quota is exceeded, serve from local cache immediately without making network calls
+  if (getFirestoreQuotaExceeded()) {
+    try {
+      const cached = localStorage.getItem(CACHE_KEY);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        return {
+          ...parsed,
+          isQuotaExceeded: true
+        };
+      }
+    } catch {
+      // ignore
+    }
+    return {
+      summary: defaultSummary,
+      todayStats: { date: todayStr, visits: 0, runs: 0, saves: 0 },
+      recentDays: [],
+      topCities: [],
+      topCountries: [],
+      isQuotaExceeded: true
+    };
+  }
+
   let summary: AnalyticsSummary = { ...defaultSummary };
 
   try {
@@ -476,7 +502,7 @@ export async function fetchAnalyticsData(): Promise<AnalyticsDashboardData> {
     }
   }
 
-  return {
+  const result: AnalyticsDashboardData = {
     summary,
     todayStats,
     recentDays,
@@ -484,6 +510,14 @@ export async function fetchAnalyticsData(): Promise<AnalyticsDashboardData> {
     topCountries,
     isQuotaExceeded: getFirestoreQuotaExceeded()
   };
+
+  try {
+    localStorage.setItem(CACHE_KEY, JSON.stringify(result));
+  } catch {
+    // ignore
+  }
+
+  return result;
 }
 
 /**
@@ -491,6 +525,9 @@ export async function fetchAnalyticsData(): Promise<AnalyticsDashboardData> {
  * Updates immediately whenever a visit, run, or save occurs.
  */
 export function subscribeToAnalyticsSummary(callback: (summary: AnalyticsSummary) => void) {
+  if (getFirestoreQuotaExceeded()) {
+    return () => {};
+  }
   const summaryRef = doc(db, "site_analytics", "summary");
   return onSnapshot(
     summaryRef,
@@ -521,6 +558,9 @@ export function subscribeToAnalyticsSummary(callback: (summary: AnalyticsSummary
  * Subscribes to real-time changes for today's daily stats.
  */
 export function subscribeToTodayStats(callback: (todayStats: DailyStats) => void) {
+  if (getFirestoreQuotaExceeded()) {
+    return () => {};
+  }
   const todayStr = getTodayDateString(0);
   const todayRef = doc(db, "site_analytics", `daily_${todayStr}`);
   return onSnapshot(
