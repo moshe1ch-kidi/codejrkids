@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { 
   BarChart3, Users, Globe, Play, Save, RefreshCw, 
   Trash2, Calendar, AlertTriangle, CheckCircle2, Clock, MapPin, Compass, Zap,
-  Sliders, Plus, ExternalLink
+  Sliders, Plus, ExternalLink, X
 } from "lucide-react";
 import { 
   fetchAnalyticsData, 
@@ -18,9 +18,10 @@ import { getFirestoreQuotaExceeded } from "../lib/firebase";
 
 interface AnalyticsDashboardProps {
   onRefreshTrigger?: () => void;
+  onClose?: () => void;
 }
 
-export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = () => {
+export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ onRefreshTrigger, onClose }) => {
   const [data, setData] = useState<AnalyticsDashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [isResetting, setIsResetting] = useState(false);
@@ -289,6 +290,18 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = () => {
             <Trash2 className="w-3.5 h-3.5" />
             <span>Reset</span>
           </button>
+
+          {onClose && (
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-3 py-1.5 text-xs bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold rounded-lg flex items-center gap-1 transition-colors cursor-pointer border border-gray-300 shadow-xs"
+              title="Close (Esc)"
+            >
+              <X className="w-3.5 h-3.5 text-gray-700" />
+              <span>Close</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -768,6 +781,20 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = () => {
               Live Real-Time Sync
             </span>
           </div>
+
+          {onClose && (
+            <div className="pt-3 border-t border-gray-200 flex items-center justify-between flex-wrap gap-2">
+              <span className="text-xs text-gray-500">Press <kbd className="px-1.5 py-0.5 bg-gray-100 border border-gray-300 rounded text-[10px] font-mono">Esc</kbd> or click to close</span>
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-5 py-2 text-xs bg-gray-800 hover:bg-gray-900 text-white font-bold rounded-xl flex items-center gap-2 transition-all cursor-pointer shadow-sm hover:shadow active:scale-95"
+              >
+                <X className="w-4 h-4" />
+                <span>Close Dashboard</span>
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>
