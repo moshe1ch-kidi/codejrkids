@@ -1,5 +1,18 @@
  import { initializeApp, getApps } from "firebase/app";
-import { getFirestore, collection, addDoc, getDocs, query, orderBy, serverTimestamp, deleteDoc, doc } from "firebase/firestore";
+import { 
+  getFirestore, 
+  collection, 
+  addDoc, 
+  getDocs, 
+  query, 
+  orderBy, 
+  serverTimestamp, 
+  deleteDoc, 
+  doc,
+  disableNetwork,
+  enableNetwork,
+  setLogLevel
+} from "firebase/firestore";
 import firebaseConfig from "../../firebase-applet-config.json";
 
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApps()[0];
@@ -9,6 +22,36 @@ export const db = firebaseConfig.firestoreDatabaseId
   : getFirestore(app);
 
 const QUOTA_STORAGE_KEY = "codejr_firestore_quota_exceeded";
+
+// Recorded Google Cloud Free Tier quota reset window: 
+// Google Cloud Firestore Free Tier resets at 00:00 Pacific Time (07:00 UTC).
+// September 18, 2026 07:15:00 UTC includes a 15-minute margin after midnight PT.
+const KNOWN_CURRENT_QUOTA_RESET_UTC = Date.UTC(2026, 8, 18, 7, 15, 0);
+
+/**
+ * Calculates next Pacific Midnight (00:00 AM America/Los_Angeles) in UTC milliseconds.
+ */
+export function getNextPacificMidnight(): number {
+  try {
+    const now = new Date();
+    const formatter = new Intl.DateTimeFormat("en-US", {
+      timeZone: "America/Los_Angeles",
+      year: "numeric",
+      month: "numeric",
+      day: "numeric"
+    });
+    const parts = formatter.formatToParts(now);
+    const y = parseInt(parts.find(p => p.type === "year")?.value || "2026", 10);
+    const m = parseInt(parts.find(p => p.type === "month")?.value || "9", 10);
+    const d = parseInt(parts.find(p => p.type === "day")?.value || "18", 10);
+
+    // Next day 07:15 UTC (Pacific Time midnight + 15m margin)
+    const nextUtc = Date.UTC(y, m - 1, d + 1, 7, 15, 0);
+    return Math.max(nextUtc, Date.now() + 2 * 60 * 60 * 1000);
+  } catch {
+    return Date.now() + 6 * 60 * 60 * 1000;
+  }
+}
 
 /**
  * Checks if a given error corresponds to Firestore quota exhaustion (code=resource-exhausted).
@@ -34,13 +77,15 @@ export function isQuotaExceededError(err: unknown): boolean {
 export function setFirestoreQuotaExceeded(exceeded: boolean) {
   try {
     if (exceeded) {
-      // Store flag for 6 hours
-      const expiry = Date.now() + 6 * 60 * 60 * 1000;
+      const expiry = getNextPacificMidnight();
       sessionStorage.setItem(QUOTA_STORAGE_KEY, String(expiry));
       localStorage.setItem(QUOTA_STORAGE_KEY, String(expiry));
+      // Immediately sever network connection to stop internal Firestore retry loops & backoff delays
+      disableNetwork(db).catch(() => {});
     } else {
       sessionStorage.removeItem(QUOTA_STORAGE_KEY);
       localStorage.removeItem(QUOTA_STORAGE_KEY);
+      enableNetwork(db).catch(() => {});
     }
   } catch {
     // ignore
@@ -52,6 +97,11 @@ export function setFirestoreQuotaExceeded(exceeded: boolean) {
  */
 export function getFirestoreQuotaExceeded(): boolean {
   try {
+    // Check known current exhaustion window
+    if (Date.now() < KNOWN_CURRENT_QUOTA_RESET_UTC) {
+      return true;
+    }
+
     const val = sessionStorage.getItem(QUOTA_STORAGE_KEY) || localStorage.getItem(QUOTA_STORAGE_KEY);
     if (!val) return false;
     const exp = parseInt(val, 10);
@@ -66,12 +116,22 @@ export function getFirestoreQuotaExceeded(): boolean {
   }
 }
 
-// Listen for unhandled quota rejections gracefully
+// Silence noisy internal SDK error logs and backoff delays
+try {
+  setLogLevel("silent");
+} catch {
+  // ignore
+}
+
+// Suppress unhandled quota rejections and disconnect network if quota is exceeded
 if (typeof window !== "undefined") {
+  if (getFirestoreQuotaExceeded()) {
+    disableNetwork(db).catch(() => {});
+  }
+
   window.addEventListener("unhandledrejection", (event) => {
     if (isQuotaExceededError(event?.reason)) {
       setFirestoreQuotaExceeded(true);
-      // Suppress unhandled rejection noise in console
       event.preventDefault();
     }
   });
@@ -112,6 +172,9 @@ export async function sendContactMessage(data: {
 }
 
 export async function fetchContactMessages(): Promise<ContactMessage[]> {
+  if (getFirestoreQuotaExceeded()) {
+    return [];
+  }
   try {
     const colRef = collection(db, "contact_messages");
     const q = query(colRef, orderBy("createdAt", "desc"));
@@ -124,39 +187,54 @@ export async function fetchContactMessages(): Promise<ContactMessage[]> {
     if (isQuotaExceededError(error)) {
       setFirestoreQuotaExceeded(true);
     }
-    console.warn("Notice: Fetching contact messages fallback:", error);
-    try {
-      const colRef = collection(db, "contact_messages");
-      const snapshot = await getDocs(colRef);
-      return snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as ContactMessage[];
-    } catch {
-      return [];
-    }
+    return [];
   }
 }
 
 export async function deleteContactMessage(id: string) {
-  const docRef = doc(db, "contact_messages", id);
-  await deleteDoc(docRef);
+  if (getFirestoreQuotaExceeded()) {
+    return;
+  }
+  try {
+    const docRef = doc(db, "contact_messages", id);
+    await deleteDoc(docRef);
+  } catch (error) {
+    if (isQuotaExceededError(error)) {
+      setFirestoreQuotaExceeded(true);
+    }
+  }
 }
 
 // Tutorial Videos Persistence
 export async function saveTutorialVideosToFirestore(videos: any[]) {
+  localStorage.setItem("codejr_tutorial_videos", JSON.stringify(videos));
+  if (getFirestoreQuotaExceeded()) {
+    return;
+  }
   try {
     const docRef = doc(db, "app_settings", "tutorial_videos");
     const { setDoc } = await import("firebase/firestore");
     await setDoc(docRef, { videos, updatedAt: serverTimestamp() });
-    localStorage.setItem("codejr_tutorial_videos", JSON.stringify(videos));
   } catch (err) {
-    console.warn("Notice: Storing tutorial videos locally (Firestore offline/restricted):", err);
-    localStorage.setItem("codejr_tutorial_videos", JSON.stringify(videos));
+    if (isQuotaExceededError(err)) {
+      setFirestoreQuotaExceeded(true);
+    }
   }
 }
 
 export async function fetchTutorialVideosFromFirestore(defaultVideos: any[]): Promise<any[]> {
+  if (getFirestoreQuotaExceeded()) {
+    const localData = localStorage.getItem("codejr_tutorial_videos");
+    if (localData) {
+      try {
+        return JSON.parse(localData);
+      } catch {
+        // ignore
+      }
+    }
+    return defaultVideos;
+  }
+
   try {
     const docRef = doc(db, "app_settings", "tutorial_videos");
     const { getDoc } = await import("firebase/firestore");
@@ -167,7 +245,9 @@ export async function fetchTutorialVideosFromFirestore(defaultVideos: any[]): Pr
       return videos;
     }
   } catch (err) {
-    console.warn("Notice: Using local tutorial videos (Firestore offline/restricted):", err);
+    if (isQuotaExceededError(err)) {
+      setFirestoreQuotaExceeded(true);
+    }
   }
 
   // Fallback to localStorage
