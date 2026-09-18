@@ -14,6 +14,7 @@ import {
   AnalyticsDashboardData,
   getTodayDateString 
 } from "../lib/analytics";
+import { getFirestoreQuotaExceeded } from "../lib/firebase";
 
 interface AnalyticsDashboardProps {
   onRefreshTrigger?: () => void;
@@ -103,6 +104,12 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = () => {
   }, []);
 
   const handleReset = async () => {
+    if (getFirestoreQuotaExceeded()) {
+      setShowResetConfirm(false);
+      setResetSuccessMessage("Notice: Firestore daily write quota limit reached. Reset will be available after quota reset tomorrow.");
+      setTimeout(() => setResetSuccessMessage(""), 5000);
+      return;
+    }
     setIsResetting(true);
     try {
       await resetAnalyticsData();
@@ -110,8 +117,12 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = () => {
       setResetSuccessMessage("Counters and location statistics have been reset successfully.");
       setTimeout(() => setResetSuccessMessage(""), 4000);
       await loadData();
-    } catch (err) {
-      console.error("Failed to reset analytics:", err);
+    } catch (err: any) {
+      if (err?.message === "QUOTA_EXCEEDED") {
+        setResetSuccessMessage("Notice: Firestore daily write quota limit reached.");
+      } else {
+        console.error("Failed to reset analytics:", err);
+      }
     } finally {
       setIsResetting(false);
     }
@@ -132,6 +143,12 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = () => {
 
   const handleSaveCalibration = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (getFirestoreQuotaExceeded()) {
+      setShowCalibrateModal(false);
+      setResetSuccessMessage("Notice: Firestore daily write quota limit reached. Calibration will be available after quota reset tomorrow.");
+      setTimeout(() => setResetSuccessMessage(""), 5000);
+      return;
+    }
     setIsCalibrating(true);
     try {
       await calibrateAnalyticsData({
@@ -145,14 +162,23 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = () => {
       setResetSuccessMessage("Counters calibrated successfully with your custom baseline!");
       setTimeout(() => setResetSuccessMessage(""), 4000);
       await loadData();
-    } catch (err) {
-      console.error("Failed to calibrate analytics:", err);
+    } catch (err: any) {
+      if (err?.message === "QUOTA_EXCEEDED") {
+        setResetSuccessMessage("Notice: Firestore daily write quota limit reached.");
+      } else {
+        console.error("Failed to calibrate analytics:", err);
+      }
     } finally {
       setIsCalibrating(false);
     }
   };
 
   const handleTestVisit = async () => {
+    if (getFirestoreQuotaExceeded()) {
+      setResetSuccessMessage("Notice: Firestore daily write quota limit reached (20,000 writes/day free tier). Visits cannot be added until quota resets tomorrow.");
+      setTimeout(() => setResetSuccessMessage(""), 5000);
+      return;
+    }
     setIsSimulatingVisit(true);
     try {
       await trackPageVisit(true);
@@ -265,6 +291,32 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = () => {
           </button>
         </div>
       </div>
+
+      {/* Quota Exceeded Informational Banner */}
+      {(data?.isQuotaExceeded || getFirestoreQuotaExceeded()) && (
+        <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-xl text-amber-950 text-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 animate-in fade-in">
+          <div className="flex items-start gap-2.5">
+            <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+            <div>
+              <div className="font-bold text-xs sm:text-sm text-amber-950">
+                מכסת הכתיבה היומית ב-Firebase Firestore (תוכנית Spark חינמית - 20,000 פעולות) מוצתה להיום
+              </div>
+              <div className="text-amber-800 text-[11px] sm:text-xs mt-0.5 leading-relaxed">
+                בשל תנועת גולשים ערה באתר, מסד הנתונים הגיע למכסה היומית המקסימלית המותרת בחינם. המכסה תתאפס אוטומטית מחר בחצות (שעון ארה"ב PT). האתר ו-Google Analytics ממשיכים לפעול כרגיל.
+              </div>
+            </div>
+          </div>
+          <a
+            href="https://console.firebase.google.com/project/ai-studio-remixcodejrkids/firestore/databases/ai-studio-remixcodejrkids-51cd500b-267d-4166-a416-e7d89f28941d/data?openUpgradeDialog=true"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="shrink-0 px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-lg text-xs flex items-center gap-1.5 transition-colors shadow-sm cursor-pointer"
+          >
+            <span>ניהול מכסות / שדרוג</span>
+            <ExternalLink className="w-3.5 h-3.5" />
+          </a>
+        </div>
+      )}
 
       {/* Success Notification */}
       {resetSuccessMessage && (
