@@ -63,6 +63,16 @@ export const ContactModal: React.FC<ContactModalProps> = ({ isOpen, onClose }) =
     }
   }, [isOpen, activeTab, isAdminUnlocked]);
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && isOpen) {
+        onClose();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, onClose]);
+
   const loadMessages = async () => {
     setLoadingMessages(true);
     try {
@@ -155,35 +165,43 @@ export const ContactModal: React.FC<ContactModalProps> = ({ isOpen, onClose }) =
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 dir-ltr select-text">
-      <div className={`bg-white rounded-2xl shadow-2xl w-full overflow-hidden border border-gray-100 animate-in fade-in zoom-in duration-200 select-text transition-all ${activeTab === "admin" && isAdminUnlocked ? "max-w-2xl" : "max-w-lg"}`}>
+    <div 
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-2 sm:p-4 dir-ltr select-text overflow-hidden"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) {
+          onClose();
+        }
+      }}
+    >
+      <div className={`bg-white rounded-2xl shadow-2xl w-full flex flex-col max-h-[92vh] sm:max-h-[88vh] overflow-hidden border border-gray-100 animate-in fade-in zoom-in duration-200 select-text transition-all ${activeTab === "admin" && isAdminUnlocked ? "max-w-4xl" : "max-w-lg"}`}>
         
         {/* Header */}
-        <div className="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 p-5 text-white flex items-center justify-between">
+        <div className="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 px-5 py-3.5 text-white flex items-center justify-between shrink-0 shadow-xs z-20">
           <div className="flex items-center gap-3">
             <button
               type="button"
               onClick={handleIconClick}
-              className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-md p-1 overflow-hidden cursor-pointer select-none transition-transform active:scale-95 border-0 focus:outline-none"
+              className="w-10 h-10 bg-white/20 hover:bg-white/30 rounded-xl flex items-center justify-center backdrop-blur-md p-1 overflow-hidden cursor-pointer select-none transition-transform active:scale-95 border-0 focus:outline-none"
               title="CodeJR Icon"
             >
               <img src={getAssetUrl('/UI/codejr_icon_1.png')} alt="CodeJR Icon" className="w-full h-full object-contain pointer-events-none" />
             </button>
             <div>
-              <h2 className="text-xl font-bold">Contact Us - CodeJR</h2>
-              <p className="text-xs text-blue-100">We'd love to hear your feedback, bug reports, or questions!</p>
+              <h2 className="text-lg sm:text-xl font-bold">Contact Us - CodeJR</h2>
+              <p className="text-[11px] sm:text-xs text-blue-100">We'd love to hear your feedback, bug reports, or questions!</p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="w-9 h-9 rounded-lg bg-white/10 hover:bg-white/20 transition-colors flex items-center justify-center text-white cursor-pointer"
+            className="w-9 h-9 rounded-xl bg-white/20 hover:bg-white/30 active:scale-95 transition-all flex items-center justify-center text-white cursor-pointer shadow-xs"
+            title="Close (Esc)"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Tabs - Admin tab is hidden until icon is clicked 5 times */}
-        <div className="flex border-b border-gray-100 bg-gray-50/80 px-4 pt-2">
+        <div className="flex border-b border-gray-200 bg-gray-50/90 px-4 pt-2 shrink-0 z-10">
           <button
             onClick={() => { setActiveTab("form"); setSuccess(false); }}
             className={`px-4 py-2.5 font-medium text-sm rounded-t-xl transition-all border-b-2 flex items-center gap-2 cursor-pointer ${
@@ -212,7 +230,7 @@ export const ContactModal: React.FC<ContactModalProps> = ({ isOpen, onClose }) =
         </div>
 
         {/* Tab Content */}
-        <div className="p-6">
+        <div className="flex-1 overflow-y-auto min-h-0 p-4 sm:p-6 select-text overscroll-contain">
           {activeTab === "form" && (
             <div>
               {success ? (
@@ -483,7 +501,7 @@ export const ContactModal: React.FC<ContactModalProps> = ({ isOpen, onClose }) =
                     </form>
                   ) : adminSubTab === "analytics" ? (
                     /* Internal Analytics Dashboard */
-                    <AnalyticsDashboard />
+                    <AnalyticsDashboard onClose={onClose} />
                   ) : (
                     /* Messages View */
                     <div className="space-y-3">
