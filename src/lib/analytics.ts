@@ -1,5 +1,5 @@
-import { doc, getDoc, setDoc, increment, serverTimestamp, onSnapshot } from "firebase/firestore";
-import { db } from "./firebase";
+ import { doc, getDoc, setDoc, increment, serverTimestamp, onSnapshot } from "firebase/firestore";
+import { db, getFirestoreQuotaExceeded, setFirestoreQuotaExceeded, isQuotaExceededError } from "./firebase";
 
 export interface AnalyticsSummary {
   totalVisits: number;
@@ -36,6 +36,7 @@ export interface AnalyticsDashboardData {
   recentDays: DailyStats[];
   topCities: GeoLocationStats[];
   topCountries: CountryStats[];
+  isQuotaExceeded?: boolean;
 }
 
 /**
@@ -118,23 +119,39 @@ async function detectUserLocation(): Promise<{ city: string; country: string } |
   return null;
 }
 
-// In-memory guard to prevent double-counting on React 18 StrictMode duplicate mounts,
-// while guaranteeing that every actual page reload / F5 creates a new JS context and counts immediately.
+// In-memory guard to prevent double-counting on React 18 StrictMode duplicate mounts
 let hasTrackedThisPageLoad = false;
 
 /**
  * Tracks a page visit / view.
- * Guarantees that every page load / reload (F5) is accurately counted in Firestore.
- * Identifies unique devices via localStorage.
+ * Guarantees that every unique session is accurately counted in Firestore
+ * without exceeding daily free tier write quotas.
  */
 export async function trackPageVisit(force = false): Promise<void> {
   try {
+    if (getFirestoreQuotaExceeded()) {
+      return;
+    }
+
     if (hasTrackedThisPageLoad && !force) {
       return;
     }
     hasTrackedThisPageLoad = true;
 
-    // Unique device check
+    // Throttle per day & session: One visit per device per day in Firestore
+    const today = getTodayDateString(0);
+    const todayDeviceKey = `codejr_visit_${today}`;
+    const sessionVisitKey = "codejr_visit_synced_session";
+
+    // Forward real-time pageview to Google Analytics (100% free, unlimited)
+    if (typeof window !== "undefined" && (window as any).gtag) {
+      (window as any).gtag("event", "page_view");
+    }
+
+    if (!force && (sessionStorage.getItem(sessionVisitKey) || localStorage.getItem(todayDeviceKey))) {
+      sessionStorage.setItem(sessionVisitKey, "true");
+      return;
+    }
     let isNewUnique = false;
     let deviceId = localStorage.getItem("codejr_device_id");
     if (!deviceId) {
@@ -143,7 +160,6 @@ export async function trackPageVisit(force = false): Promise<void> {
       isNewUnique = true;
     }
 
-    const today = getTodayDateString(0);
     const summaryRef = doc(db, "site_analytics", "summary");
     const dailyRef = doc(db, "site_analytics", `daily_${today}`);
 
@@ -170,53 +186,85 @@ export async function trackPageVisit(force = false): Promise<void> {
           { merge: true }
         )
       ]);
+      sessionStorage.setItem(sessionVisitKey, "true");
+      localStorage.setItem(todayDeviceKey, "true");
     } catch (writeErr) {
-      console.error("Firestore analytics write error:", writeErr);
+      if (isQuotaExceededError(writeErr)) {
+        setFirestoreQuotaExceeded(true);
+        return;
+      }
+      console.warn("Notice: Firestore analytics write skipped:", writeErr);
     }
 
-    // 3. Location detection (in background, non-blocking)
-    detectUserLocation().then(async (loc) => {
-      if (loc && loc.city) {
-        try {
-          const citiesRef = doc(db, "site_analytics", "cities_summary");
-          const cleanCity = loc.city.replace(/[.#$/[\]]/g, "_").trim();
-          const cleanCountry = loc.country.replace(/[.#$/[\]]/g, "_").trim();
-          const combinedKey = `${cleanCity}, ${cleanCountry}`;
+    // Location detection (in background, non-blocking)
+    // Only write location if this device hasn't registered location yet
+    if (!localStorage.getItem("codejr_geo_synced") && !getFirestoreQuotaExceeded()) {
+      detectUserLocation().then(async (loc) => {
+        if (loc && loc.city) {
+          try {
+            if (getFirestoreQuotaExceeded()) return;
+            const citiesRef = doc(db, "site_analytics", "cities_summary");
+            const cleanCity = loc.city.replace(/[.#$/[\]]/g, "_").trim();
+            const cleanCountry = loc.country.replace(/[.#$/[\]]/g, "_").trim();
+            const combinedKey = `${cleanCity}, ${cleanCountry}`;
 
-          await setDoc(
-            citiesRef,
-            {
-              cities: {
-                [combinedKey]: increment(1)
+            await setDoc(
+              citiesRef,
+              {
+                cities: {
+                  [combinedKey]: increment(1)
+                },
+                countries: {
+                  [cleanCountry]: increment(1)
+                },
+                updatedAt: serverTimestamp()
               },
-              countries: {
-                [cleanCountry]: increment(1)
-              },
-              updatedAt: serverTimestamp()
-            },
-            { merge: true }
-          );
-        } catch (locErr) {
-          console.warn("Notice: Location analytics update skipped:", locErr);
+              { merge: true }
+            );
+            localStorage.setItem("codejr_geo_synced", "true");
+          } catch (locErr) {
+            if (isQuotaExceededError(locErr)) {
+              setFirestoreQuotaExceeded(true);
+            }
+          }
         }
-      }
-    }).catch(() => {});
+      }).catch(() => {});
+    }
   } catch (err) {
-    console.warn("Notice: Internal analytics page visit skipped:", err);
+    if (isQuotaExceededError(err)) {
+      setFirestoreQuotaExceeded(true);
+    }
   }
 }
 
 let lastRunTrackedTime = 0;
 /**
  * Tracks when the user presses the green flag to run code.
- * Throttled to prevent spamming Firestore on fast repeated clicks.
+ * Sends event to Google Analytics (unlimited free tier),
+ * and syncs to Firestore at most once per session.
  */
 export async function trackGreenFlagRun(): Promise<void> {
   const now = Date.now();
-  if (now - lastRunTrackedTime < 3000) {
+  if (now - lastRunTrackedTime < 1000) {
     return;
   }
   lastRunTrackedTime = now;
+
+  // Always log to Google Analytics (unlimited & free)
+  if (typeof window !== "undefined" && (window as any).gtag) {
+    (window as any).gtag("event", "run_code", { event_category: "coding" });
+  }
+
+  try {
+    const cur = parseInt(sessionStorage.getItem("codejr_session_runs") || "0", 10);
+    sessionStorage.setItem("codejr_session_runs", String(cur + 1));
+  } catch {}
+
+  // Prevent repeated Firestore writes in the same session to stay strictly within free tier
+  const sessionRunSynced = "codejr_session_run_synced";
+  if (sessionStorage.getItem(sessionRunSynced) || getFirestoreQuotaExceeded()) {
+    return;
+  }
 
   try {
     const today = getTodayDateString(0);
@@ -242,15 +290,30 @@ export async function trackGreenFlagRun(): Promise<void> {
         { merge: true }
       )
     ]);
+    sessionStorage.setItem(sessionRunSynced, "true");
   } catch (err) {
-    console.warn("Notice: Internal analytics green flag tracking skipped:", err);
+    if (isQuotaExceededError(err)) {
+      setFirestoreQuotaExceeded(true);
+    }
   }
 }
 
 /**
  * Tracks when a project is saved/downloaded (.sjr file).
+ * Sends event to Google Analytics (unlimited free tier),
+ * and syncs to Firestore at most once per session.
  */
 export async function trackProjectSave(): Promise<void> {
+  // Always log to Google Analytics (unlimited & free)
+  if (typeof window !== "undefined" && (window as any).gtag) {
+    (window as any).gtag("event", "save_project", { event_category: "project" });
+  }
+
+  const sessionSaveSynced = "codejr_session_save_synced";
+  if (sessionStorage.getItem(sessionSaveSynced) || getFirestoreQuotaExceeded()) {
+    return;
+  }
+
   try {
     const today = getTodayDateString(0);
     const summaryRef = doc(db, "site_analytics", "summary");
@@ -275,8 +338,11 @@ export async function trackProjectSave(): Promise<void> {
         { merge: true }
       )
     ]);
+    sessionStorage.setItem(sessionSaveSynced, "true");
   } catch (err) {
-    console.warn("Notice: Internal analytics project save tracking skipped:", err);
+    if (isQuotaExceededError(err)) {
+      setFirestoreQuotaExceeded(true);
+    }
   }
 }
 
@@ -314,7 +380,9 @@ export async function fetchAnalyticsData(): Promise<AnalyticsDashboardData> {
       };
     }
   } catch (err) {
-    console.warn("Error fetching analytics summary:", err);
+    if (isQuotaExceededError(err)) {
+      setFirestoreQuotaExceeded(true);
+    }
   }
 
   // Fetch last 7 days
@@ -344,12 +412,17 @@ export async function fetchAnalyticsData(): Promise<AnalyticsDashboardData> {
             saves: 0
           };
         })
-        .catch(() => ({
-          date: dayStr,
-          visits: 0,
-          runs: 0,
-          saves: 0
-        }))
+        .catch((err) => {
+          if (isQuotaExceededError(err)) {
+            setFirestoreQuotaExceeded(true);
+          }
+          return {
+            date: dayStr,
+            visits: 0,
+            runs: 0,
+            saves: 0
+          };
+        })
     );
   }
 
@@ -398,7 +471,9 @@ export async function fetchAnalyticsData(): Promise<AnalyticsDashboardData> {
         .slice(0, 10);
     }
   } catch (err) {
-    console.warn("Error fetching cities analytics:", err);
+    if (isQuotaExceededError(err)) {
+      setFirestoreQuotaExceeded(true);
+    }
   }
 
   return {
@@ -406,7 +481,8 @@ export async function fetchAnalyticsData(): Promise<AnalyticsDashboardData> {
     todayStats,
     recentDays,
     topCities,
-    topCountries
+    topCountries,
+    isQuotaExceeded: getFirestoreQuotaExceeded()
   };
 }
 
@@ -433,7 +509,10 @@ export function subscribeToAnalyticsSummary(callback: (summary: AnalyticsSummary
       }
     },
     (err) => {
-      console.warn("Real-time analytics subscription error:", err);
+      if (isQuotaExceededError(err)) {
+        setFirestoreQuotaExceeded(true);
+      }
+      console.warn("Real-time analytics subscription notice:", err?.message || err);
     }
   );
 }
@@ -459,7 +538,10 @@ export function subscribeToTodayStats(callback: (todayStats: DailyStats) => void
       }
     },
     (err) => {
-      console.warn("Real-time today stats subscription error:", err);
+      if (isQuotaExceededError(err)) {
+        setFirestoreQuotaExceeded(true);
+      }
+      console.warn("Real-time today stats subscription notice:", err?.message || err);
     }
   );
 }
@@ -468,25 +550,37 @@ export function subscribeToTodayStats(callback: (todayStats: DailyStats) => void
  * Resets summary & cities counters (Admin only).
  */
 export async function resetAnalyticsData(): Promise<void> {
-  const summaryRef = doc(db, "site_analytics", "summary");
-  const citiesRef = doc(db, "site_analytics", "cities_summary");
+  if (getFirestoreQuotaExceeded()) {
+    throw new Error("QUOTA_EXCEEDED");
+  }
 
-  await Promise.all([
-    setDoc(summaryRef, {
-      totalVisits: 0,
-      uniqueVisitors: 0,
-      totalRuns: 0,
-      totalSaves: 0,
-      resetAt: serverTimestamp(),
-      updatedAt: serverTimestamp()
-    }),
-    setDoc(citiesRef, {
-      cities: {},
-      countries: {},
-      resetAt: serverTimestamp(),
-      updatedAt: serverTimestamp()
-    })
-  ]);
+  try {
+    const summaryRef = doc(db, "site_analytics", "summary");
+    const citiesRef = doc(db, "site_analytics", "cities_summary");
+
+    await Promise.all([
+      setDoc(summaryRef, {
+        totalVisits: 0,
+        uniqueVisitors: 0,
+        totalRuns: 0,
+        totalSaves: 0,
+        resetAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      }),
+      setDoc(citiesRef, {
+        cities: {},
+        countries: {},
+        resetAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      })
+    ]);
+  } catch (err) {
+    if (isQuotaExceededError(err)) {
+      setFirestoreQuotaExceeded(true);
+      throw new Error("QUOTA_EXCEEDED");
+    }
+    throw err;
+  }
 }
 
 /**
@@ -500,34 +594,46 @@ export async function calibrateAnalyticsData(params: {
   totalRuns?: number;
   totalSaves?: number;
 }): Promise<void> {
-  const summaryRef = doc(db, "site_analytics", "summary");
-  const today = getTodayDateString(0);
-  const dailyRef = doc(db, "site_analytics", `daily_${today}`);
-
-  const summaryUpdates: Record<string, any> = {
-    updatedAt: serverTimestamp()
-  };
-  if (params.totalVisits !== undefined) summaryUpdates.totalVisits = Number(params.totalVisits);
-  if (params.uniqueVisitors !== undefined) summaryUpdates.uniqueVisitors = Number(params.uniqueVisitors);
-  if (params.totalRuns !== undefined) summaryUpdates.totalRuns = Number(params.totalRuns);
-  if (params.totalSaves !== undefined) summaryUpdates.totalSaves = Number(params.totalSaves);
-
-  const promises: Promise<any>[] = [setDoc(summaryRef, summaryUpdates, { merge: true })];
-
-  if (params.todayVisits !== undefined) {
-    promises.push(
-      setDoc(
-        dailyRef,
-        {
-          date: today,
-          visits: Number(params.todayVisits),
-          updatedAt: serverTimestamp()
-        },
-        { merge: true }
-      )
-    );
+  if (getFirestoreQuotaExceeded()) {
+    throw new Error("QUOTA_EXCEEDED");
   }
 
-  await Promise.all(promises);
+  try {
+    const summaryRef = doc(db, "site_analytics", "summary");
+    const today = getTodayDateString(0);
+    const dailyRef = doc(db, "site_analytics", `daily_${today}`);
+
+    const summaryUpdates: Record<string, any> = {
+      updatedAt: serverTimestamp()
+    };
+    if (params.totalVisits !== undefined) summaryUpdates.totalVisits = Number(params.totalVisits);
+    if (params.uniqueVisitors !== undefined) summaryUpdates.uniqueVisitors = Number(params.uniqueVisitors);
+    if (params.totalRuns !== undefined) summaryUpdates.totalRuns = Number(params.totalRuns);
+    if (params.totalSaves !== undefined) summaryUpdates.totalSaves = Number(params.totalSaves);
+
+    const promises: Promise<any>[] = [setDoc(summaryRef, summaryUpdates, { merge: true })];
+
+    if (params.todayVisits !== undefined) {
+      promises.push(
+        setDoc(
+          dailyRef,
+          {
+            date: today,
+            visits: Number(params.todayVisits),
+            updatedAt: serverTimestamp()
+          },
+          { merge: true }
+        )
+      );
+    }
+
+    await Promise.all(promises);
+  } catch (err) {
+    if (isQuotaExceededError(err)) {
+      setFirestoreQuotaExceeded(true);
+      throw new Error("QUOTA_EXCEEDED");
+    }
+    throw err;
+  }
 }
 
