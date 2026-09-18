@@ -133,8 +133,12 @@ export const ContactModal: React.FC<ContactModalProps> = ({ isOpen, onClose }) =
       setContact("");
       setMessage("");
     } catch (err: any) {
-      console.error(err);
-      setErrorMessage("An error occurred while sending. Please try again.");
+      console.warn("Contact form notice:", err);
+      if (err?.message === "QUOTA_EXCEEDED") {
+        setErrorMessage("Database daily free quota has been temporarily reached. Please email us directly at moshe1.ch@gmail.com or try again tomorrow.");
+      } else {
+        setErrorMessage("An error occurred while sending. Please try again or contact us directly at moshe1.ch@gmail.com.");
+      }
     } finally {
       setSending(false);
     }
