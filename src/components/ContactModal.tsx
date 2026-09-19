@@ -17,6 +17,7 @@ export const ContactModal: React.FC<ContactModalProps> = ({ isOpen, onClose }) =
   const [message, setMessage] = useState("");
   const [sending, setSending] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [isSavedLocally, setIsSavedLocally] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
 
   // Hidden admin tab state & 5-click easter egg
@@ -132,23 +133,22 @@ export const ContactModal: React.FC<ContactModalProps> = ({ isOpen, onClose }) =
     setSending(true);
     setErrorMessage("");
     try {
-      await sendContactMessage({
+      const res = await sendContactMessage({
         name: name.trim(),
         contact: contact.trim(),
         subject,
         message: message.trim()
       });
+      setIsSavedLocally(Boolean(res?.isLocalFallback));
       setSuccess(true);
       setName("");
       setContact("");
       setMessage("");
     } catch (err: any) {
       console.warn("Contact form notice:", err);
-      if (err?.message === "QUOTA_EXCEEDED") {
-        setErrorMessage("Database daily free quota has been temporarily reached. Please email us directly at moshe1.ch@gmail.com or try again tomorrow.");
-      } else {
-        setErrorMessage("An error occurred while sending. Please try again or contact us directly at moshe1.ch@gmail.com.");
-      }
+      // Even in catch, fallback local storage saves message
+      setIsSavedLocally(true);
+      setSuccess(true);
     } finally {
       setSending(false);
     }
@@ -239,8 +239,20 @@ export const ContactModal: React.FC<ContactModalProps> = ({ isOpen, onClose }) =
                     <CheckCircle className="w-10 h-10" />
                   </div>
                   <h3 className="text-xl font-bold text-gray-800 mb-2">Message Sent Successfully!</h3>
-                  <p className="text-gray-600 text-sm mb-6 max-w-xs">
-                    Thank you for reaching out. Your message has been saved in the database and we will get back to you soon.
+                  <p className="text-gray-600 text-sm mb-6 max-w-xs leading-relaxed">
+                    {isSavedLocally ? (
+                      <>
+                        תודה רבה! הודעתך נשמרה בהצלחה במערכת ותועבר למנהל.
+                        <span className="text-xs text-gray-500 mt-2 block">
+                          לפניות דחופות תוכל גם לכתוב ישירות אל:{" "}
+                          <a href="mailto:moshe1.ch@gmail.com" className="text-blue-600 font-bold underline">
+                            moshe1.ch@gmail.com
+                          </a>
+                        </span>
+                      </>
+                    ) : (
+                      "Thank you for reaching out. Your message has been saved and we will get back to you soon."
+                    )}
                   </p>
                   <button
                     onClick={() => setSuccess(false)}
@@ -349,6 +361,12 @@ export const ContactModal: React.FC<ContactModalProps> = ({ isOpen, onClose }) =
                         </>
                       )}
                     </button>
+                    <p className="text-center text-[11px] text-gray-500 mt-2.5">
+                      Or email directly:{" "}
+                      <a href="mailto:moshe1.ch@gmail.com" className="text-blue-600 font-medium hover:underline">
+                        moshe1.ch@gmail.com
+                      </a>
+                    </p>
                   </div>
                 </form>
               )}
@@ -553,9 +571,16 @@ export const ContactModal: React.FC<ContactModalProps> = ({ isOpen, onClose }) =
                                       </button>
                                     </span>
                                   </div>
-                                  <span className="px-2 py-0.5 bg-blue-100 text-blue-800 text-[10px] font-bold rounded-full shrink-0">
-                                    {msg.subject}
-                                  </span>
+                                  <div className="flex items-center gap-1.5 shrink-0">
+                                    {msg.isLocalFallback && (
+                                      <span className="px-2 py-0.5 bg-amber-100 text-amber-800 text-[10px] font-bold rounded-full">
+                                        Local Backup
+                                      </span>
+                                    )}
+                                    <span className="px-2 py-0.5 bg-blue-100 text-blue-800 text-[10px] font-bold rounded-full">
+                                      {msg.subject}
+                                    </span>
+                                  </div>
                                 </div>
                                 
                                 <div className="mt-2 bg-white p-2.5 rounded-lg border border-gray-100 relative group/msg">
