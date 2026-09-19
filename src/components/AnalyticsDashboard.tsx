@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+ import React, { useState, useEffect } from "react";
 import { 
   BarChart3, Users, Globe, Play, Save, RefreshCw, 
   Trash2, Calendar, AlertTriangle, CheckCircle2, Clock, MapPin, Compass, Zap,
@@ -14,7 +14,7 @@ import {
   AnalyticsDashboardData,
   getTodayDateString 
 } from "../lib/analytics";
-import { getFirestoreQuotaExceeded } from "../lib/firebase";
+import { getFirestoreQuotaExceeded, getMinutesUntilQuotaReset } from "../lib/firebase";
 
 interface AnalyticsDashboardProps {
   onRefreshTrigger?: () => void;
@@ -312,10 +312,11 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ onRefres
             <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
             <div>
               <div className="font-bold text-xs sm:text-sm text-amber-950">
-                מכסת הכתיבה היומית ב-Firebase Firestore (תוכנית Spark חינמית - 20,000 פעולות) מוצתה להיום
+                מכסת הכתיבה היומית ב-Firebase Firestore (תוכנית חינמית - 20,000 פעולות) מוצתה להיום
               </div>
               <div className="text-amber-800 text-[11px] sm:text-xs mt-0.5 leading-relaxed">
-                בשל תנועת גולשים ערה באתר, מסד הנתונים הגיע למכסה היומית המקסימלית המותרת בחינם. המכסה תתאפס אוטומטית מחר בחצות (שעון ארה"ב PT). האתר ו-Google Analytics ממשיכים לפעול כרגיל.
+                בשל תנועת גולשים ערה, מסד הנתונים הגיע למכסה היומית המקסימלית בחינם. המכסה נפתחת ומתאפסת אוטומטית בשעה 10:00 בבוקר (שעון ישראל) – נותרו כ-{getMinutesUntilQuotaReset()} דקות.
+                טפסי יצירת הקשר נשמרים כעת בגיבוי מקומי מלא ואינם הולכים לאיבוד!
               </div>
             </div>
           </div>
