@@ -1,679 +1,803 @@
-import { doc, getDoc, setDoc, increment, serverTimestamp, onSnapshot } from "firebase/firestore";
-import { db, getFirestoreQuotaExceeded, setFirestoreQuotaExceeded, isQuotaExceededError } from "./firebase";
+import React, { useState, useEffect } from "react";
+import { 
+  BarChart3, Users, Globe, Play, Save, RefreshCw, 
+  Trash2, Calendar, AlertTriangle, CheckCircle2, Clock, MapPin, Compass, Zap,
+  Sliders, Plus, ExternalLink, X
+} from "lucide-react";
+import { 
+  fetchAnalyticsData, 
+  resetAnalyticsData, 
+  calibrateAnalyticsData,
+  trackPageVisit,
+  subscribeToAnalyticsSummary,
+  subscribeToTodayStats,
+  AnalyticsDashboardData,
+  getTodayDateString 
+} from "../lib/analytics";
+import { getFirestoreQuotaExceeded, getMinutesUntilQuotaReset } from "../lib/firebase";
 
-export interface AnalyticsSummary {
-  totalVisits: number;
-  uniqueVisitors: number;
-  totalRuns: number;
-  totalSaves: number;
-  lastVisitAt?: any;
-  updatedAt?: any;
-  resetAt?: any;
+interface AnalyticsDashboardProps {
+  onRefreshTrigger?: () => void;
+  onClose?: () => void;
 }
 
-export interface DailyStats {
-  date: string; // YYYY-MM-DD
-  visits: number;
-  runs: number;
-  saves: number;
-  updatedAt?: any;
-}
+export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ onRefreshTrigger, onClose }) => {
+  const [data, setData] = useState<AnalyticsDashboardData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [isResetting, setIsResetting] = useState(false);
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [showCalibrateModal, setShowCalibrateModal] = useState(false);
+  const [isCalibrating, setIsCalibrating] = useState(false);
+  const [isSimulatingVisit, setIsSimulatingVisit] = useState(false);
+  const [resetSuccessMessage, setResetSuccessMessage] = useState("");
+  const [lastRefreshedTime, setLastRefreshedTime] = useState<string>("");
+  const [locationViewTab, setLocationViewTab] = useState<"cities" | "countries">("cities");
 
-export interface GeoLocationStats {
-  city: string;
-  country: string;
-  visits: number;
-}
-
-export interface CountryStats {
-  country: string;
-  visits: number;
-}
-
-export interface AnalyticsDashboardData {
-  summary: AnalyticsSummary;
-  todayStats: DailyStats;
-  recentDays: DailyStats[];
-  topCities: GeoLocationStats[];
-  topCountries: CountryStats[];
-  isQuotaExceeded?: boolean;
-}
-
-/**
- * Returns date string YYYY-MM-DD strictly based on Asia/Jerusalem time zone.
- * If offsetDays > 0, returns the date corresponding to N days before today in Jerusalem time.
- */
-export function getTodayDateString(offsetDays = 0): string {
-  const now = new Date();
-  
-  const formatter = new Intl.DateTimeFormat("en-US", {
-    timeZone: "Asia/Jerusalem",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit"
+  const [calibrateForm, setCalibrateForm] = useState({
+    totalVisits: "",
+    todayVisits: "",
+    uniqueVisitors: "",
+    totalRuns: "",
+    totalSaves: ""
   });
 
-  const parts = formatter.formatToParts(now);
-  const yearStr = (parts.find(p => p.type === "year")?.value || "1970").replace(/\D/g, "");
-  const monthStr = (parts.find(p => p.type === "month")?.value || "01").replace(/\D/g, "");
-  const dayStr = (parts.find(p => p.type === "day")?.value || "01").replace(/\D/g, "");
-
-  const year = parseInt(yearStr, 10);
-  const month = parseInt(monthStr, 10);
-  const day = parseInt(dayStr, 10);
-
-  const d = new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
-  if (offsetDays !== 0) {
-    d.setUTCDate(d.getUTCDate() - offsetDays);
-  }
-
-  const targetYear = d.getUTCFullYear();
-  const targetMonth = String(d.getUTCMonth() + 1).padStart(2, "0");
-  const targetDay = String(d.getUTCDate()).padStart(2, "0");
-
-  return `${targetYear}-${targetMonth}-${targetDay}`;
-}
-
-/**
- * Attempts to detect visitor's approximate city & country using free, privacy-friendly IP geolocation.
- * Timeout set to 3.5 seconds; does not ask for GPS permission.
- */
-async function detectUserLocation(): Promise<{ city: string; country: string } | null> {
-  try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 3500);
-
-    // Primary: ipwho.is (HTTPS, CORS-enabled, reliable)
-    const response = await fetch("https://ipwho.is/", { signal: controller.signal });
-    clearTimeout(timeout);
-
-    if (response.ok) {
-      const data = await response.json();
-      if (data && data.success !== false && data.city) {
-        return {
-          city: String(data.city).trim(),
-          country: String(data.country || "Unknown").trim()
-        };
-      }
-    }
-  } catch {
-    // Secondary fallback: ipapi.co
-    try {
-      const controller2 = new AbortController();
-      const timeout2 = setTimeout(() => controller2.abort(), 3500);
-      const res2 = await fetch("https://ipapi.co/json/", { signal: controller2.signal });
-      clearTimeout(timeout2);
-      if (res2.ok) {
-        const d2 = await res2.json();
-        if (d2 && d2.city) {
-          return {
-            city: String(d2.city).trim(),
-            country: String(d2.country_name || "Unknown").trim()
-          };
-        }
-      }
-    } catch {
-      // ignore
-    }
-  }
-  return null;
-}
-
-// In-memory guard to prevent double-counting on React 18 StrictMode duplicate mounts
-let hasTrackedThisPageLoad = false;
-
-/**
- * Tracks a page visit / view.
- * Guarantees that every unique session is accurately counted in Firestore
- * without exceeding daily free tier write quotas.
- */
-export async function trackPageVisit(force = false): Promise<void> {
-  try {
-    if (getFirestoreQuotaExceeded()) {
-      return;
-    }
-
-    if (hasTrackedThisPageLoad && !force) {
-      return;
-    }
-    hasTrackedThisPageLoad = true;
-
-    // Throttle per day & session: One visit per device per day in Firestore
-    const today = getTodayDateString(0);
-    const todayDeviceKey = `codejr_visit_${today}`;
-    const sessionVisitKey = "codejr_visit_synced_session";
-
-    // Forward real-time pageview to Google Analytics (100% free, unlimited)
-    if (typeof window !== "undefined" && (window as any).gtag) {
-      (window as any).gtag("event", "page_view");
-    }
-
-    if (!force && (sessionStorage.getItem(sessionVisitKey) || localStorage.getItem(todayDeviceKey))) {
-      sessionStorage.setItem(sessionVisitKey, "true");
-      return;
-    }
-    let isNewUnique = false;
-    let deviceId = localStorage.getItem("codejr_device_id");
-    if (!deviceId) {
-      deviceId = "dev_" + Math.random().toString(36).substring(2, 11) + "_" + Date.now().toString(36);
-      localStorage.setItem("codejr_device_id", deviceId);
-      isNewUnique = true;
-    }
-
-    const summaryRef = doc(db, "site_analytics", "summary");
-    const dailyRef = doc(db, "site_analytics", `daily_${today}`);
-
-    const summaryPayload: Record<string, any> = {
-      totalVisits: increment(1),
-      lastVisitAt: serverTimestamp(),
-      updatedAt: serverTimestamp()
-    };
-
-    if (isNewUnique) {
-      summaryPayload.uniqueVisitors = increment(1);
-    }
-
-    try {
-      await Promise.all([
-        setDoc(summaryRef, summaryPayload, { merge: true }),
-        setDoc(
-          dailyRef,
-          {
-            date: today,
-            visits: increment(1),
-            updatedAt: serverTimestamp()
-          },
-          { merge: true }
-        )
-      ]);
-      sessionStorage.setItem(sessionVisitKey, "true");
-      localStorage.setItem(todayDeviceKey, "true");
-    } catch (writeErr) {
-      if (isQuotaExceededError(writeErr)) {
-        setFirestoreQuotaExceeded(true);
-        return;
-      }
-      console.warn("Notice: Firestore analytics write skipped:", writeErr);
-    }
-
-    // Location detection (in background, non-blocking)
-    // Only write location if this device hasn't registered location yet
-    if (!localStorage.getItem("codejr_geo_synced") && !getFirestoreQuotaExceeded()) {
-      detectUserLocation().then(async (loc) => {
-        if (loc && loc.city) {
-          try {
-            if (getFirestoreQuotaExceeded()) return;
-            const citiesRef = doc(db, "site_analytics", "cities_summary");
-            const cleanCity = loc.city.replace(/[.#$/[\]]/g, "_").trim();
-            const cleanCountry = loc.country.replace(/[.#$/[\]]/g, "_").trim();
-            const combinedKey = `${cleanCity}, ${cleanCountry}`;
-
-            await setDoc(
-              citiesRef,
-              {
-                cities: {
-                  [combinedKey]: increment(1)
-                },
-                countries: {
-                  [cleanCountry]: increment(1)
-                },
-                updatedAt: serverTimestamp()
-              },
-              { merge: true }
-            );
-            localStorage.setItem("codejr_geo_synced", "true");
-          } catch (locErr) {
-            if (isQuotaExceededError(locErr)) {
-              setFirestoreQuotaExceeded(true);
-            }
-          }
-        }
-      }).catch(() => {});
-    }
-  } catch (err) {
-    if (isQuotaExceededError(err)) {
-      setFirestoreQuotaExceeded(true);
-    }
-  }
-}
-
-let lastRunTrackedTime = 0;
-/**
- * Tracks when the user presses the green flag to run code.
- * Sends event to Google Analytics (unlimited free tier),
- * and syncs to Firestore at most once per session.
- */
-export async function trackGreenFlagRun(): Promise<void> {
-  const now = Date.now();
-  if (now - lastRunTrackedTime < 1000) {
-    return;
-  }
-  lastRunTrackedTime = now;
-
-  // Always log to Google Analytics (unlimited & free)
-  if (typeof window !== "undefined" && (window as any).gtag) {
-    (window as any).gtag("event", "run_code", { event_category: "coding" });
-  }
-
-  try {
-    const cur = parseInt(sessionStorage.getItem("codejr_session_runs") || "0", 10);
-    sessionStorage.setItem("codejr_session_runs", String(cur + 1));
-  } catch {}
-
-  // Prevent repeated Firestore writes in the same session to stay strictly within free tier
-  const sessionRunSynced = "codejr_session_run_synced";
-  if (sessionStorage.getItem(sessionRunSynced) || getFirestoreQuotaExceeded()) {
-    return;
-  }
-
-  try {
-    const today = getTodayDateString(0);
-    const summaryRef = doc(db, "site_analytics", "summary");
-    const dailyRef = doc(db, "site_analytics", `daily_${today}`);
-
-    await Promise.all([
-      setDoc(
-        summaryRef,
-        {
-          totalRuns: increment(1),
-          updatedAt: serverTimestamp()
-        },
-        { merge: true }
-      ),
-      setDoc(
-        dailyRef,
-        {
-          date: today,
-          runs: increment(1),
-          updatedAt: serverTimestamp()
-        },
-        { merge: true }
-      )
-    ]);
-    sessionStorage.setItem(sessionRunSynced, "true");
-  } catch (err) {
-    if (isQuotaExceededError(err)) {
-      setFirestoreQuotaExceeded(true);
-    }
-  }
-}
-
-/**
- * Tracks when a project is saved/downloaded (.sjr file).
- * Sends event to Google Analytics (unlimited free tier),
- * and syncs to Firestore at most once per session.
- */
-export async function trackProjectSave(): Promise<void> {
-  // Always log to Google Analytics (unlimited & free)
-  if (typeof window !== "undefined" && (window as any).gtag) {
-    (window as any).gtag("event", "save_project", { event_category: "project" });
-  }
-
-  const sessionSaveSynced = "codejr_session_save_synced";
-  if (sessionStorage.getItem(sessionSaveSynced) || getFirestoreQuotaExceeded()) {
-    return;
-  }
-
-  try {
-    const today = getTodayDateString(0);
-    const summaryRef = doc(db, "site_analytics", "summary");
-    const dailyRef = doc(db, "site_analytics", `daily_${today}`);
-
-    await Promise.all([
-      setDoc(
-        summaryRef,
-        {
-          totalSaves: increment(1),
-          updatedAt: serverTimestamp()
-        },
-        { merge: true }
-      ),
-      setDoc(
-        dailyRef,
-        {
-          date: today,
-          saves: increment(1),
-          updatedAt: serverTimestamp()
-        },
-        { merge: true }
-      )
-    ]);
-    sessionStorage.setItem(sessionSaveSynced, "true");
-  } catch (err) {
-    if (isQuotaExceededError(err)) {
-      setFirestoreQuotaExceeded(true);
-    }
-  }
-}
-
-/**
- * Fetches the complete analytics dataset for the admin dashboard:
- * - Summary totals
- * - Today's metrics
- * - Breakdown of the last 7 days
- * - Top Cities & Top Countries
- */
-export async function fetchAnalyticsData(): Promise<AnalyticsDashboardData> {
-  const defaultSummary: AnalyticsSummary = {
-    totalVisits: 0,
-    uniqueVisitors: 0,
-    totalRuns: 0,
-    totalSaves: 0
-  };
-
-  const todayStr = getTodayDateString(0);
-  const CACHE_KEY = "codejr_analytics_dashboard_cache";
-
-  // If quota is exceeded, serve from local cache immediately without making network calls
-  if (getFirestoreQuotaExceeded()) {
-    try {
-      const cached = localStorage.getItem(CACHE_KEY);
-      if (cached) {
-        const parsed = JSON.parse(cached);
-        return {
-          ...parsed,
-          isQuotaExceeded: true
-        };
-      }
-    } catch {
-      // ignore
-    }
-    return {
-      summary: defaultSummary,
-      todayStats: { date: todayStr, visits: 0, runs: 0, saves: 0 },
-      recentDays: [],
-      topCities: [],
-      topCountries: [],
-      isQuotaExceeded: true
-    };
-  }
-
-  let summary: AnalyticsSummary = { ...defaultSummary };
-
-  try {
-    const summaryRef = doc(db, "site_analytics", "summary");
-    const summarySnap = await getDoc(summaryRef);
-    if (summarySnap.exists()) {
-      const data = summarySnap.data();
-      summary = {
-        totalVisits: Number(data.totalVisits || 0),
-        uniqueVisitors: Number(data.uniqueVisitors || 0),
-        totalRuns: Number(data.totalRuns || 0),
-        totalSaves: Number(data.totalSaves || 0),
-        lastVisitAt: data.lastVisitAt,
-        updatedAt: data.updatedAt,
-        resetAt: data.resetAt
-      };
-    }
-  } catch (err) {
-    if (isQuotaExceededError(err)) {
-      setFirestoreQuotaExceeded(true);
-    }
-  }
-
-  // Fetch last 7 days
-  const recentDays: DailyStats[] = [];
-  const dayPromises = [];
-
-  for (let i = 0; i < 7; i++) {
-    const dayStr = getTodayDateString(i);
-    const dayRef = doc(db, "site_analytics", `daily_${dayStr}`);
-    dayPromises.push(
-      getDoc(dayRef)
-        .then((snap) => {
-          if (snap.exists()) {
-            const data = snap.data();
-            return {
-              date: dayStr,
-              visits: Number(data.visits || 0),
-              runs: Number(data.runs || 0),
-              saves: Number(data.saves || 0),
-              updatedAt: data.updatedAt
-            };
-          }
-          return {
-            date: dayStr,
-            visits: 0,
-            runs: 0,
-            saves: 0
-          };
-        })
-        .catch((err) => {
-          if (isQuotaExceededError(err)) {
-            setFirestoreQuotaExceeded(true);
-          }
-          return {
-            date: dayStr,
-            visits: 0,
-            runs: 0,
-            saves: 0
-          };
-        })
+  const updateTimestamp = () => {
+    setLastRefreshedTime(
+      new Date().toLocaleTimeString("he-IL", {
+        timeZone: "Asia/Jerusalem",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit"
+      }) + " (שעון ירושלים)"
     );
-  }
-
-  const daysResults = await Promise.all(dayPromises);
-  recentDays.push(...daysResults);
-
-  const todayStats = recentDays.find((d) => d.date === todayStr) || {
-    date: todayStr,
-    visits: 0,
-    runs: 0,
-    saves: 0
   };
 
-  // Fetch cities & countries
-  let topCities: GeoLocationStats[] = [];
-  let topCountries: CountryStats[] = [];
-
-  try {
-    const citiesRef = doc(db, "site_analytics", "cities_summary");
-    const citiesSnap = await getDoc(citiesRef);
-    if (citiesSnap.exists()) {
-      const data = citiesSnap.data();
-      const rawCities = (data.cities || {}) as Record<string, number>;
-      const rawCountries = (data.countries || {}) as Record<string, number>;
-
-      topCities = Object.entries(rawCities)
-        .map(([key, count]) => {
-          const parts = key.split(", ");
-          return {
-            city: parts[0] || key,
-            country: parts[1] || "",
-            visits: Number(count || 0)
-          };
-        })
-        .filter((c) => c.visits > 0)
-        .sort((a, b) => b.visits - a.visits)
-        .slice(0, 15);
-
-      topCountries = Object.entries(rawCountries)
-        .map(([country, count]) => ({
-          country,
-          visits: Number(count || 0)
-        }))
-        .filter((c) => c.visits > 0)
-        .sort((a, b) => b.visits - a.visits)
-        .slice(0, 10);
+  const loadData = async () => {
+    setLoading(true);
+    try {
+      const result = await fetchAnalyticsData();
+      setData(result);
+      updateTimestamp();
+    } catch (err) {
+      console.error("Failed to load analytics data:", err);
+    } finally {
+      setLoading(false);
     }
-  } catch (err) {
-    if (isQuotaExceededError(err)) {
-      setFirestoreQuotaExceeded(true);
-    }
-  }
-
-  const result: AnalyticsDashboardData = {
-    summary,
-    todayStats,
-    recentDays,
-    topCities,
-    topCountries,
-    isQuotaExceeded: getFirestoreQuotaExceeded()
   };
 
-  try {
-    localStorage.setItem(CACHE_KEY, JSON.stringify(result));
-  } catch {
-    // ignore
-  }
+  useEffect(() => {
+    // Initial fetch
+    loadData();
 
-  return result;
-}
+    // Set up real-time listener for summary changes
+    const unsubSummary = subscribeToAnalyticsSummary((liveSummary) => {
+      setData((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          summary: liveSummary
+        };
+      });
+      updateTimestamp();
+    });
 
-/**
- * Subscribes to real-time summary changes in Firestore.
- * Updates immediately whenever a visit, run, or save occurs.
- */
-export function subscribeToAnalyticsSummary(callback: (summary: AnalyticsSummary) => void) {
-  if (getFirestoreQuotaExceeded()) {
-    return () => {};
-  }
-  const summaryRef = doc(db, "site_analytics", "summary");
-  return onSnapshot(
-    summaryRef,
-    (snap) => {
-      if (snap.exists()) {
-        const data = snap.data();
-        callback({
-          totalVisits: Number(data.totalVisits || 0),
-          uniqueVisitors: Number(data.uniqueVisitors || 0),
-          totalRuns: Number(data.totalRuns || 0),
-          totalSaves: Number(data.totalSaves || 0),
-          lastVisitAt: data.lastVisitAt,
-          updatedAt: data.updatedAt,
-          resetAt: data.resetAt
-        });
-      }
-    },
-    (err) => {
-      if (isQuotaExceededError(err)) {
-        setFirestoreQuotaExceeded(true);
-      }
-      console.warn("Real-time analytics subscription notice:", err?.message || err);
-    }
-  );
-}
+    // Set up real-time listener for today's daily stats
+    const unsubToday = subscribeToTodayStats((liveTodayStats) => {
+      setData((prev) => {
+        if (!prev) return prev;
+        const todayStr = getTodayDateString(0);
+        const updatedRecentDays = prev.recentDays.map((d) =>
+          d.date === todayStr ? liveTodayStats : d
+        );
+        return {
+          ...prev,
+          todayStats: liveTodayStats,
+          recentDays: updatedRecentDays
+        };
+      });
+      updateTimestamp();
+    });
 
-/**
- * Subscribes to real-time changes for today's daily stats.
- */
-export function subscribeToTodayStats(callback: (todayStats: DailyStats) => void) {
-  if (getFirestoreQuotaExceeded()) {
-    return () => {};
-  }
-  const todayStr = getTodayDateString(0);
-  const todayRef = doc(db, "site_analytics", `daily_${todayStr}`);
-  return onSnapshot(
-    todayRef,
-    (snap) => {
-      if (snap.exists()) {
-        const data = snap.data();
-        callback({
-          date: todayStr,
-          visits: Number(data.visits || 0),
-          runs: Number(data.runs || 0),
-          saves: Number(data.saves || 0),
-          updatedAt: data.updatedAt
-        });
-      }
-    },
-    (err) => {
-      if (isQuotaExceededError(err)) {
-        setFirestoreQuotaExceeded(true);
-      }
-      console.warn("Real-time today stats subscription notice:", err?.message || err);
-    }
-  );
-}
-
-/**
- * Resets summary & cities counters (Admin only).
- */
-export async function resetAnalyticsData(): Promise<void> {
-  if (getFirestoreQuotaExceeded()) {
-    throw new Error("QUOTA_EXCEEDED");
-  }
-
-  try {
-    const summaryRef = doc(db, "site_analytics", "summary");
-    const citiesRef = doc(db, "site_analytics", "cities_summary");
-
-    await Promise.all([
-      setDoc(summaryRef, {
-        totalVisits: 0,
-        uniqueVisitors: 0,
-        totalRuns: 0,
-        totalSaves: 0,
-        resetAt: serverTimestamp(),
-        updatedAt: serverTimestamp()
-      }),
-      setDoc(citiesRef, {
-        cities: {},
-        countries: {},
-        resetAt: serverTimestamp(),
-        updatedAt: serverTimestamp()
-      })
-    ]);
-  } catch (err) {
-    if (isQuotaExceededError(err)) {
-      setFirestoreQuotaExceeded(true);
-      throw new Error("QUOTA_EXCEEDED");
-    }
-    throw err;
-  }
-}
-
-/**
- * Calibrates or sets custom base analytics counts (Admin only),
- * allowing alignment with existing Google Analytics baseline numbers.
- */
-export async function calibrateAnalyticsData(params: {
-  totalVisits?: number;
-  uniqueVisitors?: number;
-  todayVisits?: number;
-  totalRuns?: number;
-  totalSaves?: number;
-}): Promise<void> {
-  if (getFirestoreQuotaExceeded()) {
-    throw new Error("QUOTA_EXCEEDED");
-  }
-
-  try {
-    const summaryRef = doc(db, "site_analytics", "summary");
-    const today = getTodayDateString(0);
-    const dailyRef = doc(db, "site_analytics", `daily_${today}`);
-
-    const summaryUpdates: Record<string, any> = {
-      updatedAt: serverTimestamp()
+    return () => {
+      unsubSummary();
+      unsubToday();
     };
-    if (params.totalVisits !== undefined) summaryUpdates.totalVisits = Number(params.totalVisits);
-    if (params.uniqueVisitors !== undefined) summaryUpdates.uniqueVisitors = Number(params.uniqueVisitors);
-    if (params.totalRuns !== undefined) summaryUpdates.totalRuns = Number(params.totalRuns);
-    if (params.totalSaves !== undefined) summaryUpdates.totalSaves = Number(params.totalSaves);
+  }, []);
 
-    const promises: Promise<any>[] = [setDoc(summaryRef, summaryUpdates, { merge: true })];
-
-    if (params.todayVisits !== undefined) {
-      promises.push(
-        setDoc(
-          dailyRef,
-          {
-            date: today,
-            visits: Number(params.todayVisits),
-            updatedAt: serverTimestamp()
-          },
-          { merge: true }
-        )
-      );
+  const handleReset = async () => {
+    if (getFirestoreQuotaExceeded()) {
+      setShowResetConfirm(false);
+      setResetSuccessMessage("Notice: Firestore daily write quota limit reached. Reset will be available after quota reset tomorrow.");
+      setTimeout(() => setResetSuccessMessage(""), 5000);
+      return;
     }
-
-    await Promise.all(promises);
-  } catch (err) {
-    if (isQuotaExceededError(err)) {
-      setFirestoreQuotaExceeded(true);
-      throw new Error("QUOTA_EXCEEDED");
+    setIsResetting(true);
+    try {
+      await resetAnalyticsData();
+      setShowResetConfirm(false);
+      setResetSuccessMessage("Counters and location statistics have been reset successfully.");
+      setTimeout(() => setResetSuccessMessage(""), 4000);
+      await loadData();
+    } catch (err: any) {
+      if (err?.message === "QUOTA_EXCEEDED") {
+        setResetSuccessMessage("Notice: Firestore daily write quota limit reached.");
+      } else {
+        console.error("Failed to reset analytics:", err);
+      }
+    } finally {
+      setIsResetting(false);
     }
-    throw err;
-  }
-}
+  };
 
+  const openCalibrate = () => {
+    if (data) {
+      setCalibrateForm({
+        totalVisits: String(data.summary.totalVisits ?? 0),
+        todayVisits: String(data.todayStats.visits ?? 0),
+        uniqueVisitors: String(data.summary.uniqueVisitors ?? 0),
+        totalRuns: String(data.summary.totalRuns ?? 0),
+        totalSaves: String(data.summary.totalSaves ?? 0)
+      });
+    }
+    setShowCalibrateModal(true);
+  };
+
+  const handleSaveCalibration = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (getFirestoreQuotaExceeded()) {
+      setShowCalibrateModal(false);
+      setResetSuccessMessage("Notice: Firestore daily write quota limit reached. Calibration will be available after quota reset tomorrow.");
+      setTimeout(() => setResetSuccessMessage(""), 5000);
+      return;
+    }
+    setIsCalibrating(true);
+    try {
+      await calibrateAnalyticsData({
+        totalVisits: calibrateForm.totalVisits !== "" ? Number(calibrateForm.totalVisits) : undefined,
+        todayVisits: calibrateForm.todayVisits !== "" ? Number(calibrateForm.todayVisits) : undefined,
+        uniqueVisitors: calibrateForm.uniqueVisitors !== "" ? Number(calibrateForm.uniqueVisitors) : undefined,
+        totalRuns: calibrateForm.totalRuns !== "" ? Number(calibrateForm.totalRuns) : undefined,
+        totalSaves: calibrateForm.totalSaves !== "" ? Number(calibrateForm.totalSaves) : undefined
+      });
+      setShowCalibrateModal(false);
+      setResetSuccessMessage("Counters calibrated successfully with your custom baseline!");
+      setTimeout(() => setResetSuccessMessage(""), 4000);
+      await loadData();
+    } catch (err: any) {
+      if (err?.message === "QUOTA_EXCEEDED") {
+        setResetSuccessMessage("Notice: Firestore daily write quota limit reached.");
+      } else {
+        console.error("Failed to calibrate analytics:", err);
+      }
+    } finally {
+      setIsCalibrating(false);
+    }
+  };
+
+  const handleTestVisit = async () => {
+    if (getFirestoreQuotaExceeded()) {
+      setResetSuccessMessage("Notice: Firestore daily write quota limit reached (20,000 writes/day free tier). Visits cannot be added until quota resets tomorrow.");
+      setTimeout(() => setResetSuccessMessage(""), 5000);
+      return;
+    }
+    setIsSimulatingVisit(true);
+    try {
+      await trackPageVisit(true);
+      setResetSuccessMessage("+1 Visit successfully registered in real-time!");
+      setTimeout(() => setResetSuccessMessage(""), 3000);
+    } catch (err) {
+      console.error("Test visit failed:", err);
+    } finally {
+      setTimeout(() => setIsSimulatingVisit(false), 500);
+    }
+  };
+
+  const todayStr = getTodayDateString(0);
+  const yesterdayStr = getTodayDateString(1);
+
+  const formatDayLabel = (dateStr: string) => {
+    if (dateStr === todayStr) return "היום (Today)";
+    if (dateStr === yesterdayStr) return "אתמול (Yesterday)";
+    
+    try {
+      const parts = dateStr.split("-");
+      if (parts.length === 3) {
+        return `${parts[2]}/${parts[1]}`;
+      }
+    } catch {
+      // ignore
+    }
+    return dateStr;
+  };
+
+  const maxVisitsInRecentDays = Math.max(
+    ...(data?.recentDays.map((d) => d.visits) || [1]),
+    1
+  );
+
+  const maxCityVisits = Math.max(
+    ...(data?.topCities.map((c) => c.visits) || [1]),
+    1
+  );
+
+  const maxCountryVisits = Math.max(
+    ...(data?.topCountries.map((c) => c.visits) || [1]),
+    1
+  );
+
+  return (
+    <div className="space-y-4 text-gray-800 dir-ltr select-text">
+      {/* Top action bar */}
+      <div className="flex items-center justify-between pb-2 border-b border-gray-100 flex-wrap gap-2">
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center font-bold">
+            <BarChart3 className="w-4 h-4" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h3 className="text-sm font-bold text-gray-900 leading-tight">Site Analytics & Engagement</h3>
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 animate-pulse">
+                <Zap className="w-2.5 h-2.5" />
+                <span>Live Real-Time</span>
+              </span>
+            </div>
+            <p className="text-[11px] text-gray-500 flex items-center gap-1 mt-0.5">
+              <Clock className="w-3 h-3 text-gray-400" />
+              <span>Last updated: {lastRefreshedTime || "Loading..."}</span>
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <button
+            type="button"
+            onClick={handleTestVisit}
+            disabled={isSimulatingVisit}
+            className="px-2.5 py-1.5 text-xs bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold rounded-lg flex items-center gap-1 transition-colors cursor-pointer"
+            title="Simulate a real-time visit (+1)"
+          >
+            <Plus className={`w-3.5 h-3.5 ${isSimulatingVisit ? "animate-spin" : ""}`} />
+            <span>Test Visit (+1)</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={openCalibrate}
+            className="px-2.5 py-1.5 text-xs bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-medium rounded-lg flex items-center gap-1 transition-colors cursor-pointer"
+            title="Calibrate base numbers with Google Analytics"
+          >
+            <Sliders className="w-3.5 h-3.5" />
+            <span>Calibrate</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={loadData}
+            disabled={loading}
+            className="px-2.5 py-1.5 text-xs bg-gray-100 hover:bg-gray-200 active:bg-gray-300 text-gray-700 font-medium rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50"
+            title="Refresh statistics"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin text-blue-600" : ""}`} />
+            <span>Refresh</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setShowResetConfirm(true)}
+            className="px-2.5 py-1.5 text-xs bg-red-50 hover:bg-red-100 text-red-600 font-medium rounded-lg flex items-center gap-1 transition-colors cursor-pointer"
+            title="Reset counters"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+            <span>Reset</span>
+          </button>
+
+          {onClose && (
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-3 py-1.5 text-xs bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold rounded-lg flex items-center gap-1 transition-colors cursor-pointer border border-gray-300 shadow-xs"
+              title="Close (Esc)"
+            >
+              <X className="w-3.5 h-3.5 text-gray-700" />
+              <span>Close</span>
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Quota Exceeded Informational Banner */}
+      {(data?.isQuotaExceeded || getFirestoreQuotaExceeded()) && (
+        <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-xl text-amber-950 text-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 animate-in fade-in">
+          <div className="flex items-start gap-2.5">
+            <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+            <div>
+              <div className="font-bold text-xs sm:text-sm text-amber-950">
+                מכסת הכתיבה היומית ב-Firebase Firestore (תוכנית חינמית - 20,000 פעולות) מוצתה להיום
+              </div>
+              <div className="text-amber-800 text-[11px] sm:text-xs mt-0.5 leading-relaxed">
+                בשל תנועת גולשים ערה, מסד הנתונים הגיע למכסה היומית המקסימלית בחינם. המכסה נפתחת ומתאפסת אוטומטית בשעה 10:00 בבוקר (שעון ישראל) – נותרו כ-{getMinutesUntilQuotaReset()} דקות.
+                טפסי יצירת הקשר נשמרים כעת בגיבוי מקומי מלא ואינם הולכים לאיבוד!
+              </div>
+            </div>
+          </div>
+          <a
+            href="https://console.firebase.google.com/project/ai-studio-remixcodejrkids/firestore/databases/ai-studio-remixcodejrkids-51cd500b-267d-4166-a416-e7d89f28941d/data?openUpgradeDialog=true"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="shrink-0 px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-lg text-xs flex items-center gap-1.5 transition-colors shadow-sm cursor-pointer"
+          >
+            <span>ניהול מכסות / שדרוג</span>
+            <ExternalLink className="w-3.5 h-3.5" />
+          </a>
+        </div>
+      )}
+
+      {/* Success Notification */}
+      {resetSuccessMessage && (
+        <div className="p-2.5 bg-green-50 border border-green-200 text-green-700 text-xs rounded-xl flex items-center gap-2 animate-in fade-in">
+          <CheckCircle2 className="w-4 h-4 text-green-600 shrink-0" />
+          <span>{resetSuccessMessage}</span>
+        </div>
+      )}
+
+      {/* Calibrate / Base Number Setting Modal */}
+      {showCalibrateModal && (
+        <form onSubmit={handleSaveCalibration} className="p-3.5 bg-indigo-50/80 border border-indigo-200 rounded-xl space-y-3 animate-in fade-in">
+          <div className="flex items-start gap-2">
+            <Sliders className="w-4 h-4 text-indigo-600 shrink-0 mt-0.5" />
+            <div className="text-xs text-indigo-950 flex-1">
+              <p className="font-bold text-sm">Calibrate Internal Counters</p>
+              <p className="text-[11px] text-indigo-800 mt-0.5">
+                Set custom starting baselines to match your live Google Analytics (GA4) traffic or your desired starting baseline.
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 pt-1">
+            <div>
+              <label className="block text-[11px] font-bold text-gray-700 mb-1">Total Visits</label>
+              <input
+                type="number"
+                min="0"
+                value={calibrateForm.totalVisits}
+                onChange={(e) => setCalibrateForm({ ...calibrateForm, totalVisits: e.target.value })}
+                className="w-full px-2.5 py-1.5 text-xs bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                placeholder="e.g. 184"
+              />
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-bold text-gray-700 mb-1">Today's Visits</label>
+              <input
+                type="number"
+                min="0"
+                value={calibrateForm.todayVisits}
+                onChange={(e) => setCalibrateForm({ ...calibrateForm, todayVisits: e.target.value })}
+                className="w-full px-2.5 py-1.5 text-xs bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                placeholder="e.g. 184"
+              />
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-bold text-gray-700 mb-1">Unique Devices</label>
+              <input
+                type="number"
+                min="0"
+                value={calibrateForm.uniqueVisitors}
+                onChange={(e) => setCalibrateForm({ ...calibrateForm, uniqueVisitors: e.target.value })}
+                className="w-full px-2.5 py-1.5 text-xs bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                placeholder="e.g. 150"
+              />
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-bold text-gray-700 mb-1">Code Runs (Flag)</label>
+              <input
+                type="number"
+                min="0"
+                value={calibrateForm.totalRuns}
+                onChange={(e) => setCalibrateForm({ ...calibrateForm, totalRuns: e.target.value })}
+                className="w-full px-2.5 py-1.5 text-xs bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                placeholder="e.g. 50"
+              />
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-bold text-gray-700 mb-1">Projects Saved</label>
+              <input
+                type="number"
+                min="0"
+                value={calibrateForm.totalSaves}
+                onChange={(e) => setCalibrateForm({ ...calibrateForm, totalSaves: e.target.value })}
+                className="w-full px-2.5 py-1.5 text-xs bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                placeholder="e.g. 20"
+              />
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-2 pt-1 border-t border-indigo-100">
+            <button
+              type="button"
+              onClick={() => setShowCalibrateModal(false)}
+              disabled={isCalibrating}
+              className="px-3 py-1.5 text-xs text-gray-600 hover:bg-gray-100 bg-white border border-gray-200 rounded-lg cursor-pointer"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={isCalibrating}
+              className="px-3.5 py-1.5 text-xs bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg cursor-pointer flex items-center gap-1 shadow-xs"
+            >
+              {isCalibrating ? <RefreshCw className="w-3 h-3 animate-spin" /> : null}
+              <span>Save Calibration</span>
+            </button>
+          </div>
+        </form>
+      )}
+
+      {/* Reset Confirmation Dialog */}
+      {showResetConfirm && (
+        <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-xl space-y-2 animate-in fade-in">
+          <div className="flex items-start gap-2">
+            <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+            <div className="text-xs text-amber-900">
+              <p className="font-bold">Reset Analytics & Location Counters?</p>
+              <p className="text-[11px] text-amber-800 mt-0.5">
+                Are you sure you want to reset all site visits, code runs, and geographic city statistics to 0? This action cannot be reversed.
+              </p>
+            </div>
+          </div>
+          <div className="flex justify-end gap-2 pt-1">
+            <button
+              type="button"
+              onClick={() => setShowResetConfirm(false)}
+              disabled={isResetting}
+              className="px-3 py-1 text-xs text-gray-600 hover:bg-gray-100 bg-white border border-gray-200 rounded-lg cursor-pointer"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleReset}
+              disabled={isResetting}
+              className="px-3 py-1 text-xs bg-red-600 hover:bg-red-700 text-white font-bold rounded-lg cursor-pointer flex items-center gap-1 shadow-xs"
+            >
+              {isResetting ? <RefreshCw className="w-3 h-3 animate-spin" /> : null}
+              <span>Confirm Reset</span>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Loading Skeleton */}
+      {loading && !data && (
+        <div className="py-12 flex flex-col items-center justify-center gap-3 text-gray-400">
+          <RefreshCw className="w-7 h-7 animate-spin text-blue-600" />
+          <p className="text-xs font-medium">Fetching real-time stats from Firestore...</p>
+        </div>
+      )}
+
+      {/* Main Stats Cards Grid */}
+      {data && (
+        <div className="space-y-4">
+          {/* Google Analytics Live Integration Card */}
+          <div className="bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-blue-500/10 border border-amber-200/90 rounded-xl p-3 text-xs text-amber-950 flex items-start gap-3">
+            <div className="w-8 h-8 rounded-lg bg-amber-500/20 text-amber-800 flex items-center justify-center shrink-0 mt-0.5">
+              <Globe className="w-4 h-4" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span className="font-bold text-gray-900">Google Analytics (GA4)</span>
+                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-100 text-amber-900 font-mono text-[10px] font-bold border border-amber-300/60">
+                    G-12VWRF72CD
+                  </span>
+                  <span className="text-[11px] text-emerald-700 font-semibold bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200 flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                    Tracking Active
+                  </span>
+                </div>
+                <a
+                  href="https://analytics.google.com/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[11px] font-bold text-blue-700 hover:text-blue-900 flex items-center gap-1 hover:underline shrink-0"
+                >
+                  <span>Google Analytics Realtime</span>
+                  <ExternalLink className="w-3 h-3" />
+                </a>
+              </div>
+              <p className="text-[11px] text-gray-700 mt-1 leading-relaxed">
+                Google Analytics measures live global users across all domains (as shown in your screenshot with 184 active users). Your in-app Firestore tracker is now synced and deployed. Use <strong>"Calibrate"</strong> anytime to set baseline numbers matching your GA4 analytics, or click <strong>"Test Visit (+1)"</strong> to watch the live counter tick!
+              </p>
+            </div>
+          </div>
+
+          {/* Key Metrics Cards */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+            {/* Total Visits */}
+            <div className="bg-gradient-to-br from-blue-50 to-indigo-50/50 p-3 rounded-xl border border-blue-100/80 relative overflow-hidden">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-[11px] font-semibold text-blue-700">Total Visits</span>
+                <Globe className="w-4 h-4 text-blue-500" />
+              </div>
+              <div className="text-2xl font-black text-gray-900 tracking-tight">
+                {data.summary.totalVisits.toLocaleString()}
+              </div>
+              <div className="text-[10px] text-blue-600/80 mt-0.5 flex items-center gap-1">
+                <span>All-time visits & reloads</span>
+              </div>
+            </div>
+
+            {/* Today's Visits */}
+            <div className="bg-gradient-to-br from-emerald-50 to-teal-50/50 p-3 rounded-xl border border-emerald-100/80 relative overflow-hidden">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-[11px] font-semibold text-emerald-700">Today's Visits</span>
+                <span className="px-1.5 py-0.2 bg-emerald-200 text-emerald-800 text-[9px] font-bold rounded">Today</span>
+              </div>
+              <div className="text-2xl font-black text-gray-900 tracking-tight">
+                {data.todayStats.visits.toLocaleString()}
+              </div>
+              <div className="text-[10px] text-emerald-600/80 mt-0.5">
+                <span>Visits today (שעון ירושלים)</span>
+              </div>
+            </div>
+
+            {/* Unique Devices */}
+            <div className="bg-gradient-to-br from-purple-50 to-pink-50/50 p-3 rounded-xl border border-purple-100/80 relative overflow-hidden">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-[11px] font-semibold text-purple-700">Unique Devices</span>
+                <Users className="w-4 h-4 text-purple-500" />
+              </div>
+              <div className="text-2xl font-black text-gray-900 tracking-tight">
+                {data.summary.uniqueVisitors.toLocaleString()}
+              </div>
+              <div className="text-[10px] text-purple-600/80 mt-0.5">
+                <span>Distinct browsers</span>
+              </div>
+            </div>
+
+            {/* Green Flag Runs */}
+            <div className="bg-gradient-to-br from-amber-50 to-orange-50/50 p-3 rounded-xl border border-amber-100/80 relative overflow-hidden">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-[11px] font-semibold text-amber-700">Code Runs (Flag)</span>
+                <Play className="w-4 h-4 text-amber-500 fill-amber-500" />
+              </div>
+              <div className="text-2xl font-black text-gray-900 tracking-tight">
+                {data.summary.totalRuns.toLocaleString()}
+              </div>
+              <div className="text-[10px] text-amber-600/80 mt-0.5">
+                <span>{data.todayStats.runs} executed today</span>
+              </div>
+            </div>
+
+            {/* Projects Saved */}
+            <div className="bg-gradient-to-br from-rose-50 to-orange-50/50 p-3 rounded-xl border border-rose-100/80 relative overflow-hidden col-span-2 sm:col-span-2">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-[11px] font-semibold text-rose-700">Projects Saved (.sjr)</span>
+                <Save className="w-4 h-4 text-rose-500" />
+              </div>
+              <div className="text-2xl font-black text-gray-900 tracking-tight">
+                {data.summary.totalSaves.toLocaleString()}
+              </div>
+              <div className="text-[10px] text-rose-600/80 mt-0.5">
+                <span>{data.todayStats.saves} saved today</span>
+              </div>
+            </div>
+          </div>
+
+          {/* User Geographic Locations (Cities & Countries) */}
+          <div className="bg-white rounded-xl p-3.5 border border-gray-200 shadow-xs">
+            <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+              <div className="flex items-center gap-1.5">
+                <div className="w-6 h-6 rounded-md bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                  <MapPin className="w-3.5 h-3.5" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold text-gray-800">User Geographic Origins</h4>
+                  <p className="text-[10px] text-gray-400">Anonymous IP-based city detection</p>
+                </div>
+              </div>
+
+              {/* View Switcher: Cities vs Countries */}
+              <div className="flex items-center p-0.5 bg-gray-100 rounded-lg text-[11px]">
+                <button
+                  type="button"
+                  onClick={() => setLocationViewTab("cities")}
+                  className={`px-2.5 py-1 font-medium rounded-md transition-all cursor-pointer ${
+                    locationViewTab === "cities"
+                      ? "bg-white text-emerald-700 shadow-xs font-bold"
+                      : "text-gray-600 hover:text-gray-900"
+                  }`}
+                >
+                  Top Cities ({data.topCities.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setLocationViewTab("countries")}
+                  className={`px-2.5 py-1 font-medium rounded-md transition-all cursor-pointer ${
+                    locationViewTab === "countries"
+                      ? "bg-white text-emerald-700 shadow-xs font-bold"
+                      : "text-gray-600 hover:text-gray-900"
+                  }`}
+                >
+                  Countries ({data.topCountries.length})
+                </button>
+              </div>
+            </div>
+
+            {/* Cities View */}
+            {locationViewTab === "cities" && (
+              <div>
+                {data.topCities.length === 0 ? (
+                  <div className="py-6 text-center text-gray-400 text-xs bg-gray-50/50 rounded-lg border border-dashed border-gray-200">
+                    <Compass className="w-6 h-6 mx-auto mb-1.5 opacity-40 text-emerald-500" />
+                    <span>No city records yet. New visitor visits will register their city here.</span>
+                  </div>
+                ) : (
+                  <div className="space-y-1.5 max-h-56 overflow-y-auto pr-1">
+                    {data.topCities.map((item, index) => {
+                      const percentage = Math.min(100, Math.round((item.visits / maxCityVisits) * 100));
+                      return (
+                        <div
+                          key={`${item.city}-${item.country}-${index}`}
+                          className="p-2 rounded-lg bg-gray-50/80 hover:bg-gray-100/80 border border-gray-100 flex items-center justify-between gap-3 text-xs transition-colors"
+                        >
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className="w-5 text-[10px] font-bold text-gray-400 shrink-0 text-center">
+                              #{index + 1}
+                            </span>
+                            <div className="truncate">
+                              <span className="font-bold text-gray-900">{item.city}</span>
+                              {item.country && (
+                                <span className="text-[10px] text-gray-400 ml-1.5 font-normal">
+                                  ({item.country})
+                                </span>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-3 shrink-0">
+                            {/* Proportional visual bar */}
+                            <div className="w-20 sm:w-28 h-2 bg-gray-200/80 rounded-full overflow-hidden hidden sm:block">
+                              <div
+                                className="h-full bg-emerald-500 rounded-full"
+                                style={{ width: `${Math.max(percentage, 8)}%` }}
+                              />
+                            </div>
+                            <span className="font-bold text-emerald-700 text-xs min-w-12 text-right">
+                              {item.visits} <span className="text-[10px] font-normal text-gray-400">visits</span>
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Countries View */}
+            {locationViewTab === "countries" && (
+              <div>
+                {data.topCountries.length === 0 ? (
+                  <div className="py-6 text-center text-gray-400 text-xs bg-gray-50/50 rounded-lg border border-dashed border-gray-200">
+                    <Globe className="w-6 h-6 mx-auto mb-1.5 opacity-40 text-blue-500" />
+                    <span>No country records yet.</span>
+                  </div>
+                ) : (
+                  <div className="space-y-1.5 max-h-56 overflow-y-auto pr-1">
+                    {data.topCountries.map((item, index) => {
+                      const percentage = Math.min(100, Math.round((item.visits / maxCountryVisits) * 100));
+                      return (
+                        <div
+                          key={`${item.country}-${index}`}
+                          className="p-2 rounded-lg bg-gray-50/80 hover:bg-gray-100/80 border border-gray-100 flex items-center justify-between gap-3 text-xs transition-colors"
+                        >
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className="w-5 text-[10px] font-bold text-gray-400 shrink-0 text-center">
+                              #{index + 1}
+                            </span>
+                            <span className="font-bold text-gray-900 truncate">{item.country}</span>
+                          </div>
+
+                          <div className="flex items-center gap-3 shrink-0">
+                            <div className="w-20 sm:w-28 h-2 bg-gray-200/80 rounded-full overflow-hidden hidden sm:block">
+                              <div
+                                className="h-full bg-blue-500 rounded-full"
+                                style={{ width: `${Math.max(percentage, 8)}%` }}
+                              />
+                            </div>
+                            <span className="font-bold text-blue-700 text-xs min-w-12 text-right">
+                              {item.visits} <span className="text-[10px] font-normal text-gray-400">visits</span>
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* 7-Days Activity Breakdown */}
+          <div className="bg-gray-50/90 rounded-xl p-3.5 border border-gray-200">
+            <div className="flex items-center justify-between mb-2.5">
+              <h4 className="text-xs font-bold text-gray-800 flex items-center gap-1.5">
+                <Calendar className="w-3.5 h-3.5 text-blue-600" />
+                <span>Last 7 Days Activity</span>
+              </h4>
+              <span className="text-[10px] text-gray-500 font-medium">Visits & Executions</span>
+            </div>
+
+            <div className="space-y-2">
+              {data.recentDays.map((day) => {
+                const isToday = day.date === todayStr;
+                const percentage = Math.min(100, Math.round((day.visits / maxVisitsInRecentDays) * 100));
+
+                return (
+                  <div 
+                    key={day.date} 
+                    className={`p-2 rounded-lg border text-xs transition-colors flex items-center justify-between gap-3 ${
+                      isToday 
+                        ? "bg-blue-50/60 border-blue-200 font-medium text-blue-950" 
+                        : "bg-white border-gray-100 text-gray-700"
+                    }`}
+                  >
+                    <div className="w-24 shrink-0 font-medium flex items-center gap-1">
+                      {isToday && <span className="w-1.5 h-1.5 rounded-full bg-blue-600 animate-pulse" />}
+                      <span className="text-[11px]">{formatDayLabel(day.date)}</span>
+                    </div>
+
+                    {/* Progress visual bar */}
+                    <div className="flex-1 max-w-xs h-2 bg-gray-100 rounded-full overflow-hidden flex">
+                      <div 
+                        className={`h-full rounded-full ${isToday ? "bg-blue-600" : "bg-indigo-400"}`}
+                        style={{ width: `${Math.max(percentage, day.visits > 0 ? 8 : 0)}%` }}
+                        title={`${day.visits} visits`}
+                      />
+                    </div>
+
+                    <div className="flex items-center gap-3 shrink-0 text-[11px]">
+                      <span title="Visits" className="font-bold text-gray-800">
+                        {day.visits} <span className="font-normal text-gray-400 text-[10px]">visits</span>
+                      </span>
+                      <span title="Code Runs" className="text-amber-600">
+                        {day.runs} <span className="text-gray-400 text-[10px]">runs</span>
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Privacy & Information Note */}
+          <div className="p-2.5 bg-gray-50 rounded-lg border border-gray-200 text-[11px] text-gray-500 flex items-center justify-between flex-wrap gap-2">
+            <span>🔒 Internal metric tracking • היממה מתאפסת ב-00:00 (שעון ירושלים)</span>
+            <span className="text-emerald-600 font-semibold flex items-center gap-1">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              Live Real-Time Sync
+            </span>
+          </div>
+
+          {onClose && (
+            <div className="pt-3 border-t border-gray-200 flex items-center justify-between flex-wrap gap-2">
+              <span className="text-xs text-gray-500">Press <kbd className="px-1.5 py-0.5 bg-gray-100 border border-gray-300 rounded text-[10px] font-mono">Esc</kbd> or click to close</span>
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-5 py-2 text-xs bg-gray-800 hover:bg-gray-900 text-white font-bold rounded-xl flex items-center gap-2 transition-all cursor-pointer shadow-sm hover:shadow active:scale-95"
+              >
+                <X className="w-4 h-4" />
+                <span>Close Dashboard</span>
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
