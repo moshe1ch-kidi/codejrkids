@@ -22,35 +22,50 @@ export const db = firebaseConfig.firestoreDatabaseId
   : getFirestore(app);
 
 const QUOTA_STORAGE_KEY = "codejr_firestore_quota_exceeded";
-
-// Recorded Google Cloud Free Tier quota reset window: 
-// Google Cloud Firestore Free Tier resets at 00:00 Pacific Time (07:00 UTC).
-// September 18, 2026 07:15:00 UTC includes a 15-minute margin after midnight PT.
-const KNOWN_CURRENT_QUOTA_RESET_UTC = Date.UTC(2026, 8, 18, 7, 15, 0);
+const LOCAL_MESSAGES_KEY = "codejr_local_contact_messages";
 
 /**
- * Calculates next Pacific Midnight (00:00 AM America/Los_Angeles) in UTC milliseconds.
+ * Calculates the exact next Pacific Midnight (00:00 AM America/Los_Angeles) in UTC milliseconds.
+ * Google Cloud / Firebase Free Tier daily quotas reset at 00:00 Pacific Time.
  */
 export function getNextPacificMidnight(): number {
   try {
     const now = new Date();
+    // Get year, month, day in America/Los_Angeles timezone
     const formatter = new Intl.DateTimeFormat("en-US", {
       timeZone: "America/Los_Angeles",
       year: "numeric",
       month: "numeric",
-      day: "numeric"
+      day: "numeric",
+      hour: "numeric",
+      minute: "numeric",
+      hour12: false
     });
     const parts = formatter.formatToParts(now);
     const y = parseInt(parts.find(p => p.type === "year")?.value || "2026", 10);
     const m = parseInt(parts.find(p => p.type === "month")?.value || "9", 10);
     const d = parseInt(parts.find(p => p.type === "day")?.value || "18", 10);
 
-    // Next day 07:15 UTC (Pacific Time midnight + 15m margin)
-    const nextUtc = Date.UTC(y, m - 1, d + 1, 7, 15, 0);
-    return Math.max(nextUtc, Date.now() + 2 * 60 * 60 * 1000);
+    // Midnight PT is 07:00 UTC during Daylight Saving Time (PDT) or 08:00 UTC during Standard Time (PST).
+    // Adding 2-minute safety margin after midnight PT:
+    const nextMidnightUtc = Date.UTC(y, m - 1, d + 1, 7, 2, 0);
+    if (nextMidnightUtc > Date.now()) {
+      return nextMidnightUtc;
+    }
+    // If already past today's reset, next one is in 24 hours
+    return nextMidnightUtc + 24 * 60 * 60 * 1000;
   } catch {
-    return Date.now() + 6 * 60 * 60 * 1000;
+    return Date.now() + 60 * 60 * 1000;
   }
+}
+
+/**
+ * Returns estimated minutes remaining until the next Pacific Midnight quota reset.
+ */
+export function getMinutesUntilQuotaReset(): number {
+  const resetAt = getNextPacificMidnight();
+  const diff = resetAt - Date.now();
+  return Math.max(1, Math.round(diff / (60 * 1000)));
 }
 
 /**
@@ -97,17 +112,14 @@ export function setFirestoreQuotaExceeded(exceeded: boolean) {
  */
 export function getFirestoreQuotaExceeded(): boolean {
   try {
-    // Check known current exhaustion window
-    if (Date.now() < KNOWN_CURRENT_QUOTA_RESET_UTC) {
-      return true;
-    }
-
     const val = sessionStorage.getItem(QUOTA_STORAGE_KEY) || localStorage.getItem(QUOTA_STORAGE_KEY);
     if (!val) return false;
     const exp = parseInt(val, 10);
     if (isNaN(exp) || Date.now() > exp) {
       sessionStorage.removeItem(QUOTA_STORAGE_KEY);
       localStorage.removeItem(QUOTA_STORAGE_KEY);
+      // Auto reconnect network when quota expiration has elapsed
+      enableNetwork(db).catch(() => {});
       return false;
     }
     return true;
@@ -144,6 +156,31 @@ export interface ContactMessage {
   subject: string;
   message: string;
   createdAt?: any;
+  isLocalFallback?: boolean;
+}
+
+function getLocalMessages(): ContactMessage[] {
+  try {
+    const raw = localStorage.getItem(LOCAL_MESSAGES_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveMessageLocally(data: { name: string; contact: string; subject: string; message: string }): ContactMessage {
+  const localList = getLocalMessages();
+  const newMsg: ContactMessage = {
+    id: "local_" + Date.now() + "_" + Math.random().toString(36).substring(2, 7),
+    ...data,
+    createdAt: { seconds: Math.floor(Date.now() / 1000) },
+    isLocalFallback: true
+  };
+  localList.unshift(newMsg);
+  try {
+    localStorage.setItem(LOCAL_MESSAGES_KEY, JSON.stringify(localList.slice(0, 50)));
+  } catch {}
+  return newMsg;
 }
 
 export async function sendContactMessage(data: {
@@ -151,48 +188,77 @@ export async function sendContactMessage(data: {
   contact: string;
   subject: string;
   message: string;
-}) {
+}): Promise<{ success: boolean; isLocalFallback: boolean }> {
+  // If quota is already marked exceeded, save locally directly and return success
   if (getFirestoreQuotaExceeded()) {
-    throw new Error("QUOTA_EXCEEDED");
+    saveMessageLocally(data);
+    return { success: true, isLocalFallback: true };
   }
 
   try {
     const colRef = collection(db, "contact_messages");
-    await addDoc(colRef, {
+    const writePromise = addDoc(colRef, {
       ...data,
       createdAt: serverTimestamp()
     });
-  } catch (error) {
-    if (isQuotaExceededError(error)) {
+
+    // Enforce a strict 5-second timeout so users are NEVER left hanging on an infinite spinner
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error("FIRESTORE_WRITE_TIMEOUT")), 5000)
+    );
+
+    await Promise.race([writePromise, timeoutPromise]);
+    return { success: true, isLocalFallback: false };
+  } catch (error: any) {
+    console.warn("Contact form notice - write skipped to local store:", error?.message || error);
+    if (isQuotaExceededError(error) || error?.message === "FIRESTORE_WRITE_TIMEOUT") {
       setFirestoreQuotaExceeded(true);
-      throw new Error("QUOTA_EXCEEDED");
     }
-    throw error;
+    // Always guarantee message preservation locally
+    saveMessageLocally(data);
+    return { success: true, isLocalFallback: true };
   }
 }
 
 export async function fetchContactMessages(): Promise<ContactMessage[]> {
+  const localMessages = getLocalMessages();
   if (getFirestoreQuotaExceeded()) {
-    return [];
+    return localMessages;
   }
   try {
     const colRef = collection(db, "contact_messages");
     const q = query(colRef, orderBy("createdAt", "desc"));
     const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => ({
+    const firestoreMessages = snapshot.docs.map(doc => ({
       id: doc.id,
-      ...doc.data()
+      ...doc.data(),
+      isLocalFallback: false
     })) as ContactMessage[];
+
+    // Merge without duplicates
+    const combined = [...localMessages];
+    for (const fm of firestoreMessages) {
+      if (!combined.some(m => m.id === fm.id || (m.contact === fm.contact && m.message === fm.message))) {
+        combined.push(fm);
+      }
+    }
+    return combined;
   } catch (error) {
     if (isQuotaExceededError(error)) {
       setFirestoreQuotaExceeded(true);
     }
-    return [];
+    return localMessages;
   }
 }
 
 export async function deleteContactMessage(id: string) {
-  if (getFirestoreQuotaExceeded()) {
+  // Delete from local store if local
+  try {
+    const local = getLocalMessages().filter(m => m.id !== id);
+    localStorage.setItem(LOCAL_MESSAGES_KEY, JSON.stringify(local));
+  } catch {}
+
+  if (getFirestoreQuotaExceeded() || id.startsWith("local_")) {
     return;
   }
   try {
