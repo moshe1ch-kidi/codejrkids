@@ -1,4 +1,4 @@
- import { initializeApp, getApps } from "firebase/app";
+import { initializeApp, getApps } from "firebase/app";
 import { 
   getFirestore, 
   collection, 
@@ -11,7 +11,12 @@ import {
   doc,
   disableNetwork,
   enableNetwork,
-  setLogLevel
+  setLogLevel,
+  where,
+  limit,
+  updateDoc,
+  setDoc,
+  getDoc
 } from "firebase/firestore";
 import firebaseConfig from "../../firebase-applet-config.json";
 
@@ -328,3 +333,216 @@ export async function fetchTutorialVideosFromFirestore(defaultVideos: any[]): Pr
 
   return defaultVideos;
 }
+
+export interface CloudProject {
+  id?: string;
+  projectName: string;
+  creatorName: string;
+  passcode: string;
+  projectCode: string;
+  scenesData: string;
+  createdAt: any;
+}
+
+export async function saveCloudProject(project: {
+  id?: string;
+  projectName: string;
+  creatorName: string;
+  passcode: string;
+  projectCode?: string;
+  scenesData: string;
+}): Promise<{ success: boolean; projectCode: string; id: string }> {
+  if (getFirestoreQuotaExceeded()) {
+    throw new Error("QUOTA_EXCEEDED");
+  }
+
+  try {
+    const colRef = collection(db, "user_projects");
+    let projectCode = project.projectCode;
+
+    // Generate a code if not provided
+    if (!projectCode) {
+      let unique = false;
+      let attempts = 0;
+      while (!unique && attempts < 5) {
+        attempts++;
+        const candidate = Math.floor(1000 + Math.random() * 9000).toString();
+        // Check uniqueness
+        const q = query(colRef, where("projectCode", "==", candidate), limit(1));
+        const snap = await getDocs(q);
+        if (snap.empty) {
+          projectCode = candidate;
+          unique = true;
+        }
+      }
+      if (!projectCode) {
+        projectCode = Math.floor(1000 + Math.random() * 9000).toString();
+      }
+    }
+
+    const payload = {
+      projectName: project.projectName,
+      creatorName: project.creatorName,
+      passcode: project.passcode || "",
+      projectCode: projectCode,
+      scenesData: project.scenesData,
+      createdAt: serverTimestamp()
+    };
+
+    let finalId = project.id;
+    if (finalId) {
+      // Fetch existing to verify ownership and passcode
+      const docRef = doc(db, "user_projects", finalId);
+      const docSnap = await getDoc(docRef);
+      if (docSnap.exists()) {
+        const existingData = docSnap.data();
+        if (existingData.creatorName !== project.creatorName || existingData.passcode !== project.passcode) {
+          // Ownership mismatch! Strip ID and code to safely save as a brand new copy instead of overwriting
+          finalId = undefined;
+          projectCode = undefined;
+          payload.projectCode = Math.floor(1000 + Math.random() * 9000).toString(); // Generate a new code for the new copy
+        }
+      }
+    }
+
+    if (finalId) {
+      // Update existing document
+      const docRef = doc(db, "user_projects", finalId);
+      await setDoc(docRef, payload, { merge: true });
+    } else {
+      // Create new document
+      const docRef = await addDoc(colRef, payload);
+      finalId = docRef.id;
+      projectCode = payload.projectCode;
+    }
+
+    return { success: true, projectCode: projectCode!, id: finalId! };
+  } catch (error) {
+    if (isQuotaExceededError(error)) {
+      setFirestoreQuotaExceeded(true);
+    }
+    throw error;
+  }
+}
+
+export async function getCloudProjectsByCreator(creatorName: string): Promise<CloudProject[]> {
+  if (getFirestoreQuotaExceeded()) {
+    return [];
+  }
+  try {
+    const colRef = collection(db, "user_projects");
+    const q = query(
+      colRef, 
+      where("creatorName", "==", creatorName),
+      limit(20)
+    );
+    const snap = await getDocs(q);
+    
+    // Sort in-memory to bypass composite index requirement if orderby and where are on different fields
+    const docs = snap.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    })) as CloudProject[];
+    
+    return docs;
+  } catch (error) {
+    if (isQuotaExceededError(error)) {
+      setFirestoreQuotaExceeded(true);
+    }
+    console.error("Error fetching projects by creator:", error);
+    return [];
+  }
+}
+
+export async function getCloudProjectByCode(projectCode: string): Promise<CloudProject | null> {
+  if (getFirestoreQuotaExceeded()) {
+    return null;
+  }
+  try {
+    const colRef = collection(db, "user_projects");
+    const q = query(colRef, where("projectCode", "==", projectCode), limit(1));
+    const snap = await getDocs(q);
+    if (snap.empty) return null;
+    const docObj = snap.docs[0];
+    return {
+      id: docObj.id,
+      ...docObj.data()
+    } as CloudProject;
+  } catch (error) {
+    if (isQuotaExceededError(error)) {
+      setFirestoreQuotaExceeded(true);
+    }
+    console.error("Error fetching project by code:", error);
+    return null;
+  }
+}
+
+export async function authenticateCreator(creatorName: string, passcode: string): Promise<{ success: boolean; error?: string }> {
+  if (getFirestoreQuotaExceeded()) {
+    return { success: false, error: "QUOTA_EXCEEDED" };
+  }
+  try {
+    const docId = creatorName.trim().toLowerCase();
+    const docRef = doc(db, "creators", docId);
+    const snap = await getDoc(docRef);
+
+    if (!snap.exists()) {
+      // Register creator instantly
+      await setDoc(docRef, {
+        creatorName: creatorName.trim(),
+        passcode: passcode.trim(),
+        createdAt: serverTimestamp()
+      });
+      return { success: true };
+    } else {
+      const data = snap.data();
+      if (data && data.passcode === passcode.trim()) {
+        return { success: true };
+      } else {
+        return { success: false, error: "WRONG_PASSCODE" };
+      }
+    }
+  } catch (error) {
+    if (isQuotaExceededError(error)) {
+      setFirestoreQuotaExceeded(true);
+      return { success: false, error: "QUOTA_EXCEEDED" };
+    }
+    console.error("Error authenticating creator:", error);
+    return { success: false, error: "SERVER_ERROR" };
+  }
+}
+
+export async function deleteCloudProject(id: string): Promise<boolean> {
+  if (getFirestoreQuotaExceeded()) {
+    return false;
+  }
+  try {
+    const docRef = doc(db, "user_projects", id);
+    await deleteDoc(docRef);
+    return true;
+  } catch (error) {
+    if (isQuotaExceededError(error)) {
+      setFirestoreQuotaExceeded(true);
+    }
+    console.error("Error deleting cloud project:", error);
+    return false;
+  }
+}
+
+export async function renameCloudProject(id: string, newName: string): Promise<boolean> {
+  if (getFirestoreQuotaExceeded()) {
+    return false;
+  }
+  try {
+    const docRef = doc(db, "user_projects", id);
+    await updateDoc(docRef, { projectName: newName });
+    return true;
+  } catch (error) {
+    if (isQuotaExceededError(error)) {
+      setFirestoreQuotaExceeded(true);
+    }
+    console.error("Error renaming cloud project:", error);
+    return false;
+  }
+}
+
