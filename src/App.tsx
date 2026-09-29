@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { 
   Play, Square, RotateCcw, Image as ImageIcon, 
   Settings2, Plus, Flag, Trash2, Rocket, Brush, X, Grid, Pencil, Monitor, Save, FolderOpen,
@@ -19,6 +19,7 @@ import { SceneThumbnail } from './components/SceneThumbnail';
 import { ContactModal } from './components/ContactModal';
 import { VideoHelpModal } from './components/VideoHelpModal';
 import { VideoAdminModal } from './components/VideoAdminModal';
+import { ProjectStorageModal } from './components/ProjectStorageModal';
 import { cn } from './lib/utils';
 import { BlockType, BlockInstance, Stack, isTriggerBlock } from './blocks';
 import { DragState } from './dragState';
@@ -155,6 +156,7 @@ export default function App() {
   const delayMsRef = useRef(DELAY_MS);
   const autoPlayNextSceneRef = useRef<string | null>(null);
   const workspaceRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const activeRunsCountRef = useRef(0);
   const runningStacksRef = useRef<Set<string>>(new Set());
 
@@ -423,6 +425,11 @@ export default function App() {
 
   const [isRecordModalOpen, setIsRecordModalOpen] = useState(false);
   const [isContactModalOpen, setIsContactModalOpen] = useState(false);
+  const [isProjectStorageOpen, setIsProjectStorageOpen] = useState(false);
+  const [projectStorageMode, setProjectStorageMode] = useState<"save" | "load">("save");
+  const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
+  const [activeProjectCode, setActiveProjectCode] = useState<string | null>(null);
+  const [loadedProjectName, setLoadedProjectName] = useState<string>("");
   const [isVideoHelpOpen, setIsVideoHelpOpen] = useState(false);
   const [isVideoAdminOpen, setIsVideoAdminOpen] = useState(false);
   const [refreshVideoTrigger, setRefreshVideoTrigger] = useState(0);
@@ -1558,6 +1565,43 @@ export default function App() {
     URL.revokeObjectURL(url);
   };
 
+  const loadProjectData = (projectData: any, cloudInfo?: { id: string; code: string; name: string }) => {
+    if (projectData.format === "scratchjr-web") {
+      const loadedScenes = (projectData.scenes || []).map((s: any) => {
+        let sceneTexts = s.texts;
+        if (!sceneTexts && s.text) {
+          sceneTexts = [{
+            id: 'legacy-scene-title',
+            text: s.text,
+            color: s.textColor || '#000000',
+            size: s.textSize || 'medium',
+            x: s.textPosition?.x ?? 10.5,
+            y: s.textPosition?.y ?? 13
+          }];
+        }
+        return {
+          ...s,
+          texts: sceneTexts || []
+        };
+      });
+      updateScenes(loadedScenes);
+      setActiveSceneId(projectData.activeSceneId || 'scene-1');
+      setActiveCharacterId(projectData.activeCharacterId || 'char-1');
+
+      if (cloudInfo) {
+        setActiveProjectId(cloudInfo.id);
+        setActiveProjectCode(cloudInfo.code);
+        setLoadedProjectName(cloudInfo.name);
+      } else {
+        setActiveProjectId(null);
+        setActiveProjectCode(null);
+        setLoadedProjectName("");
+      }
+    } else {
+      alert("Unsupported file format. Please choose a file created with this application.");
+    }
+  };
+
   const handleLoadProject = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -1567,31 +1611,7 @@ export default function App() {
       try {
         const text = e.target?.result as string;
         const projectData = JSON.parse(text);
-        
-        if (projectData.format === "scratchjr-web") {
-          const loadedScenes = (projectData.scenes || []).map((s: any) => {
-            let sceneTexts = s.texts;
-            if (!sceneTexts && s.text) {
-              sceneTexts = [{
-                id: 'legacy-scene-title',
-                text: s.text,
-                color: s.textColor || '#000000',
-                size: s.textSize || 'medium',
-                x: s.textPosition?.x ?? 10.5,
-                y: s.textPosition?.y ?? 13
-              }];
-            }
-            return {
-              ...s,
-              texts: sceneTexts || []
-            };
-          });
-          updateScenes(loadedScenes);
-          setActiveSceneId(projectData.activeSceneId || 'scene-1');
-          setActiveCharacterId(projectData.activeCharacterId || 'char-1');
-        } else {
-          alert("Unsupported file format. Please choose a file created with this application.");
-        }
+        loadProjectData(projectData);
       } catch (err) {
         alert("Error loading the file.");
       }
@@ -1755,25 +1775,33 @@ export default function App() {
           {/* Save & Load Project Icons */}
           <div className="flex items-center gap-1">
             <button 
-              onClick={handleSaveProject}
+              onClick={() => {
+                setProjectStorageMode("save");
+                setIsProjectStorageOpen(true);
+              }}
               className="w-[56px] h-[56px] flex items-center justify-center hover:scale-110 transition-transform"
               title="Save Project"
             >
               <Save className="w-[36px] h-[36px] text-orange-500 stroke-[2.2]" />
             </button>
             
-            <label 
-              className="w-[56px] h-[56px] flex items-center justify-center hover:scale-110 transition-transform cursor-pointer"
+            <button 
+              onClick={() => {
+                setProjectStorageMode("load");
+                setIsProjectStorageOpen(true);
+              }}
+              className="w-[56px] h-[56px] flex items-center justify-center hover:scale-110 transition-transform"
               title="Load Project"
             >
               <FolderOpen className="w-[36px] h-[36px] text-green-600 stroke-[2.2]" />
-              <input 
-                type="file" 
-                accept=".sjr" 
-                onChange={handleLoadProject} 
-                className="hidden" 
-              />
-            </label>
+            </button>
+            <input 
+              ref={fileInputRef}
+              type="file" 
+              accept=".sjr" 
+              onChange={handleLoadProject} 
+              className="hidden" 
+            />
           </div>
         </div>
         
@@ -2455,6 +2483,26 @@ export default function App() {
         isOpen={isVideoAdminOpen}
         onClose={() => setIsVideoAdminOpen(false)}
         onVideosUpdated={() => setRefreshVideoTrigger((prev) => prev + 1)}
+      />
+      {/* Project Storage Options (Save/Load to Cloud or Local) */}
+      <ProjectStorageModal
+        isOpen={isProjectStorageOpen}
+        onClose={() => setIsProjectStorageOpen(false)}
+        mode={projectStorageMode}
+        onSaveLocal={handleSaveProject}
+        onLoadLocal={() => fileInputRef.current?.click()}
+        onLoadProjectData={loadProjectData}
+        scenes={scenes}
+        activeSceneId={activeSceneId}
+        activeCharacterId={activeCharacterId}
+        activeProjectId={activeProjectId}
+        activeProjectCode={activeProjectCode}
+        loadedProjectName={loadedProjectName}
+        onUpdateActiveProjectInfo={(id, code, name) => {
+          setActiveProjectId(id);
+          setActiveProjectCode(code);
+          setLoadedProjectName(name);
+        }}
       />
     </div>
   );
