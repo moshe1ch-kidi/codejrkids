@@ -1,4 +1,4 @@
- rules_version = '2';
+rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     match /contact_messages/{messageId} {
@@ -9,6 +9,13 @@ service cloud.firestore {
       allow read, write: if true;
     }
     match /site_analytics/{docId} {
+      allow read, write: if true;
+    }
+    match /user_projects/{projectId} {
+      allow read, create: if true;
+      allow update, delete: if true;
+    }
+    match /creators/{creatorId} {
       allow read, write: if true;
     }
   }
