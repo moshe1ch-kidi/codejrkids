@@ -41,6 +41,54 @@
         "countries": { "type": "object", "description": "Map of country names to visitor counts" },
         "updatedAt": { "type": "string", "format": "date-time", "description": "Last update timestamp" }
       }
+    },
+    "user_projects": {
+      "title": "User Projects",
+      "description": "Projects saved to the cloud by kids",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique ID" },
+        "projectName": { "type": "string", "description": "Project Name" },
+        "creatorName": { "type": "string", "description": "Creator Name" },
+        "passcode": { "type": "string", "description": "4-digit PIN for access control" },
+        "projectCode": { "type": "string", "description": "4-digit auto-generated project code" },
+        "scenesData": { "type": "string", "description": "Stringified JSON data of scenes and active state" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Creation timestamp" }
+      },
+      "required": ["projectName", "creatorName", "projectCode", "scenesData", "createdAt"]
+    },
+    "creators": {
+      "title": "Creators",
+      "description": "Registered creator usernames and passcodes",
+      "type": "object",
+      "properties": {
+        "creatorName": { "type": "string", "description": "Display Name of Creator" },
+        "passcode": { "type": "string", "description": "Creator Secret Code" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Registration time" }
+      },
+      "required": ["creatorName", "passcode"]
+    }
+  },
+  "firestore": {
+    "/contact_messages/{messageId}": {
+      "schema": "contact_messages",
+      "description": "User feedback messages"
+    },
+    "/app_settings/{settingId}": {
+      "schema": "app_settings",
+      "description": "Tutorial video settings"
+    },
+    "/site_analytics/{docId}": {
+      "schema": "site_analytics",
+      "description": "Aggregated stats"
+    },
+    "/user_projects/{projectId}": {
+      "schema": "user_projects",
+      "description": "Kid project cloud storage"
+    },
+    "/creators/{creatorId}": {
+      "schema": "creators",
+      "description": "Secure creator accounts"
     }
   }
 }
