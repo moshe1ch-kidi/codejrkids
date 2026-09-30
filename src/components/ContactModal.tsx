@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+ import React, { useState, useEffect } from "react";
 import { MessageSquarePlus, Send, X, CheckCircle, RefreshCw, Trash2, Mail, User, ShieldCheck, MessageSquare, Lock, KeyRound, LogOut, Settings, Copy, Check, BarChart3 } from "lucide-react";
 import { sendContactMessage, fetchContactMessages, deleteContactMessage, ContactMessage } from "../lib/firebase";
 import { AnalyticsDashboard } from "./AnalyticsDashboard";
@@ -243,12 +243,6 @@ export const ContactModal: React.FC<ContactModalProps> = ({ isOpen, onClose }) =
                     {isSavedLocally ? (
                       <>
                         תודה רבה! הודעתך נשמרה בהצלחה במערכת ותועבר למנהל.
-                        <span className="text-xs text-gray-500 mt-2 block">
-                          לפניות דחופות תוכל גם לכתוב ישירות אל:{" "}
-                          <a href="mailto:moshe1.ch@gmail.com" className="text-blue-600 font-bold underline">
-                            moshe1.ch@gmail.com
-                          </a>
-                        </span>
                       </>
                     ) : (
                       "Thank you for reaching out. Your message has been saved and we will get back to you soon."
@@ -361,12 +355,6 @@ export const ContactModal: React.FC<ContactModalProps> = ({ isOpen, onClose }) =
                         </>
                       )}
                     </button>
-                    <p className="text-center text-[11px] text-gray-500 mt-2.5">
-                      Or email directly:{" "}
-                      <a href="mailto:moshe1.ch@gmail.com" className="text-blue-600 font-medium hover:underline">
-                        moshe1.ch@gmail.com
-                      </a>
-                    </p>
                   </div>
                 </form>
               )}
