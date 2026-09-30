@@ -1,12 +1,12 @@
- {
-  "projectId": "robot-project-481517",
-  "appId": "1:157099064510:web:7b201ad5903910374f72ef",
-  "apiKey": "AIzaSyDTdhgCf9YtDu1psnLrzuaKmGGseHZPc_g",
-  "authDomain": "robot-project-481517.firebaseapp.com",
-  "firestoreDatabaseId": "ai-studio-remixremixcodejr-71e0fde8-0560-400c-9f4f-c9d73b7b1016",
-  "storageBucket": "robot-project-481517.firebasestorage.app",
-  "messagingSenderId": "157099064510",
-  "measurementId": "",
-  "oAuthClientId": "157099064510-qvq4sj0ntbbi17bpniu1m4667sh82k6o.apps.googleusercontent.com",
+{
+  "projectId": "scratchjr-400405",
+  "appId": "1:1019096334258:web:9770296c131d3a32886eab",
+  "apiKey": "AIzaSyATH95SYB-5GIXtoFxW-n_NjXPTB7jh1hk",
+  "authDomain": "scratchjr-400405.firebaseapp.com",
+  "firestoreDatabaseId": "",
+  "storageBucket": "scratchjr-400405.firebasestorage.app",
+  "messagingSenderId": "1019096334258",
+  "measurementId": "G-XC2TMGSL41",
+  "oAuthClientId": "",
   "recaptchaSiteKey": ""
 }
