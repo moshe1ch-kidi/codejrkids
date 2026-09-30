@@ -1,6 +1,5 @@
  import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Navbar } from './components/Navbar';
 import { AudioUploader } from './components/AudioUploader';
 import { AudioRecorder } from './components/AudioRecorder';
 import { ResultCard } from './components/ResultCard';
