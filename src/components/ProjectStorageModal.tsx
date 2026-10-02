@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+ import React, { useState, useEffect } from "react";
 import { X, Cloud, HardDrive, Search, Key, ChevronRight, CheckCircle, AlertCircle, Copy, Check, Lock, LogOut, User, Folder, RefreshCw, Trash2, Pencil } from "lucide-react";
 import { saveCloudProject, getCloudProjectsByCreator, getCloudProjectByCode, authenticateCreator, deleteCloudProject, renameCloudProject, CloudProject } from "../lib/firebase";
 import { trackProjectSave } from "../lib/analytics";
@@ -47,6 +47,12 @@ export const ProjectStorageModal: React.FC<ProjectStorageModalProps> = ({
   const [inputName, setInputName] = useState("");
   const [inputPass, setInputPass] = useState("");
 
+  const [localMode, setLocalMode] = useState<"save" | "load">(mode);
+
+  useEffect(() => {
+    setLocalMode(mode);
+  }, [mode]);
+
   // Save modes: "update-or-new" (if they have an active project loaded) or "new-only"
   const [saveActionType, setSaveActionType] = useState<"ask" | "new">("ask");
 
@@ -62,6 +68,7 @@ export const ProjectStorageModal: React.FC<ProjectStorageModalProps> = ({
   const [loadingProjects, setLoadingProjects] = useState(false);
   const [editingProjectId, setEditingProjectId] = useState<string | null>(null);
   const [editingProjectNameInput, setEditingProjectNameInput] = useState<string>("");
+  const [filterQuery, setFilterQuery] = useState("");
 
   // Sharing code search state
   const [friendCode, setFriendCode] = useState("");
@@ -159,6 +166,7 @@ export const ProjectStorageModal: React.FC<ProjectStorageModalProps> = ({
       setLoggedInCreator(cleanName);
       setLoggedInPasscode(cleanPass);
       setUserProjects(list);
+      setLocalMode("load"); // Transition automatically to the cloud list view!
     } catch (err) {
       console.error(err);
       setAuthError("Error connecting to the cloud. Please try again.");
@@ -516,8 +524,34 @@ export const ProjectStorageModal: React.FC<ProjectStorageModalProps> = ({
                     </button>
                   </div>
 
+                  {/* Mode Tab Switcher */}
+                  <div className="flex bg-amber-100/40 p-1 rounded-xl border border-amber-200">
+                    <button
+                      onClick={() => setLocalMode("save")}
+                      className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg font-extrabold text-xs transition-all ${
+                        localMode === "save"
+                          ? "bg-amber-400 text-white shadow-sm"
+                          : "text-amber-800 hover:bg-amber-100/50"
+                      }`}
+                    >
+                      <Cloud className="w-4 h-4" />
+                      <span>Save Project ☁️</span>
+                    </button>
+                    <button
+                      onClick={() => setLocalMode("load")}
+                      className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg font-extrabold text-xs transition-all ${
+                        localMode === "load"
+                          ? "bg-amber-400 text-white shadow-sm"
+                          : "text-amber-800 hover:bg-amber-100/50"
+                      }`}
+                    >
+                      <Folder className="w-4 h-4" />
+                      <span>Open Project 📂</span>
+                    </button>
+                  </div>
+
                   {/* SAVE MODE */}
-                  {mode === "save" && (
+                  {localMode === "save" && (
                     <div>
                       {!saveSuccess ? (
                         <div className="space-y-4">
@@ -653,122 +687,170 @@ export const ProjectStorageModal: React.FC<ProjectStorageModalProps> = ({
                   )}
 
                   {/* LOAD MODE */}
-                  {mode === "load" && (
+                  {localMode === "load" && (
                     <div className="space-y-4">
                       {/* Section: My saved projects */}
                       <div className="bg-white p-4 rounded-2xl border-2 border-amber-200 shadow-inner">
-                        <h4 className="text-base font-black text-amber-950 mb-3 flex items-center gap-2">
-                          <Folder className="w-5 h-5 text-amber-500" />
-                          <span>My Saved Cloud Projects:</span>
-                        </h4>
+                        {(() => {
+                          const isManager = loggedInCreator.toLowerCase() === "admin" || loggedInCreator.toLowerCase() === "manager" || loggedInCreator.toLowerCase() === "manger";
+                          const filteredProjects = userProjects.filter((proj) => {
+                            const queryClean = filterQuery.trim().toLowerCase();
+                            if (!queryClean) return true;
+                            return (
+                              proj.projectName.toLowerCase().includes(queryClean) ||
+                              (proj.creatorName && proj.creatorName.toLowerCase().includes(queryClean)) ||
+                              (proj.projectCode && proj.projectCode.toLowerCase().includes(queryClean))
+                            );
+                          });
 
-                        {loadingProjects ? (
-                          <div className="text-center py-6 text-amber-700 font-semibold animate-pulse">Loading your projects...</div>
-                        ) : userProjects.length > 0 ? (
-                          <div className="grid grid-cols-1 gap-2 max-h-[220px] overflow-y-auto pl-1">
-                            {userProjects.map((proj) => {
-                              const isCurrentActive = proj.id === activeProjectId;
-                              return (
-                                <div
-                                  key={proj.id}
-                                  className={`w-full border-2 rounded-xl p-3 flex items-center justify-between transition-all font-semibold ${
-                                    isCurrentActive 
-                                      ? "bg-orange-50/50 border-orange-300" 
-                                      : "bg-amber-50/40 border-amber-100 hover:border-amber-200"
-                                  }`}
-                                >
-                                  {/* Left section: clickable load button or inline editor */}
-                                  {editingProjectId === proj.id ? (
-                                    <form
-                                      onSubmit={(e) => {
-                                        e.preventDefault();
-                                        handleSaveInlineRename(proj);
-                                      }}
-                                      className="flex-1 flex items-center gap-1.5 pr-2"
-                                      onClick={(e) => e.stopPropagation()}
-                                    >
-                                      <input
-                                        type="text"
-                                        value={editingProjectNameInput}
-                                        onChange={(e) => setEditingProjectNameInput(e.target.value)}
-                                        className="border-2 border-amber-400 bg-white rounded-lg px-2 py-1 text-sm text-amber-950 font-bold focus:outline-hidden max-w-[150px] w-full"
-                                        placeholder="New name..."
-                                        autoFocus
-                                      />
-                                      <button
-                                        type="submit"
-                                        className="p-1.5 bg-green-500 hover:bg-green-600 text-white rounded-lg transition-colors flex items-center justify-center shadow-xs shrink-0"
-                                        title="Save name"
-                                      >
-                                        <Check className="w-3.5 h-3.5 stroke-[3]" />
-                                      </button>
-                                      <button
-                                        type="button"
-                                        onClick={() => setEditingProjectId(null)}
-                                        className="p-1.5 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg transition-colors flex items-center justify-center shadow-xs shrink-0"
-                                        title="Cancel"
-                                      >
-                                        <X className="w-3.5 h-3.5 stroke-[3]" />
-                                      </button>
-                                    </form>
-                                  ) : (
-                                    <button
-                                      onClick={() => handleLoadConfirm(proj)}
-                                      className="flex-1 text-left flex flex-col group pr-2"
-                                    >
-                                      <p className={`text-base font-extrabold group-hover:text-amber-600 transition-colors ${
-                                        isCurrentActive ? "text-orange-950" : "text-amber-950"
-                                      }`}>
-                                        {proj.projectName}
-                                        {isCurrentActive && (
-                                          <span className="ml-2 text-xs bg-orange-400 text-white px-2 py-0.5 rounded-full font-bold">Active Now</span>
-                                        )}
-                                      </p>
-                                      <p className="text-xs text-amber-600/70">Share Code: {proj.projectCode}</p>
-                                    </button>
-                                  )}
-
-                                  {/* Right section: Open, Rename, and Delete actions */}
-                                  <div className="flex items-center gap-1.5 shrink-0">
-                                    <button
-                                      onClick={() => handleLoadConfirm(proj)}
-                                      className="text-xs bg-amber-400 hover:bg-amber-500 text-white font-extrabold px-3 py-1.5 rounded-lg shadow-sm transition-all flex items-center gap-1"
-                                    >
-                                      <span>Open</span>
-                                      <ChevronRight className="w-4 h-4" />
-                                    </button>
-
-                                    <button
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleRenameConfirm(proj);
-                                      }}
-                                      className="p-1.5 bg-amber-100 hover:bg-amber-500 hover:text-white text-amber-800 rounded-lg transition-colors"
-                                      title="Rename project"
-                                    >
-                                      <Pencil className="w-4 h-4" />
-                                    </button>
-                                    
-                                    <button
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleDeleteConfirm(proj);
-                                      }}
-                                      className="p-1.5 bg-red-100 hover:bg-red-500 hover:text-white text-red-600 rounded-lg transition-colors"
-                                      title="Delete project from cloud"
-                                    >
-                                      <Trash2 className="w-4 h-4" />
-                                    </button>
-                                  </div>
+                          return (
+                            <>
+                              <h4 className="text-base font-black text-amber-950 mb-3 flex items-center justify-between gap-2 flex-wrap">
+                                <div className="flex items-center gap-2">
+                                  <Folder className="w-5 h-5 text-amber-500" />
+                                  <span>{isManager ? "Classroom Cloud View (All Saved Projects):" : "My Saved Cloud Projects:"}</span>
                                 </div>
-                              );
-                            })}
-                          </div>
-                        ) : (
-                          <div className="text-center py-6 text-gray-400 text-sm font-semibold">
-                            You haven't saved any projects in the cloud yet!
-                          </div>
-                        )}
+                                {isManager && (
+                                  <span className="text-xs bg-orange-100 text-orange-800 font-extrabold px-2 py-0.5 rounded-lg border border-orange-200">
+                                    Teacher Mode 🎓 ({filteredProjects.length} projects)
+                                  </span>
+                                )}
+                              </h4>
+
+                              {/* Search Filter input */}
+                              {(isManager || userProjects.length > 5) && (
+                                <div className="mb-3">
+                                  <input
+                                    type="text"
+                                    placeholder={isManager ? "Search by project name, kid's name, or code..." : "Search your projects..."}
+                                    value={filterQuery}
+                                    onChange={(e) => setFilterQuery(e.target.value)}
+                                    className="w-full bg-amber-50/50 border border-amber-200 rounded-xl px-3 py-2 text-xs text-amber-950 font-semibold focus:outline-hidden"
+                                  />
+                                </div>
+                              )}
+
+                              {loadingProjects ? (
+                                <div className="text-center py-6 text-amber-700 font-semibold animate-pulse">Loading cloud projects...</div>
+                              ) : filteredProjects.length > 0 ? (
+                                <div className="grid grid-cols-1 gap-2 max-h-[260px] overflow-y-auto pl-1">
+                                  {filteredProjects.map((proj) => {
+                                    const isCurrentActive = proj.id === activeProjectId;
+                                    return (
+                                      <div
+                                        key={proj.id}
+                                        className={`w-full border-2 rounded-xl p-3 flex items-center justify-between transition-all font-semibold ${
+                                          isCurrentActive 
+                                            ? "bg-orange-50/50 border-orange-300" 
+                                            : "bg-amber-50/40 border-amber-100 hover:border-amber-200"
+                                        }`}
+                                      >
+                                        {/* Left section: clickable load button or inline editor */}
+                                        {editingProjectId === proj.id ? (
+                                          <form
+                                            onSubmit={(e) => {
+                                              e.preventDefault();
+                                              handleSaveInlineRename(proj);
+                                            }}
+                                            className="flex-1 flex items-center gap-1.5 pr-2"
+                                            onClick={(e) => e.stopPropagation()}
+                                          >
+                                            <input
+                                              type="text"
+                                              value={editingProjectNameInput}
+                                              onChange={(e) => setEditingProjectNameInput(e.target.value)}
+                                              className="border-2 border-amber-400 bg-white rounded-lg px-2 py-1 text-sm text-amber-950 font-bold focus:outline-hidden max-w-[150px] w-full"
+                                              placeholder="New name..."
+                                              autoFocus
+                                            />
+                                            <button
+                                              type="submit"
+                                              className="p-1.5 bg-green-500 hover:bg-green-600 text-white rounded-lg transition-colors flex items-center justify-center shadow-xs shrink-0"
+                                              title="Save name"
+                                            >
+                                              <Check className="w-3.5 h-3.5 stroke-[3]" />
+                                            </button>
+                                            <button
+                                              type="button"
+                                              onClick={() => setEditingProjectId(null)}
+                                              className="p-1.5 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg transition-colors flex items-center justify-center shadow-xs shrink-0"
+                                              title="Cancel"
+                                            >
+                                              <X className="w-3.5 h-3.5 stroke-[3]" />
+                                            </button>
+                                          </form>
+                                        ) : (
+                                          <button
+                                            onClick={() => handleLoadConfirm(proj)}
+                                            className="flex-1 text-left flex flex-col group pr-2"
+                                          >
+                                            <p className={`text-base font-extrabold group-hover:text-amber-600 transition-colors ${
+                                              isCurrentActive ? "text-orange-950" : "text-amber-950"
+                                            }`}>
+                                              {proj.projectName}
+                                              {isCurrentActive && (
+                                                <span className="ml-2 text-xs bg-orange-400 text-white px-2 py-0.5 rounded-full font-bold">Active Now</span>
+                                              )}
+                                            </p>
+                                            <p className="text-xs text-amber-600/70">
+                                              {isManager ? (
+                                                <span>Creator: <strong className="text-amber-900 font-black">{proj.creatorName}</strong></span>
+                                              ) : (
+                                                <span>Share Code</span>
+                                              )}
+                                              {" • "}Code: {proj.projectCode}
+                                            </p>
+                                          </button>
+                                        )}
+
+                                        {/* Right section: Open, Rename, and Delete actions */}
+                                        <div className="flex items-center gap-1.5 shrink-0">
+                                          <button
+                                            onClick={() => handleLoadConfirm(proj)}
+                                            className="text-xs bg-amber-400 hover:bg-amber-500 text-white font-extrabold px-3 py-1.5 rounded-lg shadow-sm transition-all flex items-center gap-1"
+                                          >
+                                            <span>Open</span>
+                                            <ChevronRight className="w-4 h-4" />
+                                          </button>
+
+                                          <button
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              handleRenameConfirm(proj);
+                                            }}
+                                            className="p-1.5 bg-amber-100 hover:bg-amber-500 hover:text-white text-amber-800 rounded-lg transition-colors"
+                                            title="Rename project"
+                                          >
+                                            <Pencil className="w-4 h-4" />
+                                          </button>
+                                          
+                                          <button
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              handleDeleteConfirm(proj);
+                                            }}
+                                            className="p-1.5 bg-red-100 hover:bg-red-500 hover:text-white text-red-600 rounded-lg transition-colors"
+                                            title="Delete project from cloud"
+                                          >
+                                            <Trash2 className="w-4 h-4" />
+                                          </button>
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              ) : (
+                                <div className="text-center py-6 text-gray-400 text-sm font-semibold">
+                                  {filterQuery 
+                                    ? "No projects found matching your search term." 
+                                    : isManager 
+                                      ? "No students' projects are currently saved in the cloud." 
+                                      : "You haven't saved any projects in the cloud yet!"}
+                                </div>
+                              )}
+                            </>
+                          );
+                        })()}
                       </div>
 
                       {/* Section: Load a friend's project by share code */}
