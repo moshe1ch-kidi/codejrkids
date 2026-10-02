@@ -1,4 +1,4 @@
-import { initializeApp, getApps } from "firebase/app";
+ import { initializeApp, getApps } from "firebase/app";
 import { 
   getFirestore, 
   collection, 
@@ -431,18 +431,40 @@ export async function getCloudProjectsByCreator(creatorName: string): Promise<Cl
   }
   try {
     const colRef = collection(db, "user_projects");
-    const q = query(
-      colRef, 
-      where("creatorName", "==", creatorName),
-      limit(20)
-    );
+    const isManager = creatorName.trim().toLowerCase() === "admin" || creatorName.trim().toLowerCase() === "manager" || creatorName.trim().toLowerCase() === "manger";
+    
+    let q;
+    if (isManager) {
+      // Manager/Admin gets ALL projects (up to 200 items for classroom overview)
+      q = query(colRef, limit(200));
+    } else {
+      q = query(
+        colRef, 
+        where("creatorName", "==", creatorName),
+        limit(25)
+      );
+    }
     const snap = await getDocs(q);
     
-    // Sort in-memory to bypass composite index requirement if orderby and where are on different fields
-    const docs = snap.docs.map(doc => ({
+    // Sort in-memory to avoid needing composite index configurations
+    let docs = snap.docs.map(doc => ({
       id: doc.id,
-      ...doc.data()
+      ...(doc.data() as any)
     })) as CloudProject[];
+    
+    // Simple sort by createdAt or descending order
+    docs.sort((a, b) => {
+      const getMs = (val: any) => {
+        if (!val) return 0;
+        if (typeof val === 'object') {
+          if ('seconds' in val) return val.seconds * 1000;
+          if ('toDate' in val && typeof val.toDate === 'function') return val.toDate().getTime();
+        }
+        const parsed = Date.parse(String(val));
+        return isNaN(parsed) ? 0 : parsed;
+      };
+      return getMs(b.createdAt) - getMs(a.createdAt);
+    });
     
     return docs;
   } catch (error) {
@@ -481,8 +503,16 @@ export async function authenticateCreator(creatorName: string, passcode: string)
   if (getFirestoreQuotaExceeded()) {
     return { success: false, error: "QUOTA_EXCEEDED" };
   }
+  const cleanName = creatorName.trim().toLowerCase();
+  const cleanPass = passcode.trim();
+
+  // Hardcoded Teacher/Admin credentials matching our master panel passcode
+  if ((cleanName === "admin" || cleanName === "manager" || cleanName === "manger") && cleanPass === "codejr$100") {
+    return { success: true };
+  }
+
   try {
-    const docId = creatorName.trim().toLowerCase();
+    const docId = cleanName;
     const docRef = doc(db, "creators", docId);
     const snap = await getDoc(docRef);
 
