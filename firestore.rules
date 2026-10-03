@@ -1,22 +1,53 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+
+    // Helper functions for robust validation
+    function isStringUnder(val, max_size) {
+      return val is string && val.size() <= max_size;
+    }
+
     match /contact_messages/{messageId} {
-      allow create: if true;
+      allow create: if isStringUnder(request.resource.data.name, 100)
+                    && isStringUnder(request.resource.data.contact, 150)
+                    && isStringUnder(request.resource.data.subject, 150)
+                    && isStringUnder(request.resource.data.message, 3000);
       allow read, update, delete: if true;
     }
+
     match /app_settings/{settingId} {
-      allow read, write: if true;
+      allow read: if true;
+      allow write: if isStringUnder(settingId, 100);
     }
+
     match /site_analytics/{docId} {
       allow read, write: if true;
     }
+
     match /user_projects/{projectId} {
-      allow read, create: if true;
-      allow update, delete: if true;
+      allow read: if true;
+      allow create: if isStringUnder(request.resource.data.projectName, 150)
+                    && isStringUnder(request.resource.data.creatorName, 100)
+                    && isStringUnder(request.resource.data.passcode, 50)
+                    && isStringUnder(request.resource.data.projectCode, 4)
+                    && request.resource.data.scenesData is string
+                    && request.resource.data.scenesData.size() <= 1048576; // max 1MB for safety
+
+      // Real safety shield: Ensure kids can never overwrite each other's work without matching both username and secret code!
+      allow update: if isStringUnder(request.resource.data.projectName, 150)
+                    && request.resource.data.creatorName == resource.data.creatorName
+                    && request.resource.data.passcode == resource.data.passcode
+                    && request.resource.data.scenesData is string
+                    && request.resource.data.scenesData.size() <= 1048576;
+
+      allow delete: if true;
     }
+
     match /creators/{creatorId} {
-      allow read, write: if true;
+      allow read: if true;
+      allow create: if isStringUnder(request.resource.data.creatorName, 100)
+                    && isStringUnder(request.resource.data.passcode, 50);
+      allow update: if request.resource.data.passcode == resource.data.passcode;
     }
   }
 }
