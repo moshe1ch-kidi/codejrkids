@@ -1,4 +1,4 @@
- import React, { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { X, Cloud, HardDrive, Search, Key, ChevronRight, CheckCircle, AlertCircle, Copy, Check, Lock, LogOut, User, Folder, RefreshCw, Trash2, Pencil } from "lucide-react";
 import { saveCloudProject, getCloudProjectsByCreator, getCloudProjectByCode, authenticateCreator, deleteCloudProject, renameCloudProject, CloudProject } from "../lib/firebase";
 import { trackProjectSave } from "../lib/analytics";
@@ -123,7 +123,8 @@ export const ProjectStorageModal: React.FC<ProjectStorageModalProps> = ({
   const loadUserProjects = async (creator: string) => {
     setLoadingProjects(true);
     try {
-      const list = await getCloudProjectsByCreator(creator);
+      const pass = loggedInPasscode || localStorage.getItem("codejr_cloud_passcode") || "";
+      const list = await getCloudProjectsByCreator(creator, pass);
       setUserProjects(list);
     } catch (err) {
       console.error("Error loading user projects:", err);
@@ -160,7 +161,7 @@ export const ProjectStorageModal: React.FC<ProjectStorageModalProps> = ({
       }
 
       // If checks pass, log them in and fetch user projects
-      const list = await getCloudProjectsByCreator(cleanName);
+      const list = await getCloudProjectsByCreator(cleanName, cleanPass);
       localStorage.setItem("codejr_cloud_creator", cleanName);
       localStorage.setItem("codejr_cloud_passcode", cleanPass);
       setLoggedInCreator(cleanName);
