@@ -1,4 +1,4 @@
- import { initializeApp, getApps } from "firebase/app";
+import { initializeApp, getApps } from "firebase/app";
 import { 
   getFirestore, 
   collection, 
@@ -425,13 +425,13 @@ export async function saveCloudProject(project: {
   }
 }
 
-export async function getCloudProjectsByCreator(creatorName: string): Promise<CloudProject[]> {
+export async function getCloudProjectsByCreator(creatorName: string, passcode?: string): Promise<CloudProject[]> {
   if (getFirestoreQuotaExceeded()) {
     return [];
   }
   try {
     const colRef = collection(db, "user_projects");
-    const isManager = creatorName.trim().toLowerCase() === "admin" || creatorName.trim().toLowerCase() === "manager" || creatorName.trim().toLowerCase() === "manger";
+    const isManager = (creatorName.trim().toLowerCase() === "admin" || creatorName.trim().toLowerCase() === "manager" || creatorName.trim().toLowerCase() === "manger") && (passcode?.trim() === "codejr$100");
     
     let q;
     if (isManager) {
@@ -507,8 +507,12 @@ export async function authenticateCreator(creatorName: string, passcode: string)
   const cleanPass = passcode.trim();
 
   // Hardcoded Teacher/Admin credentials matching our master panel passcode
-  if ((cleanName === "admin" || cleanName === "manager" || cleanName === "manger") && cleanPass === "codejr$100") {
-    return { success: true };
+  if (cleanName === "admin" || cleanName === "manager" || cleanName === "manger") {
+    if (cleanPass === "codejr$100") {
+      return { success: true };
+    } else {
+      return { success: false, error: "WRONG_PASSCODE" };
+    }
   }
 
   try {
