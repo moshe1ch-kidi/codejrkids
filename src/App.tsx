@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { 
   Play, Square, RotateCcw, Image as ImageIcon, 
   Settings2, Plus, Flag, Trash2, Rocket, Brush, X, Grid, Pencil, Monitor, Save, FolderOpen,
@@ -1843,7 +1843,7 @@ export default function App() {
           <button
             onClick={() => setIsAboutModalOpen(true)}
             className="w-[56px] h-[56px] flex items-center justify-center hover:scale-110 transition-transform cursor-pointer"
-            title="About & ScratchJr Attribution (אודות והצהרת זכויות)"
+            title="About & ScratchJr Attribution"
           >
             <div className="w-[42px] h-[42px] bg-gradient-to-tr from-amber-400 to-orange-400 hover:from-amber-500 hover:to-orange-500 rounded-2xl flex items-center justify-center shadow-md border-2 border-white transition-all">
               <Info className="w-5 h-5 text-white stroke-[2.5]" />
