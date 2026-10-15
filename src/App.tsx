@@ -1,8 +1,8 @@
- import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { 
   Play, Square, RotateCcw, Image as ImageIcon, 
   Settings2, Plus, Flag, Trash2, Rocket, Brush, X, Grid, Pencil, Monitor, Save, FolderOpen,
-  Menu, ExternalLink, Globe, MessageSquarePlus, Mail, BookOpen, Undo2, Redo2, Video, Copy
+  Menu, ExternalLink, Globe, MessageSquarePlus, Mail, BookOpen, Undo2, Redo2, Video, Copy, Info
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { Stage } from './components/Stage';
@@ -20,6 +20,7 @@ import { ContactModal } from './components/ContactModal';
 import { VideoHelpModal } from './components/VideoHelpModal';
 import { VideoAdminModal } from './components/VideoAdminModal';
 import { ProjectStorageModal } from './components/ProjectStorageModal';
+import { AboutModal } from './components/AboutModal';
 import { cn } from './lib/utils';
 import { BlockType, BlockInstance, Stack, isTriggerBlock } from './blocks';
 import { DragState } from './dragState';
@@ -425,6 +426,7 @@ export default function App() {
 
   const [isRecordModalOpen, setIsRecordModalOpen] = useState(false);
   const [isContactModalOpen, setIsContactModalOpen] = useState(false);
+  const [isAboutModalOpen, setIsAboutModalOpen] = useState(false);
   const [isProjectStorageOpen, setIsProjectStorageOpen] = useState(false);
   const [projectStorageMode, setProjectStorageMode] = useState<"save" | "load">("save");
   const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
@@ -1838,6 +1840,16 @@ export default function App() {
             <img src={getAssetUrl('/UI/card.svg')} alt="Instruction Cards" className="w-[38px] h-[38px] object-contain pointer-events-none" />
           </a>
 
+          <button
+            onClick={() => setIsAboutModalOpen(true)}
+            className="w-[56px] h-[56px] flex items-center justify-center hover:scale-110 transition-transform cursor-pointer"
+            title="About & ScratchJr Attribution (אודות והצהרת זכויות)"
+          >
+            <div className="w-[42px] h-[42px] bg-gradient-to-tr from-amber-400 to-orange-400 hover:from-amber-500 hover:to-orange-500 rounded-2xl flex items-center justify-center shadow-md border-2 border-white transition-all">
+              <Info className="w-5 h-5 text-white stroke-[2.5]" />
+            </div>
+          </button>
+
           <div className="w-px h-8 bg-gray-300 mx-1"></div>
 
           <button
@@ -2163,6 +2175,17 @@ export default function App() {
           </div>
         </div>
       </main>
+ 
+      {/* Subtle ScratchJr Attribution Footer */}
+      <footer className="w-full text-center py-1.5 px-4 bg-[#FBF7F0] border-t border-amber-200/60 text-[11px] sm:text-xs text-amber-950/80 flex items-center justify-center gap-1.5 flex-wrap shrink-0 select-none z-10">
+        <span>This technology is inspired by the <strong>ScratchJr</strong> programming environment (not affiliated with the official ScratchJr).</span>
+        <button 
+          onClick={() => setIsAboutModalOpen(true)}
+          className="underline font-bold text-amber-800 hover:text-orange-600 transition-colors cursor-pointer ml-1"
+        >
+          About & Credits
+        </button>
+      </footer>
 
       <DragOverlayView dragState={dragState} scenes={scenes} characters={characters} />
       
@@ -2459,6 +2482,19 @@ export default function App() {
                   </div>
                 </a>
               </div>
+
+              <div className="pt-2 border-t border-gray-100">
+                <button
+                  onClick={() => {
+                    setIsMenuDrawerOpen(false);
+                    setIsAboutModalOpen(true);
+                  }}
+                  className="w-full flex items-center justify-center gap-2 p-2.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-800 text-xs font-bold transition-all border border-amber-200 cursor-pointer"
+                >
+                  <Info className="w-3.5 h-3.5 text-amber-600" />
+                  <span>About & ScratchJr Attribution</span>
+                </button>
+              </div>
             </div>
           </motion.div>
         </div>
@@ -2467,6 +2503,11 @@ export default function App() {
       <ContactModal 
         isOpen={isContactModalOpen} 
         onClose={() => setIsContactModalOpen(false)} 
+      />
+      {/* About & ScratchJr Attribution Modal */}
+      <AboutModal
+        isOpen={isAboutModalOpen}
+        onClose={() => setIsAboutModalOpen(false)}
       />
       {/* Video Help Modal */}
       <VideoHelpModal
