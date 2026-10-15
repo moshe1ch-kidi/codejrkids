@@ -1,5 +1,5 @@
-import React, { useEffect } from "react";
-import { X, ExternalLink, Heart, Sparkles, BookOpen, ShieldCheck, GraduationCap, Building2 } from "lucide-react";
+ import React, { useEffect } from "react";
+import { X, ExternalLink, Heart, Sparkles, ShieldCheck, GraduationCap, Building2 } from "lucide-react";
 
 interface AboutModalProps {
   isOpen: boolean;
@@ -38,7 +38,7 @@ export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose }) => {
                 About & ScratchJr Attribution
               </h2>
               <p className="text-xs font-bold text-amber-100">
-                אודות, השראה והצהרת זכויות
+                Inspiration, Community & Academic Attribution
               </p>
             </div>
           </div>
@@ -59,7 +59,7 @@ export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose }) => {
             <div className="flex items-center gap-2 mb-3">
               <span className="bg-amber-100 text-amber-800 text-xs font-black px-2.5 py-1 rounded-full border border-amber-300 flex items-center gap-1.5">
                 <ShieldCheck className="w-3.5 h-3.5" />
-                Official Statement / הצהרה רשמית
+                Official Statement
               </span>
             </div>
             <blockquote className="text-sm sm:text-base leading-relaxed text-gray-800 font-medium italic border-l-4 border-amber-500 pl-4 py-1">
@@ -67,14 +67,14 @@ export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose }) => {
             </blockquote>
           </div>
 
-          {/* Hebrew Explanation for Israeli / Hebrew-speaking schools */}
-          <div className="bg-amber-100/50 border border-amber-200 rounded-2xl p-4 text-right" dir="rtl">
-            <h3 className="text-sm font-extrabold text-amber-950 mb-1 flex items-center gap-1.5 justify-start">
+          {/* Educational Purpose Note */}
+          <div className="bg-amber-50/70 border border-amber-200/80 rounded-2xl p-4 text-left">
+            <h3 className="text-sm font-extrabold text-amber-950 mb-1 flex items-center gap-1.5">
               <Sparkles className="w-4 h-4 text-amber-600" />
-              תרגום לעברית (לידיעת מורים ותלמידים):
+              Creative Coding for Every Child
             </h3>
             <p className="text-xs sm:text-sm text-amber-900 leading-relaxed font-normal">
-              טכנולוגיה זו נוצרה בהשראת סביבת התכנות <strong>ScratchJr</strong>, אך אינה קשורה באופן רשמי לארגון ScratchJr. סביבת ScratchJr פותחה במקור על ידי קבוצת המחקר DevTech באוניברסיטת Tufts (וכיום ב-Boston College) וקבוצת Lifelong Kindergarten ב-MIT. כיום המיזם מנוהל במשותף על ידי קבוצת DevTech וקרן Scratch Foundation, במטרה להנגיש את עולם התכנות המוקדם לכל ילד וילדה בגישה חופשית ופתוחה לכולם.
+              CodeJr is built with profound appreciation for the pioneer research behind ScratchJr. By offering visual, block-based storytelling and interactive animations, our mission aligns with making foundational programming accessible, intuitive, and engaging for learners everywhere.
             </p>
           </div>
 
