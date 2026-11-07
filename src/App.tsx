@@ -88,6 +88,22 @@ export default function App() {
   useEffect(() => {
     trackPageVisit();
   }, []);
+
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      const hasWork = scenes.some(s => 
+        (s.stacks && s.stacks.length > 0) || 
+        (s.characterStacks && Object.values(s.characterStacks).some((stList: any) => stList && stList.length > 0)) ||
+        (s.characters && s.characters.length > 1)
+      );
+      if (hasWork) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [scenes]);
   const [activeSceneId, setActiveSceneId] = useState('scene-1');
   const [isBackgroundGalleryOpen, setIsBackgroundGalleryOpen] = useState(false);
   const [isPresentationMode, setIsPresentationMode] = useState(false);
